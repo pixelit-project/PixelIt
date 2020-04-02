@@ -7,18 +7,19 @@
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <FS.h>
-#include <TimeLib.h>
+#include <TimeLib.h> //https://github.com/o0shojo0o/Time
 #include <ArduinoJson.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
-#include <FastLED_NeoMatrix.h>
-#include <LightDependentResistor.h>
+#include <FastLED_NeoMatrix.h> //https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
+#include <LightDependentResistor.h> //https://github.com/o0shojo0o/Arduino-Light-Dependent-Resistor-Library v1.0.0!!!
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
 // PixelIT Stuff 
 #include "PixelItFont.h"
 #include "Webinterface.h"
+#include "Tools.h"
 
 
 
@@ -64,6 +65,8 @@ CRGB leds[NUMMATRIX];
 								: __DATE__ [2] == 't' ? 9                               \
 								: __DATE__ [2] == 'v' ? 10 : 11) +1)
 #define COMPILE_DAY           ((__DATE__ [4]==' ' ? 0 : __DATE__  [4]-'0')*10+(__DATE__[5]-'0'))
+
+
 
 
 const String version = String(COMPILE_SHORTYEAR) + IntFormat(COMPILE_MONTH) + IntFormat(COMPILE_DAY) + IntFormat(COMPILE_HOUR) + IntFormat(COMPILE_MINUTE);
@@ -826,7 +829,7 @@ void CreateFrames(JsonObject& json)
 			{
 				for (int16_t i = 0; i < w; i++)
 				{
-					matrix->drawPixel(x + i, y, json["bitmap"]["data"][j * w + i].as<int16_t>());
+					matrix->drawPixel(x + i, y, json["bitmap"]["data"][j * w + i].as<uint16_t>());
 				}
 			}
 
@@ -1717,7 +1720,7 @@ void ClearTextArea()
 	{
 		for (int16_t i = 0; i < w; i++)
 		{
-			matrix->drawPixel(x + i, y, 0);
+			matrix->drawPixel(x + i, y, (uint16_t)0);
 		}
 	}
 }
@@ -1733,7 +1736,7 @@ void ClearBMPArea()
 	{
 		for (int16_t i = 0; i < w; i++)
 		{
-			matrix->drawPixel(x + i, y, 0);
+			matrix->drawPixel(x + i, y, (uint16_t)0);
 		}
 	}
 }
@@ -2128,7 +2131,7 @@ time_t getNtpTime()
 			secsSince1900 |= (time_t)packetBuffer[42] << 8;
 			secsSince1900 |= (time_t)packetBuffer[43];
 			time_t secsSince1970 = secsSince1900 - 2208988800UL;
-			int totalOffset = (clockTimeZone + DSToffset(secsSince1970));
+			int totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
 		}
 		yield();
@@ -2156,37 +2159,6 @@ void sendNTPpacket(IPAddress& address)
 	udp.endPacket();
 }
 
-int DSToffset(time_t date)
-{
-	bool summerTime;
-
-	if (month(date) < 3 || month(date) > 10)
-	{
-		summerTime = false; // keine Sommerzeit in Jan, Feb, Nov, Dez
-	}
-	else if (month(date) > 3 && month(date) < 10) {
-		summerTime = true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
-	}
-	else if (month(date) == 3 && (hour(date) + 24 * day(date)) >= (1 + String(clockTimeZone).toInt() + 24 * (31 - (5 * year(date) / 4 + 4) % 7)) || month(date) == 10 && (hour(date) + 24 * day(date)) < (1 + String(clockTimeZone).toInt() + 24 * (31 - (5 * year(date) / 4 + 1) % 7)))
-	{
-		summerTime = true;
-	}
-	else
-	{
-		summerTime = false;
-	}
-	return summerTime ? 1 : 0;
-}
-
-boolean isIP(String str) {
-	for (char i = 0; i < str.length(); i++) {
-		if (!(isDigit(str.charAt(i)) || str.charAt(i) == '.')) {
-			return false;
-		}
-	}
-	return true;
-}
-
 void Log(String function, String message)
 {
 
@@ -2205,61 +2177,4 @@ void Log(String function, String message)
 			}
 		}
 	}
-}
-
-String IntFormat(int in)
-{
-	if (in < 10)
-	{
-		return "0" + String(in);
-	}
-
-	return String(in);
-}
-
-byte Utf8ToAscii(byte ascii) {
-	static byte thisByte;
-
-	if (ascii < 128)
-	{
-		thisByte = 0;
-		return (ascii);
-	}
-
-	byte last = thisByte;
-	thisByte = ascii;
-	byte result = 0;
-
-	switch (last)
-	{
-	case 0xC2:
-		result = ascii - 34;
-		break;
-	case 0xC3:
-		result = (ascii | 0xC0) - 34;
-		break;
-	case 0x82:
-		if (ascii == 0xAC)
-		{
-			result = (0xEA);
-		}
-		break;
-	}
-	return  result;
-}
-
-String Utf8ToAscii(String s) {
-	String result = "";
-	char thisChar;
-
-	for (int i = 0; i < s.length(); i++)
-	{
-		thisChar = Utf8ToAscii(s.charAt(i));
-
-		if (thisChar != 0)
-		{
-			result += thisChar;
-		}
-	}
-	return result;
 }
