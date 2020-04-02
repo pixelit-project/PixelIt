@@ -20,10 +20,10 @@ int DSToffset(time_t _date, int _clockTimeZone)
 
 	if (month(_date) < 3 || month(_date) > 10)
 	{
-		_summerTime = false; // keine Sommerzeit in Jan, Feb, Nov, Dez
+		_summerTime = false; // no summer time in Jan, Feb, Nov, Dec
 	}
 	else if (month(_date) > 3 && month(_date) < 10) {
-		_summerTime = true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
+		_summerTime = true; // Summertime in Apr, May, Jun, Jul, Aug, Sep
 	}
 	else if (month(_date) == 3 && (hour(_date) + 24 * day(_date)) >= (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 4) % 7)) || month(_date) == 10 && (hour(_date) + 24 * day(_date)) < (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 1) % 7)))
 	{
