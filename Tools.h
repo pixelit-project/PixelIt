@@ -1,3 +1,6 @@
+/// <summary>
+/// Adds a leading 0 to a number if it is smaller than 10
+/// </summary>
 String IntFormat(int _int)
 {
 	if (_int < 10)
@@ -8,6 +11,9 @@ String IntFormat(int _int)
 	return String(_int);
 }
 
+/// <summary>
+/// Returns 1 hour in daylight saving time and outside 0
+/// </summary>
 int DSToffset(time_t _date, int _clockTimeZone)
 {
 	bool _summerTime;
@@ -30,6 +36,9 @@ int DSToffset(time_t _date, int _clockTimeZone)
 	return _summerTime ? 1 : 0;
 }
 
+/// <summary>
+/// Checks if it is a valid IP address
+/// </summary>
 boolean isIP(String _str) {
 	for (char i = 0; i < _str.length(); i++) {
 		if (!(isDigit(_str.charAt(i)) || _str.charAt(i) == '.')) {
@@ -39,58 +48,70 @@ boolean isIP(String _str) {
 	return true;
 }
 
+/// <summary>
+/// Convert UTF8 byte to ASCII
+/// </summary>
 byte Utf8ToAscii(byte _ascii) {
-	static byte thisByte;
+	static byte _thisByte;
 
 	if (_ascii < 128)
 	{
-		thisByte = 0;
+		_thisByte = 0;
 		return (_ascii);
 	}
 
-	byte last = thisByte;
-	thisByte = _ascii;
-	byte result = 0;
+	byte last = _thisByte;
+	_thisByte = _ascii;
+	byte _result = 0;
 
 	switch (last)
 	{
 	case 0xC2:
-		result = _ascii - 34;
+		_result = _ascii - 34;
 		break;
 	case 0xC3:
-		result = (_ascii | 0xC0) - 34;
+		_result = (_ascii | 0xC0) - 34;
 		break;
 	case 0x82:
 		if (_ascii == 0xAC)
 		{
-			result = (0xEA);
+			_result = (0xEA);
 		}
 		break;
 	}
-	return  result;
+	return  _result;
 }
 
+/// <summary>
+/// Convert UTF8 Chars to ASCII
+/// </summary>
 String Utf8ToAscii(String _str) {
-	String result = "";
-	char thisChar;
+	String _result = "";
+	char _thisChar;
 
 	for (int i = 0; i < _str.length(); i++)
 	{
-		thisChar = Utf8ToAscii(_str.charAt(i));
+		_thisChar = Utf8ToAscii(_str.charAt(i));
 
-		if (thisChar != 0)
+		if (_thisChar != 0)
 		{
-			result += thisChar;
+			_result += _thisChar;
 		}
 	}
-	return result;
+	return _result;
 }
 
+/// <summary>
+/// Returns the chip id
+/// </summary>
 String GetChipID()
 {
 	return String(ESP.getChipId());
 }
 
+/// <summary>
+/// Convert RSSI to percentage quality
+/// </summary>
 int GetRSSIasQuality(int rssi)
 {
 	int quality = 0;
