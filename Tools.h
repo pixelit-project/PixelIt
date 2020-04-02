@@ -20,7 +20,7 @@ int DSToffset(time_t _date, int _clockTimeZone)
 
 	if (month(_date) < 3 || month(_date) > 10)
 	{
-		_summerTime = false; // no summer time in Jan, Feb, Nov, Dec
+		_summerTime = false; // no summertime in Jan, Feb, Nov, Dec
 	}
 	else if (month(_date) > 3 && month(_date) < 10) {
 		_summerTime = true; // Summertime in Apr, May, Jun, Jul, Aug, Sep
