@@ -1,4 +1,3 @@
-
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <WebSocketsServer.h>
@@ -6,14 +5,14 @@
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
-#include <PubSubClient.h>
+#include <PubSubClient.h> // Attention in the lib the #define MQTT_MAX_PACKET_SIZE must be increased to 4000!
 #include <FS.h>
-#include <TimeLib.h> //https://github.com/o0shojo0o/Time
-#include <ArduinoJson.h> //V5.13.5!!!
+#include <TimeLib.h> // https://github.com/o0shojo0o/Time
+#include <ArduinoJson.h> // V5.13.5!!!
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
-#include <FastLED_NeoMatrix.h> //https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
-#include <LightDependentResistor.h> //https://github.com/o0shojo0o/Arduino-Light-Dependent-Resistor-Library v1.0.0!!!
+#include <FastLED_NeoMatrix.h> // https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
+#include <LightDependentResistor.h> // https://github.com/o0shojo0o/Arduino-Light-Dependent-Resistor-Library v1.0.0!!!
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
@@ -39,6 +38,7 @@ String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 int mqttRetryCounter = 0;
 int mqttMaxRetrys = 3;
+
 
 //// LDR Config
 #define LDR_RESISTOR 10000 //ohms
@@ -1870,10 +1870,10 @@ void loop()
 	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys)
 	{
 		if (!client.connected())
-		{
+		{			
 			MqttReconnect();
 		}
-		client.loop();
+		client.loop();		
 	}
 
 	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < ntpMaxRetrys)
