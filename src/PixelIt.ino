@@ -1,7 +1,21 @@
+#if defined(ESP8266)
+#pragma message ("ESP8266 stuff happening!")
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266WiFi.h>
+
+#elif defined(ESP32)
+#pragma message ("ESP32 stuff happening!")
 #include <WebServer.h>
 #include <HTTPUpdateServer.h>
-#include <WebSocketsServer.h> .   // https://github.com/Links2004/arduinoWebSockets
 #include <WiFi.h>
+#else
+#error "This ain't a ESP8266 or ESP32, dumbo!"
+#endif
+
+
+#include <WebSocketsServer.h>    // https://github.com/Links2004/arduinoWebSockets
+
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
@@ -47,7 +61,12 @@ int mqttMaxRetrys = 3;
 #define LDR_PHOTOCELL LightDependentResistor::GL5516
 
 //// Matrix Config
-#define MATRIX_PIN 27
+#if defined (ESP8266)
+	#define MATRIX_PIN D2
+#elif defined (ESP32)
+	#define MATRIX_PIN 27
+#endif
+
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
@@ -79,9 +98,15 @@ WiFiClient espClient;
 WiFiUDP udp;
 PubSubClient client(espClient);
 WiFiManager wifiManager;
-WebServer server(80);
+#if defined (ESP8266)
+	ESP8266WebServer server(80);
+	ESP8266HTTPUpdateServer httpUpdater;
+#elif defined (ESP32)
+	WebServer server(80);
+	HTTPUpdateServer httpUpdater;
+#endif
+
 WebSocketsServer webSocket = WebSocketsServer(81);
-HTTPUpdateServer httpUpdater;
 LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL);
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
@@ -1008,7 +1033,13 @@ String GetMatrixInfo()
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
 	root["freeHeap"] = ESP.getFreeHeap();
-	root["chipID"] = uint64ToString(ESP.getEfuseMac());
+
+	#if defined(ESP8266)
+		root["chipID"] = ESP.getChipId();
+	#elif defined(ESP32)
+		root["chipID"] = uint64ToString(ESP.getEfuseMac());
+	#endif
+
 	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
 	root["sleepMode"] = sleepMode;
 

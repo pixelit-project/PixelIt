@@ -125,7 +125,11 @@ String uint64ToString(uint64_t input) {
 /// </summary>
 String GetChipID()
 {
+	#if defined(ESP8266)
+	return String(ESP.getChipId());
+	#elif defined(ESP32)
 	return uint64ToString(ESP.getEfuseMac());
+	#endif
 }
 
 /// <summary>
