@@ -15,7 +15,6 @@
 
 
 #include <WebSocketsServer.h>    // https://github.com/Links2004/arduinoWebSockets
-
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
@@ -30,6 +29,8 @@
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
+#include "ColorConverterLib.h"
+
 // PixelIT Stuff 
 #include "PixelItFont.h"
 #include "Webinterface.h"
@@ -199,6 +200,14 @@ void SaveConfig()
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
 		json["clockTimeZone"] = clockTimeZone;
+
+		String clockColorHex;
+		ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);		
+		json["clockColor"] = "#"+clockColorHex;
+
+		json["clockSwitchAktiv"] = clockSwitchAktiv;
+		json["clockSwitchSec"] = clockSwitchSec;
+		json["clockWithSeconds"] = clockWithSeconds;
 		json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 		json["bootScreenAktiv"] = bootScreenAktiv;
 		json["mqttAktiv"] = mqttAktiv;
@@ -255,6 +264,37 @@ void LoadConfig()
 				if (json.containsKey("clockTimeZone"))
 				{
 					clockTimeZone = json["clockTimeZone"];
+				}
+
+				if (json.containsKey("clockColor"))
+				{
+					uint8_t r ;
+					uint8_t g ;
+					uint8_t b ;
+					r = clockColorR;
+					g = clockColorG;
+					b = clockColorB;
+					String hex = json["clockColor"];
+
+					ColorConverter::HexToRgb(hex.substring(1, 7), r, g, b);	
+					clockColorR = r;
+					clockColorG = g;
+					clockColorB = b;				
+				}
+
+				if (json.containsKey("clockSwitchAktiv"))
+				{
+					clockSwitchAktiv = json["clockSwitchAktiv"];
+				}
+
+				if (json.containsKey("clockSwitchSec"))
+				{
+					clockSwitchSec = json["clockSwitchSec"];
+				}
+
+				if(json.containsKey("clockWithSeconds"))
+				{
+					clockWithSeconds = json["clockWithSeconds"];
 				}
 
 				if (json.containsKey("scrollTextDefaultDelay"))
@@ -336,6 +376,31 @@ void SetConfig(JsonObject& json)
 	if (json.containsKey("clockTimeZone"))
 	{
 		clockTimeZone = json["clockTimeZone"];
+	}
+
+	if (json.containsKey("clockColor"))
+	{
+		uint8_t red, green, blue;
+		String hex = json["clockColor"];
+		ColorConverter::HexToRgb(hex.substring(1, 7), red, green, blue);
+		clockColorR = red;
+		clockColorG = green;
+		clockColorB = blue;
+	}
+
+	if (json.containsKey("clockSwitchAktiv"))
+	{
+		clockSwitchAktiv = json["clockSwitchAktiv"];
+	}
+
+	if (json.containsKey("clockSwitchSec"))
+	{
+		clockSwitchSec = json["clockSwitchSec"];
+	}
+
+	if (json.containsKey("clockWithSeconds"))
+	{
+		clockWithSeconds = json["clockWithSeconds"];
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
@@ -527,7 +592,7 @@ void HandleGetSoundInfo()
 */
 
 void Handle_factoryreset()
-{
+{	
 	File configFile = SPIFFS.open("/config.json", "w");
 	if (!configFile)
 	{
@@ -587,7 +652,7 @@ void callback(char* topic, byte* payload, unsigned int length)
 }
 #pragma endregion
 
-//#pragma region //////////////////////////// Websocket //////////////////////////// 
+#pragma region //////////////////////////// Websocket //////////////////////////// 
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
 
@@ -1024,16 +1089,16 @@ String GetMatrixInfo()
 {
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject& root = jsonBuffer.createObject();
-
+	
 	root["pixelitVersion"] = version;
-	root["sketchSize"] = ESP.getSketchSize();
+	//root["sketchSize"] = ESP.getSketchSize();   Vorrüber gehend ausgeblockt, da bei ESP32 ein lag verursacht wird
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = String(WiFi.RSSI());
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
 	root["freeHeap"] = ESP.getFreeHeap();
-
+	
 	#if defined(ESP8266)
 		root["chipID"] = ESP.getChipId();
 	#elif defined(ESP32)
@@ -1042,7 +1107,7 @@ String GetMatrixInfo()
 
 	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
 	root["sleepMode"] = sleepMode;
-
+	
 	String json;
 	root.printTo(json);
 
@@ -1793,7 +1858,6 @@ void setup()
 
 	// Init LightSensor
 	photocell.setPhotocellPositionOnGround(false);
-
 	ColorTemperature userColorTemp = GetUserColorTemp();;
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
@@ -1879,6 +1943,7 @@ void setup()
 	{
 		client.setServer(mqttServer.c_str(), mqttPort);
 		client.setCallback(callback);
+		client.setBufferSize(4000);
 		Log(F("Setup"), F("MQTT started"));
 	}
 
@@ -1992,7 +2057,7 @@ void SendMatrixInfo(bool force)
 			}
 		}
 	}
-
+	
 	OldGetMatrixInfo = matrixInfo;
 }
 
