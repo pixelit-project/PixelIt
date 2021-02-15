@@ -1089,16 +1089,16 @@ String GetMatrixInfo()
 {
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject& root = jsonBuffer.createObject();
-
+	
 	root["pixelitVersion"] = version;
-	root["sketchSize"] = ESP.getSketchSize();
+	//root["sketchSize"] = ESP.getSketchSize();   Vorrüber gehend ausgeblockt, da bei ESP32 ein lag verursacht wird
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = String(WiFi.RSSI());
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
 	root["freeHeap"] = ESP.getFreeHeap();
-
+	
 	#if defined(ESP8266)
 		root["chipID"] = ESP.getChipId();
 	#elif defined(ESP32)
@@ -1107,7 +1107,7 @@ String GetMatrixInfo()
 
 	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
 	root["sleepMode"] = sleepMode;
-
+	
 	String json;
 	root.printTo(json);
 
@@ -2057,7 +2057,7 @@ void SendMatrixInfo(bool force)
 			}
 		}
 	}
-
+	
 	OldGetMatrixInfo = matrixInfo;
 }
 
