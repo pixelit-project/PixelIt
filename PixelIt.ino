@@ -5,40 +5,36 @@
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
-#include <PubSubClient.h> // Attention in the lib the #define MQTT_MAX_PACKET_SIZE must be increased to 4000!
+#include <PubSubClient.h> // Attention in the lib the #define MQTT_MAX_PACKET_SIZE must be increased to 8000!
 #include <FS.h>
-#include <TimeLib.h> // https://github.com/o0shojo0o/Time
+#include <TimeLib.h>	 // https://github.com/o0shojo0o/Time
 #include <ArduinoJson.h> // V5.13.5!!!
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
-#include <FastLED_NeoMatrix.h> // https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
+#include <FastLED_NeoMatrix.h>		// https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
 #include <LightDependentResistor.h> // https://github.com/o0shojo0o/Arduino-Light-Dependent-Resistor-Library v1.0.0!!!
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
-// PixelIT Stuff 
+// PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
-
-
 
 #define DEBUG 0
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
-
-
 //// MQTT Config
 bool mqttAktiv = false;
-String  mqttUser = "";
-String	mqttPassword = "";
+String mqttUser = "";
+String mqttPassword = "";
 String mqttServer = "0.0.0.0";
 String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 int mqttRetryCounter = 0;
-int mqttMaxRetrys = 3;
-
+#define MQTT_MAX_RETRYS 3
+#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
 #define LDR_RESISTOR 10000 //ohms
@@ -47,33 +43,12 @@ int mqttMaxRetrys = 3;
 
 //// Matrix Config
 #define MATRIX_PIN D2
-
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define COMPILE_HOUR          (((__TIME__[0]-'0')*10) + (__TIME__[1]-'0'))
-#define COMPILE_MINUTE        (((__TIME__[3]-'0')*10) + (__TIME__[4]-'0'))
-#define COMPILE_SECOND        (((__TIME__[6]-'0')*10) + (__TIME__[7]-'0'))
-#define COMPILE_YEAR          ((((__DATE__ [7]-'0')*10+(__DATE__[8]-'0'))*10+(__DATE__ [9]-'0'))*10+(__DATE__ [10]-'0'))
-#define COMPILE_SHORTYEAR     (((__DATE__ [9]-'0'))*10+(__DATE__ [10]-'0'))
-#define COMPILE_MONTH         ((  __DATE__ [2] == 'n' ? (__DATE__ [1] == 'a' ? 0 : 5)   \
-								: __DATE__ [2] == 'b' ? 1                               \
-								: __DATE__ [2] == 'r' ? (__DATE__ [0] == 'M' ?  2 : 3)  \
-								: __DATE__ [2] == 'y' ? 4                               \
-								: __DATE__ [2] == 'l' ? 6                               \
-								: __DATE__ [2] == 'g' ? 7                               \
-								: __DATE__ [2] == 'p' ? 8                               \
-								: __DATE__ [2] == 't' ? 9                               \
-								: __DATE__ [2] == 'v' ? 10 : 11) +1)
-#define COMPILE_DAY           ((__DATE__ [4]==' ' ? 0 : __DATE__  [4]-'0')*10+(__DATE__[5]-'0'))
+#define VERSION "0.3.1"
 
-
-
-
-const String version = String(COMPILE_SHORTYEAR) + IntFormat(COMPILE_MONTH) + IntFormat(COMPILE_DAY) + IntFormat(COMPILE_HOUR) + IntFormat(COMPILE_MINUTE);
-
-
-FastLED_NeoMatrix* matrix;
+FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
 WiFiUDP udp;
 PubSubClient client(espClient);
@@ -103,7 +78,7 @@ uint16_t bmpArray[64];
 IPAddress timeServerIP;
 String ntpServer = "de.pool.ntp.org";
 int ntpRetryCounter = 0;
-int ntpMaxRetrys = 3;
+#define NTP_MAX_RETRYS 3
 
 // Clock  Vars
 bool clockBlink = false;
@@ -115,7 +90,7 @@ int clockCounterClock = 0;
 int clockCounterDate = 0;
 int clockTimeZone = 1;
 time_t clockLastUpdate;
-uint16_t  clockColorR = 255, clockColorG = 255, clockColorB = 255;
+uint16_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
@@ -141,7 +116,7 @@ int animateBMPLoopCount = 0;
 int animateBMPLimitFrames = -1;
 int animateBMPFrameCount = 0;
 
-// Sensors Vars 
+// Sensors Vars
 uint sendLuxPrevMillis = 0;
 uint sendDHTPrevMillis = 0;
 uint sendInfoPrevMillis = 0;
@@ -155,7 +130,6 @@ String OldGetMP3PlayerInfo;
 // Websoket Vars
 String websocketConnection[10];
 
-
 void SaveConfigCallback()
 {
 	shouldSaveConfig = true;
@@ -164,9 +138,10 @@ void SaveConfigCallback()
 void SaveConfig()
 {
 	//save the custom parameters to FS
-	if (shouldSaveConfig) {
+	if (shouldSaveConfig)
+	{
 		DynamicJsonBuffer jsonBuffer;
-		JsonObject& json = jsonBuffer.createObject();
+		JsonObject &json = jsonBuffer.createObject();
 
 		json["matrixtBrightness"] = matrixtBrightness;
 		json["matrixType"] = matrixType;
@@ -202,7 +177,7 @@ void LoadConfig()
 			Serial.println("opened config file");
 
 			DynamicJsonBuffer jsonBuffer;
-			JsonObject& json = jsonBuffer.parseObject(configFile);
+			JsonObject &json = jsonBuffer.parseObject(configFile);
 
 			if (json.success())
 			{
@@ -273,7 +248,6 @@ void LoadConfig()
 
 				Log("LoadConfig", "Loaded");
 			}
-
 		}
 	}
 	else
@@ -284,7 +258,7 @@ void LoadConfig()
 	}
 }
 
-void SetConfig(JsonObject& json)
+void SetConfig(JsonObject &json)
 {
 	if (json.containsKey("matrixtBrightness"))
 	{
@@ -410,7 +384,7 @@ void HandleGetTestAreaPage()
 	server.send(200, "text/html", testAreaPage);
 }
 
-#pragma region //////////////////////////// HTTP API //////////////////////////// 
+#pragma region //////////////////////////// HTTP API ////////////////////////////
 void HandleNotFound()
 {
 	if (server.method() == HTTP_OPTIONS)
@@ -426,7 +400,7 @@ void HandleNotFound()
 void HandleScreen()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(server.arg("plain"));
+	JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
 	server.sendHeader("Connection", "close");
 	server.sendHeader("Access-Control-Allow-Origin", "*");
 
@@ -440,7 +414,6 @@ void HandleScreen()
 	{
 		server.send(406, "application/json", "{\"response\":\"Not Acceptable\"}");
 	}
-
 }
 
 void Handle_wifisetup()
@@ -451,7 +424,7 @@ void Handle_wifisetup()
 void HandleSetConfig()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(server.arg("plain"));
+	JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
 	server.sendHeader("Connection", "close");
 
 	if (json.success())
@@ -518,13 +491,12 @@ void HandleOtaUpdate()
 	server.sendHeader("Connection", "close");
 	server.send(200, "application/json", "{\"update\":\"started\"}");
 	//SetOTAUpdate();
-
 }
 
 #pragma endregion
 
-#pragma region //////////////////////////// MQTT //////////////////////////// 
-void callback(char* topic, byte* payload, unsigned int length)
+#pragma region //////////////////////////// MQTT ////////////////////////////
+void callback(char *topic, byte *payload, unsigned int length)
 {
 	if (payload[0] == '{')
 	{
@@ -533,7 +505,7 @@ void callback(char* topic, byte* payload, unsigned int length)
 		channel.replace(mqttMasterTopic, "");
 
 		DynamicJsonBuffer jsonBuffer;
-		JsonObject& json = jsonBuffer.parseObject(payload);
+		JsonObject &json = jsonBuffer.parseObject(payload);
 
 		Log("MQTT_callback", "Incomming Json length: " + String(json.measureLength()));
 
@@ -561,11 +533,13 @@ void callback(char* topic, byte* payload, unsigned int length)
 }
 #pragma endregion
 
-#pragma region //////////////////////////// Websocket //////////////////////////// 
+#pragma region //////////////////////////// Websocket ////////////////////////////
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
+{
 
-	switch (type) {
+	switch (type)
+	{
 	case WStype_DISCONNECTED:
 	{
 		Log("WebSocketEvent", "[" + String(num) + "] Disconnected!");
@@ -575,12 +549,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 	case WStype_CONNECTED:
 	{
 		// Merken für was die Connection hergstellt wurde
-		websocketConnection[num] = String((char*)payload);
+		websocketConnection[num] = String((char *)payload);
 
 		// IP der Connection abfragen
 		IPAddress ip = webSocket.remoteIP(num);
 
-		// Logausgabe 
+		// Logausgabe
 		Log("WebSocketEvent", "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
 		// send message to client
@@ -592,12 +566,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 	}
 	case WStype_TEXT:
 	{
-		if (((char*)payload)[0] == '{')
+		if (((char *)payload)[0] == '{')
 		{
 			DynamicJsonBuffer jsonBuffer;
-			JsonObject& json = jsonBuffer.parseObject(payload);
+			JsonObject &json = jsonBuffer.parseObject(payload);
 
-			// Logausgabe 
+			// Logausgabe
 			Log("WebSocketEvent", "Incomming Json length: " + String(json.measureLength()));
 
 			if (websocketConnection[num] == "/setScreen")
@@ -624,7 +598,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
 }
 #pragma endregion
 
-void CreateFrames(JsonObject& json)
+void CreateFrames(JsonObject &json)
 {
 	String logMessage = F("Json contains ");
 
@@ -666,13 +640,12 @@ void CreateFrames(JsonObject& json)
 		{
 			mp3Player.playNext();
 		}
-		// Play Previous 
+		// Play Previous
 		else if (json["sound"]["control"] == "previous")
 		{
 			mp3Player.playPrevious();
 		}
 	}
-
 
 	// SleepMode
 	if (json.containsKey("sleepMode"))
@@ -801,7 +774,7 @@ void CreateFrames(JsonObject& json)
 			int16_t x = json["bitmap"]["position"]["x"].as<int16_t>();
 			int16_t y = json["bitmap"]["position"]["y"].as<int16_t>();
 
-			// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden. 
+			// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
 			for (int16_t j = 0; j < h; j++, y++)
 			{
 				for (int16_t i = 0; i < w; i++)
@@ -854,7 +827,6 @@ void CreateFrames(JsonObject& json)
 			animateBMPReverse = false;
 			animateBMPPrevMillis = millis();
 			AnimateBMP(false);
-
 		}
 
 		// Ist ein Text übergeben worden?
@@ -880,7 +852,7 @@ void CreateFrames(JsonObject& json)
 
 				bool fadeInRequired = ((json.containsKey("bars") || json.containsKey("bar") || json.containsKey("bitmap") || json.containsKey("bitmapAnimation")) && fadeAnimationAktiv);
 
-				// Wurde ein Benutzerdefeniertes Delay übergeben? 
+				// Wurde ein Benutzerdefeniertes Delay übergeben?
 				if (json["text"]["scrollTextDelay"])
 				{
 					scrollTextDelay = json["text"]["scrollTextDelay"];
@@ -899,7 +871,6 @@ void CreateFrames(JsonObject& json)
 			{
 				DrawText(json["text"]["textString"], json["text"]["bigFont"], json["text"]["color"]["r"], json["text"]["color"]["g"], json["text"]["color"]["b"], json["text"]["position"]["x"], json["text"]["position"]["y"]);
 			}
-
 		}
 
 		// Fade aktiv?
@@ -909,7 +880,7 @@ void CreateFrames(JsonObject& json)
 		}
 		else
 		{
-			// Fade nicht aktiv! 
+			// Fade nicht aktiv!
 			// Muss mich selbst um Show kümmern
 			matrix->show();
 		}
@@ -931,7 +902,7 @@ String GetConfig()
 
 		configFile.readBytes(buf.get(), size);
 		DynamicJsonBuffer jsonBuffer;
-		JsonObject& root = jsonBuffer.parseObject(buf.get());
+		JsonObject &root = jsonBuffer.parseObject(buf.get());
 
 		String json;
 		root.printTo(json);
@@ -943,7 +914,7 @@ String GetConfig()
 String GetDHTSensor()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();
+	JsonObject &root = jsonBuffer.createObject();
 
 	float humidity = roundf(dht.getHumidity());
 	float temperature = dht.getTemperature();
@@ -967,7 +938,7 @@ String GetDHTSensor()
 String GetLuxSensor()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();
+	JsonObject &root = jsonBuffer.createObject();
 
 	root["lux"] = roundf(photocell.getCurrentLux() * 1000) / 1000;
 
@@ -997,9 +968,9 @@ String GetMp3PlayerInfo()
 String GetMatrixInfo()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();
+	JsonObject &root = jsonBuffer.createObject();
 
-	root["pixelitVersion"] = version;
+	root["pixelitVersion"] = VERSION;
 	root["sketchSize"] = ESP.getSketchSize();
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = String(WiFi.RSSI());
@@ -1049,13 +1020,13 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 
 	if (withBMP)
 	{
-		// Verfügbare Text Pixelanzahl in der Breite (X) mit Bild 
+		// Verfügbare Text Pixelanzahl in der Breite (X) mit Bild
 		xPixel = 24;
 		posX = 8;
 	}
 	else
 	{
-		// Verfügbare Text Pixelanzahl in der Breite (X) ohne Bild 
+		// Verfügbare Text Pixelanzahl in der Breite (X) ohne Bild
 		xPixel = 32;
 	}
 
@@ -1104,7 +1075,6 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 
 		matrix->setBrightness(matrixtBrightness);
 
-
 		scrollTextString = text;
 		scrollposY = posY;
 		scrollwithBMP = withBMP;
@@ -1112,11 +1082,9 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 		// + 8 Pixel sonst scrollt er mitten drinn los!
 		scrollPos = 33;
 
-
 		scrollTextAktivLoop = true;
 		scrollTextPrevMillis = millis();
 		ScrollText(fadeInRequired);
-
 	}
 	// Fall doch der Text auf denm Display passt!
 	else if (autoScrollText)
@@ -1157,7 +1125,6 @@ void ScrollText(bool isFadeInRequired)
 	{
 		tempxPixelText = 8;
 	}
-
 
 	if (scrollPos > ((scrollxPixelText - tempxPixelText) * -1))
 	{
@@ -1204,7 +1171,7 @@ void AnimateBMP(bool isShowRequired)
 			}
 		}
 
-		// Prüfen ob Rubberbanding aktiv und mehr wie 1 Frame vorhanden ist. 
+		// Prüfen ob Rubberbanding aktiv und mehr wie 1 Frame vorhanden ist.
 		if (animateBMPRubberbandingAktiv && animateBMPCounter > 1)
 		{
 			animateBMPReverse = true;
@@ -1259,12 +1226,10 @@ void AnimateBMP(bool isShowRequired)
 		animateBMPCounter++;
 	}
 
-
 	if (isShowRequired)
 	{
 		matrix->show();
 	}
-
 }
 
 void DrawClock(bool fromJSON)
@@ -1277,7 +1242,6 @@ void DrawClock(bool fromJSON)
 	int xPosTime = 0;
 
 	sprintf_P(date, PSTR("%02d.%02d."), day(), month());
-
 
 	if (clockWithSeconds)
 	{
@@ -1359,7 +1323,6 @@ void DrawClock(bool fromJSON)
 
 	DrawWeekDay();
 
-
 	// Wenn der Aufruf nicht über JSON sondern über den Loop kommt
 	// muss ich mich selbst ums Show kümmern.
 	if (!fromJSON)
@@ -1370,11 +1333,14 @@ void DrawClock(bool fromJSON)
 
 void DrawWeekDay()
 {
-	for (int i = 0; i <= 6; i++) {
-		if (i == DayOfWeekFirstMonday(dayOfWeek(now()) - 1)) {
+	for (int i = 0; i <= 6; i++)
+	{
+		if (i == DayOfWeekFirstMonday(dayOfWeek(now()) - 1))
+		{
 			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, matrix->Color(clockColorR, clockColorG, clockColorB));
 		}
-		else {
+		else
+		{
 			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, 21162);
 		}
 	}
@@ -1383,7 +1349,7 @@ void DrawWeekDay()
 void MqttReconnect()
 {
 	// Loop until we're reconnected
-	while (!client.connected() && mqttRetryCounter < mqttMaxRetrys)
+	while (!client.connected() && mqttRetryCounter < MQTT_MAX_RETRYS)
 	{
 		bool connected = false;
 		if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
@@ -1420,7 +1386,7 @@ void MqttReconnect()
 		}
 	}
 
-	if (mqttRetryCounter >= mqttMaxRetrys)
+	if (mqttRetryCounter >= MQTT_MAX_RETRYS)
 	{
 		Log(F("MqttReconnect"), F("No connection to MQTT-Server, MQTT temporarily deactivated!"));
 	}
@@ -1461,7 +1427,8 @@ void FadeIn(int dealy, int minBrightness)
 
 void ColoredBarWipe()
 {
-	for (uint16_t i = 0; i < 32 + 1; i++) {
+	for (uint16_t i = 0; i < 32 + 1; i++)
+	{
 		matrix->fillRect(0, 0, i - 1, 8, matrix->Color(0, 0, 0));
 
 		matrix->drawFastVLine(i, 0, 8, ColorWheel((i * 8) & 255, 0));
@@ -1487,14 +1454,17 @@ void ColorFlash(int red, int green, int blue)
 
 uint ColorWheel(byte wheelPos, int pos)
 {
-	if (wheelPos < 85) {
+	if (wheelPos < 85)
+	{
 		return matrix->Color((wheelPos * 3) - pos, (255 - wheelPos * 3) - pos, 0);
 	}
-	else if (wheelPos < 170) {
+	else if (wheelPos < 170)
+	{
 		wheelPos -= 85;
 		return matrix->Color((255 - wheelPos * 3) - pos, 0, (wheelPos * 3) - pos);
 	}
-	else {
+	else
+	{
 		wheelPos -= 170;
 		return matrix->Color(0, (wheelPos * 3) - pos, (255 - wheelPos * 3) - pos);
 	}
@@ -1615,11 +1585,10 @@ LEDColorCorrection GetUserColorCorrection()
 		return Typical8mmPixel;
 	}
 
-
 	return UncorrectedColor;
 }
 
-int* GetUserCutomCorrection()
+int *GetUserCutomCorrection()
 {
 	String rgbString = matrixTempCorrection;
 	rgbString.trim();
@@ -1762,14 +1731,14 @@ void setup()
 	// Init LightSensor
 	photocell.setPhotocellPositionOnGround(false);
 
-	ColorTemperature userColorTemp = GetUserColorTemp();;
+	ColorTemperature userColorTemp = GetUserColorTemp();
+	;
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
 	// Matrix Color Correction
 	if (userLEDCorrection != UncorrectedColor)
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
-
 	}
 	else if (userColorTemp != UncorrectedColor)
 	{
@@ -1777,7 +1746,7 @@ void setup()
 	}
 	else
 	{
-		int* rgbArray = GetUserCutomCorrection();
+		int *rgbArray = GetUserCutomCorrection();
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
 	}
 
@@ -1795,7 +1764,7 @@ void setup()
 	// Set config save notify callback
 	wifiManager.setSaveConfigCallback(SaveConfigCallback);
 	wifiManager.setMinimumSignalQuality();
-	// Config menue timeout 180 seconds. 
+	// Config menue timeout 180 seconds.
 	wifiManager.setConfigPortalTimeout(180);
 
 	if (!wifiManager.autoConnect("PIXEL_IT"))
@@ -1835,7 +1804,6 @@ void setup()
 	server.on(F("/otaupdate"), HTTP_POST, HandleOtaUpdate);
 	server.onNotFound(HandleNotFound);
 
-
 	server.begin();
 
 	webSocket.begin();
@@ -1858,7 +1826,6 @@ void setup()
 
 	mp3Player.begin(softSerial);
 	Log(F("Setup"), F("DFPlayer started"));
-
 }
 
 void loop()
@@ -1867,16 +1834,16 @@ void loop()
 	server.handleClient();
 	webSocket.loop();
 
-	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS)
 	{
 		if (!client.connected())
-		{			
+		{
 			MqttReconnect();
 		}
-		client.loop();		
+		client.loop();
 	}
 
-	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < ntpMaxRetrys)
+	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
 	{
 		if (timeStatus() != timeNotSet)
 		{
@@ -1893,7 +1860,6 @@ void loop()
 			setSyncProvider(getNtpTime);
 		}
 	}
-
 
 	if (millis() - sendLuxPrevMillis >= 1000)
 	{
@@ -1914,7 +1880,6 @@ void loop()
 		//SendMp3PlayerInfo(false);
 	}
 
-
 	if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
 	{
 		animateBMPPrevMillis = millis();
@@ -1927,7 +1892,7 @@ void loop()
 		ScrollText(false);
 	}
 
-	//PlaySound();	
+	//PlaySound();
 }
 
 void SendMatrixInfo(bool force)
@@ -1940,12 +1905,12 @@ void SendMatrixInfo(bool force)
 	String matrixInfo;
 
 	// Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
 	{
 		matrixInfo = GetMatrixInfo();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys && OldGetMatrixInfo != matrixInfo)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetMatrixInfo != matrixInfo)
 	{
 		client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
 	}
@@ -1974,12 +1939,12 @@ void SendLDR(bool force)
 	String luxSensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
 	{
 		luxSensor = GetLuxSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys && OldGetLuxSensor != luxSensor)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetLuxSensor != luxSensor)
 	{
 		client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
 	}
@@ -2008,12 +1973,12 @@ void SendDHT(bool force)
 	String dhtSensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
 	{
 		dhtSensor = GetDHTSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys && OldGetDHTSensor != dhtSensor)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetDHTSensor != dhtSensor)
 	{
 		client.publish((mqttMasterTopic + "dhtsensor").c_str(), dhtSensor.c_str(), true);
 	}
@@ -2081,9 +2046,7 @@ void SendConfig()
 			}
 		}
 	}
-
 }
-
 
 /////////////////////////////////////////////////////////////////////
 /*-------- NTP code ----------*/
@@ -2092,7 +2055,8 @@ byte packetBuffer[NTP_PACKET_SIZE];
 
 time_t getNtpTime()
 {
-	while (udp.parsePacket() > 0);
+	while (udp.parsePacket() > 0)
+		;
 	sendNTPpacket(timeServerIP);
 	uint32_t beginWait = millis();
 	while (millis() - beginWait < 1500)
@@ -2112,12 +2076,11 @@ time_t getNtpTime()
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
 		}
 		yield();
-
 	}
-	ntpMaxRetrys++;
+	ntpRetryCounter++;
 	return 0;
 }
-void sendNTPpacket(IPAddress& address)
+void sendNTPpacket(IPAddress &address)
 {
 	memset(packetBuffer, 0, NTP_PACKET_SIZE);
 
