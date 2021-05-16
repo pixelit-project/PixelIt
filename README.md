@@ -12,7 +12,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ## Changelog
 
 ### 0.3.2_beta **WORK IN PROGRESS**
-
+-   (o0shojo0o) add hexColor to [Clock](https://docs.bastelbunker.de/pixelit/api.html#clock), [Text](https://docs.bastelbunker.de/pixelit/api.html#text), [Bar](https://docs.bastelbunker.de/pixelit/api.html#bar) and [Bars](https://docs.bastelbunker.de/pixelit/api.html#bars)
 -   (o0shojo0o) fix wemos_d1_mini32 build
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/a8f637930d6fac131c5ce175234aff0eca6b395e) show message on hotspot mode
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/f6314351b0000c701c2243ce62895b37ff89afc2) added support for 4x 8x8 CJMCU 64 Matrix (Type 3)
