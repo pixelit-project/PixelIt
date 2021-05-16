@@ -16,7 +16,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 -   (o0shojo0o) fix wemos_d1_mini32 build
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/a8f637930d6fac131c5ce175234aff0eca6b395e) show message on hotspot mode
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/f6314351b0000c701c2243ce62895b37ff89afc2) added support for 4x 8x8 CJMCU 64 Matrix (Type 3)
--   (o0shojo0o) reactivate for eps8266 builds getSketchSize
+-   (o0shojo0o) reactivate for esp8266 builds getSketchSize
 -   (o0shojo0o) set mqtt setBufferSize to 8000
 -   (o0shojo0o) add env for d1_mini
 -   (rliegmann) add some missing llibs
