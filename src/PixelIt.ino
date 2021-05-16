@@ -160,6 +160,11 @@ void SaveConfigCallback()
 	shouldSaveConfig = true;
 }
 
+void EnteredHotspotCallback(WiFiManager *manager)
+{
+	DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+}
+
 void SaveConfig()
 {
 	//save the custom parameters to FS
@@ -1864,6 +1869,7 @@ void setup()
 
 	// Set config save notify callback
 	wifiManager.setSaveConfigCallback(SaveConfigCallback);
+	wifiManager.setAPCallback(EnteredHotspotCallback);
 	wifiManager.setMinimumSignalQuality();
 	// Config menue timeout 180 seconds.
 	wifiManager.setConfigPortalTimeout(180);
