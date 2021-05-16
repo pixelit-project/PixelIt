@@ -11,7 +11,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ## Changelog
 
-### 0.3.2 **WORK IN PROGRESS**
+### 0.3.2_beta **WORK IN PROGRESS**
 
 -   (o0shojo0o) reactivate for eps8266 builds getSketchSize
 -   (o0shojo0o) set mqtt setBufferSize to 8000
