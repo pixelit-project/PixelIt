@@ -11,6 +11,22 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ## Changelog
 
+### 0.3.2 **WORK IN PROGRESS**
+
+-   (o0shojo0o) reactivate for eps8266 builds getSketchSize
+-   (o0shojo0o) set mqtt setBufferSize to 8000
+-   (o0shojo0o) add env for d1_mini
+-   (rliegmann) add some missing llibs
+-   (rliegmann) add some libs into .pio
+-   (rliegmann) add some libs into .pio
+-   (rliegmann) Merge pull request #2 from rliegmann/feature/clockDefaultsToFS-
+-   (rliegmann) block out getSketchSize temporary
+-   (rliegmann) change some build options in pio
+-   (rliegmann) clock default settings, adjust MQTT buffer size, some typo
+-   (rliegmann) Merge pull request #1 from rliegmann/feature/cross-esp-platform
+-   (rliegmann) add ESP32 and ESP8266 libs
+-   (rliegmann) remove VisualStudio overhead + port to platformIO
+
 ### 0.3.1 (2021-04-29)
 
 -   (o0shojo0o) change MQTT_MAX_PACKET_SIZE from 4000 to 8000
