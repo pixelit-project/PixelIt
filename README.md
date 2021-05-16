@@ -13,6 +13,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### 0.3.2_beta **WORK IN PROGRESS**
 
+-   (o0shojo0o) added support for 4x 8x8 CJMCU 64 Matrix (Type 3)
 -   (o0shojo0o) reactivate for eps8266 builds getSketchSize
 -   (o0shojo0o) set mqtt setBufferSize to 8000
 -   (o0shojo0o) add env for d1_mini
