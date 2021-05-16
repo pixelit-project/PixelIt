@@ -20,7 +20,6 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 -   (o0shojo0o) add env for d1_mini
 -   (rliegmann) add some missing llibs
 -   (rliegmann) add some libs into .pio
--   (rliegmann) add some libs into .pio
 -   (rliegmann) Merge pull request #2 from rliegmann/feature/clockDefaultsToFS-
 -   (rliegmann) block out getSketchSize temporary
 -   (rliegmann) change some build options in pio
