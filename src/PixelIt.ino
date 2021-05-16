@@ -1,7 +1,19 @@
+#if defined(ESP8266)
+#pragma message("ESP8266 stuff happening!")
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
-#include <WebSocketsServer.h>
 #include <ESP8266WiFi.h>
+
+#elif defined(ESP32)
+#pragma message("ESP32 stuff happening!")
+#include <WebServer.h>
+#include <HTTPUpdateServer.h>
+#include <WiFi.h>
+#else
+#error "This ain't a ESP8266 or ESP32, dumbo!"
+#endif
+
+#include <WebSocketsServer.h> // https://github.com/Links2004/arduinoWebSockets
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
@@ -16,10 +28,12 @@
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
+#include "ColorConverterLib.h"
 // PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
+#include <Wire.h>
 
 #define DEBUG 0
 void FadeOut(int = 10, int = 0);
@@ -42,20 +56,31 @@ int mqttRetryCounter = 0;
 #define LDR_PHOTOCELL LightDependentResistor::GL5516
 
 //// Matrix Config
+#if defined(ESP8266)
 #define MATRIX_PIN D2
+#elif defined(ESP32)
+#define MATRIX_PIN 27
+#endif
+
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.1"
+#define VERSION "0.3.2"
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
 WiFiUDP udp;
 PubSubClient client(espClient);
 WiFiManager wifiManager;
+#if defined(ESP8266)
 ESP8266WebServer server(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
 ESP8266HTTPUpdateServer httpUpdater;
+#elif defined(ESP32)
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
+#endif
+
+WebSocketsServer webSocket = WebSocketsServer(81);
 LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL);
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
@@ -148,6 +173,14 @@ void SaveConfig()
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
 		json["clockTimeZone"] = clockTimeZone;
+
+		String clockColorHex;
+		ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
+		json["clockColor"] = "#" + clockColorHex;
+
+		json["clockSwitchAktiv"] = clockSwitchAktiv;
+		json["clockSwitchSec"] = clockSwitchSec;
+		json["clockWithSeconds"] = clockWithSeconds;
 		json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 		json["bootScreenAktiv"] = bootScreenAktiv;
 		json["mqttAktiv"] = mqttAktiv;
@@ -204,6 +237,37 @@ void LoadConfig()
 				if (json.containsKey("clockTimeZone"))
 				{
 					clockTimeZone = json["clockTimeZone"];
+				}
+
+				if (json.containsKey("clockColor"))
+				{
+					uint8_t r;
+					uint8_t g;
+					uint8_t b;
+					r = clockColorR;
+					g = clockColorG;
+					b = clockColorB;
+					String hex = json["clockColor"];
+
+					ColorConverter::HexToRgb(hex.substring(1, 7), r, g, b);
+					clockColorR = r;
+					clockColorG = g;
+					clockColorB = b;
+				}
+
+				if (json.containsKey("clockSwitchAktiv"))
+				{
+					clockSwitchAktiv = json["clockSwitchAktiv"];
+				}
+
+				if (json.containsKey("clockSwitchSec"))
+				{
+					clockSwitchSec = json["clockSwitchSec"];
+				}
+
+				if (json.containsKey("clockWithSeconds"))
+				{
+					clockWithSeconds = json["clockWithSeconds"];
 				}
 
 				if (json.containsKey("scrollTextDefaultDelay"))
@@ -284,6 +348,31 @@ void SetConfig(JsonObject &json)
 	if (json.containsKey("clockTimeZone"))
 	{
 		clockTimeZone = json["clockTimeZone"];
+	}
+
+	if (json.containsKey("clockColor"))
+	{
+		uint8_t red, green, blue;
+		String hex = json["clockColor"];
+		ColorConverter::HexToRgb(hex.substring(1, 7), red, green, blue);
+		clockColorR = red;
+		clockColorG = green;
+		clockColorB = blue;
+	}
+
+	if (json.containsKey("clockSwitchAktiv"))
+	{
+		clockSwitchAktiv = json["clockSwitchAktiv"];
+	}
+
+	if (json.containsKey("clockSwitchSec"))
+	{
+		clockSwitchSec = json["clockSwitchSec"];
+	}
+
+	if (json.containsKey("clockWithSeconds"))
+	{
+		clockWithSeconds = json["clockWithSeconds"];
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
@@ -971,14 +1060,23 @@ String GetMatrixInfo()
 	JsonObject &root = jsonBuffer.createObject();
 
 	root["pixelitVersion"] = VERSION;
+	//// Matrix Config
+#if defined(ESP8266)
 	root["sketchSize"] = ESP.getSketchSize();
+#endif
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = String(WiFi.RSSI());
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
 	root["freeHeap"] = ESP.getFreeHeap();
+
+#if defined(ESP8266)
 	root["chipID"] = ESP.getChipId();
+#elif defined(ESP32)
+	root["chipID"] = uint64ToString(ESP.getEfuseMac());
+#endif
+
 	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
 	root["sleepMode"] = sleepMode;
 
@@ -1730,9 +1828,7 @@ void setup()
 
 	// Init LightSensor
 	photocell.setPhotocellPositionOnGround(false);
-
 	ColorTemperature userColorTemp = GetUserColorTemp();
-	;
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
 	// Matrix Color Correction
@@ -1772,7 +1868,7 @@ void setup()
 		Log(F("Setup"), F("Wifi failed to connect and hit timeout"));
 		delay(3000);
 		// Reset and try again, or maybe put it to deep sleep
-		ESP.reset();
+		ESP.restart();
 		delay(5000);
 	}
 
@@ -1786,7 +1882,7 @@ void setup()
 
 	Log(F("Setup"), F("Starting UDP"));
 	udp.begin(2390);
-	Log(F("Setup"), "Local port: " + String(udp.localPort()));
+	//Log(F("Setup"), "Local port: " + String(udp.localPort()));
 
 	httpUpdater.setup(&server);
 
@@ -1815,6 +1911,7 @@ void setup()
 	{
 		client.setServer(mqttServer.c_str(), mqttPort);
 		client.setCallback(callback);
+		client.setBufferSize(4000);
 		Log(F("Setup"), F("MQTT started"));
 	}
 

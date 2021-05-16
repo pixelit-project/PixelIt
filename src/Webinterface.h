@@ -155,6 +155,21 @@ const char configPage[] PROGMEM = R"=====(
         <label for="clockTimeZone">UTC Offset</label>
         <input type="number" class="form-control" id="clockTimeZone">
     </div>
+    <div class="form-group">
+        <label for="clockColor">Color</label>
+        <input type="color" class="form-control" value="#ff0000" id="clockColor">
+    </div>
+     <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input" id="clockWithSeconds">
+        <label class="custom-control-label" for="clockWithSeconds">Clock witch sek</label>
+    </div>
+    <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input" id="clockSwitchAktiv">
+        <label class="custom-control-label" for="clockSwitchAktiv">Switch clock/date aktiv</label>
+    </div>
+    <div class="form-group">Switch clock/date time</label>
+        <input type="number" class="form-control" id="clockSwitchSec">
+    </div>
 </div>
 
 <div class="offset-md-1 col-md-2">

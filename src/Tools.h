@@ -101,12 +101,35 @@ String Utf8ToAscii(String _str) {
 	return _result;
 }
 
+String uint64ToString(uint64_t input) {
+  String result = "";
+  uint8_t base = 10;
+
+  do {
+    char c = input % base;
+    input /= base;
+
+    if (c < 10)
+      c +='0';
+    else
+      c += 'A' - 10;
+    result = c + result;
+  } while (input);
+  return result;
+}
+
+
+
 /// <summary>
 /// Returns the chip id
 /// </summary>
 String GetChipID()
 {
+	#if defined(ESP8266)
 	return String(ESP.getChipId());
+	#elif defined(ESP32)
+	return uint64ToString(ESP.getEfuseMac());
+	#endif
 }
 
 /// <summary>
