@@ -3,24 +3,26 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WiFi.h>
+#include <LittleFS.h>
 
 #elif defined(ESP32)
 #pragma message("ESP32 stuff happening!")
 #include <WebServer.h>
 #include <HTTPUpdateServer.h>
 #include <WiFi.h>
+#include <FS.h>
 #else
 #error "This ain't a ESP8266 or ESP32, dumbo!"
 #endif
 
+#include <Arduino.h>
 #include <WebSocketsServer.h> // https://github.com/Links2004/arduinoWebSockets
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h> // Attention in the lib the #define MQTT_MAX_PACKET_SIZE must be increased to 8000!
-#include <FS.h>
-#include <TimeLib.h>	 // https://github.com/o0shojo0o/Time
-#include <ArduinoJson.h> // V5.13.5!!!
+#include <TimeLib.h>	  // https://github.com/o0shojo0o/Time
+#include <ArduinoJson.h>  // V5.13.5!!!
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>		// https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
@@ -48,7 +50,7 @@ String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 int mqttRetryCounter = 0;
 #define MQTT_MAX_RETRYS 3
-#define MQTT_MAX_PACKET_SIZE 8000
+//#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
 #define LDR_RESISTOR 10000 //ohms
@@ -115,13 +117,13 @@ int clockCounterClock = 0;
 int clockCounterDate = 0;
 int clockTimeZone = 1;
 time_t clockLastUpdate;
-uint16_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
+uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
 uint scrollTextPrevMillis = 0;
 int scrollTextDefaultDelay = 100;
-int scrollTextDelay;
+uint scrollTextDelay;
 int scrollPos;
 int scrollposY;
 bool scrollwithBMP;
@@ -135,7 +137,7 @@ uint animateBMPPrevMillis = 0;
 int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
-int animateBMPDelay;
+uint animateBMPDelay;
 int animateBMPLimitLoops = -1;
 int animateBMPLoopCount = 0;
 int animateBMPLimitFrames = -1;
@@ -195,7 +197,11 @@ void SaveConfig()
 		json["mqttMasterTopic"] = mqttMasterTopic;
 		json["mqttPort"] = mqttPort;
 
+#if defined(ESP8266)
+		File configFile = LittleFS.open("/config.json", "w");
+#elif defined(ESP32)
 		File configFile = SPIFFS.open("/config.json", "w");
+#endif
 		json.printTo(configFile);
 		configFile.close();
 		Log("SaveConfig", "Saved");
@@ -205,10 +211,19 @@ void SaveConfig()
 
 void LoadConfig()
 {
+#if defined(ESP8266)
+	if (LittleFS.exists("/config.json"))
+#elif defined(ESP32)
 	if (SPIFFS.exists("/config.json"))
+#endif
 	{
+
 		//file exists, reading and loading
+#if defined(ESP8266)
+		File configFile = LittleFS.open("/config.json", "r");
+#elif defined(ESP32)
 		File configFile = SPIFFS.open("/config.json", "r");
+#endif
 
 		if (configFile)
 		{
@@ -231,12 +246,12 @@ void LoadConfig()
 
 				if (json.containsKey("matrixTempCorrection"))
 				{
-					matrixTempCorrection = json["matrixTempCorrection"].asString();
+					matrixTempCorrection = json["matrixTempCorrection"].as<char *>();
 				}
 
 				if (json.containsKey("ntpServer"))
 				{
-					ntpServer = json["ntpServer"].asString();
+					ntpServer = json["ntpServer"].as<char *>();
 				}
 
 				if (json.containsKey("clockTimeZone"))
@@ -246,18 +261,7 @@ void LoadConfig()
 
 				if (json.containsKey("clockColor"))
 				{
-					uint8_t r;
-					uint8_t g;
-					uint8_t b;
-					r = clockColorR;
-					g = clockColorG;
-					b = clockColorB;
-					String hex = json["clockColor"];
-
-					ColorConverter::HexToRgb(hex.substring(1, 7), r, g, b);
-					clockColorR = r;
-					clockColorG = g;
-					clockColorB = b;
+					ColorConverter::HexToRgb(json["clockColor"], clockColorR, clockColorG, clockColorB);
 				}
 
 				if (json.containsKey("clockSwitchAktiv"))
@@ -292,22 +296,22 @@ void LoadConfig()
 
 				if (json.containsKey("mqttUser"))
 				{
-					mqttUser = json["mqttUser"].asString();
+					mqttUser = json["mqttUser"].as<char *>();
 				}
 
 				if (json.containsKey("mqttPassword"))
 				{
-					mqttPassword = json["mqttPassword"].asString();
+					mqttPassword = json["mqttPassword"].as<char *>();
 				}
 
 				if (json.containsKey("mqttServer"))
 				{
-					mqttServer = json["mqttServer"].asString();
+					mqttServer = json["mqttServer"].as<char *>();
 				}
 
 				if (json.containsKey("mqttMasterTopic"))
 				{
-					mqttMasterTopic = json["mqttMasterTopic"].asString();
+					mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
 				}
 
 				if (json.containsKey("mqttPort"))
@@ -342,12 +346,12 @@ void SetConfig(JsonObject &json)
 
 	if (json.containsKey("matrixTempCorrection"))
 	{
-		matrixTempCorrection = json["matrixTempCorrection"].asString();
+		matrixTempCorrection = json["matrixTempCorrection"].as<char *>();
 	}
 
 	if (json.containsKey("ntpServer"))
 	{
-		ntpServer = json["ntpServer"].asString();
+		ntpServer = json["ntpServer"].as<char *>();
 	}
 
 	if (json.containsKey("clockTimeZone"))
@@ -357,12 +361,7 @@ void SetConfig(JsonObject &json)
 
 	if (json.containsKey("clockColor"))
 	{
-		uint8_t red, green, blue;
-		String hex = json["clockColor"];
-		ColorConverter::HexToRgb(hex.substring(1, 7), red, green, blue);
-		clockColorR = red;
-		clockColorG = green;
-		clockColorB = blue;
+		ColorConverter::HexToRgb(json["clockColor"], clockColorR, clockColorG, clockColorB);
 	}
 
 	if (json.containsKey("clockSwitchAktiv"))
@@ -397,22 +396,22 @@ void SetConfig(JsonObject &json)
 
 	if (json.containsKey("mqttUser"))
 	{
-		mqttUser = json["mqttUser"].asString();
+		mqttUser = json["mqttUser"].as<char *>();
 	}
 
 	if (json.containsKey("mqttPassword"))
 	{
-		mqttPassword = json["mqttPassword"].asString();
+		mqttPassword = json["mqttPassword"].as<char *>();
 	}
 
 	if (json.containsKey("mqttServer"))
 	{
-		mqttServer = json["mqttServer"].asString();
+		mqttServer = json["mqttServer"].as<char *>();
 	}
 
 	if (json.containsKey("mqttMasterTopic"))
 	{
-		mqttMasterTopic = json["mqttMasterTopic"].asString();
+		mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
 	}
 
 	if (json.containsKey("mqttPort"))
@@ -569,7 +568,11 @@ void HandleGetSoundInfo()
 
 void Handle_factoryreset()
 {
+#if defined(ESP8266)
+	File configFile = LittleFS.open("/config.json", "w");
+#elif defined(ESP32)
 	File configFile = SPIFFS.open("/config.json", "w");
+#endif
 	if (!configFile)
 	{
 		Log("Handle_factoryreset", "Failed to open config file for reset");
@@ -818,19 +821,16 @@ void CreateFrames(JsonObject &json)
 
 				clockWithSeconds = json["clock"]["withSeconds"];
 
-				if (json["clock"]["color"]["r"].asString() != NULL)
+				if (json["clock"]["color"]["r"].as<char *>() != NULL)
 				{
-					clockColorR = json["clock"]["color"]["r"];
-					clockColorG = json["clock"]["color"]["g"];
-					clockColorB = json["clock"]["color"]["b"];
+					clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
+					clockColorG = json["clock"]["color"]["g"].as<uint8_t>();
+					clockColorB = json["clock"]["color"]["b"].as<uint8_t>();
 				}
-				else
+				else if (json["clock"]["hexColor"].as<char *>() != NULL)
 				{
-					clockColorR = 255;
-					clockColorG = 255;
-					clockColorB = 255;
+					ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
 				}
-
 				DrawClock(true);
 			}
 		}
@@ -845,16 +845,38 @@ void CreateFrames(JsonObject &json)
 		if (json.containsKey("bar"))
 		{
 			logMessage += F("Bar, ");
-			matrix->drawLine(json["bar"]["position"]["x"], json["bar"]["position"]["y"], json["bar"]["position"]["x2"], json["bar"]["position"]["y2"], matrix->Color(json["bar"]["color"]["r"], json["bar"]["color"]["g"], json["bar"]["color"]["b"]));
+			uint8_t r, g, b;
+			if (json["bar"]["hexColor"].as<char *>() != NULL)
+			{
+				ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), r, g, b);
+			}
+			else
+			{
+				r = json["bar"]["color"]["r"].as<uint8_t>();
+				g = json["bar"]["color"]["g"].as<uint8_t>();
+				b = json["bar"]["color"]["b"].as<uint8_t>();
+			}
+			matrix->drawLine(json["bar"]["position"]["x"], json["bar"]["position"]["y"], json["bar"]["position"]["x2"], json["bar"]["position"]["y2"], matrix->Color(r, g, b));
 		}
 
 		// Bars
 		if (json.containsKey("bars"))
 		{
 			logMessage += F("Bars, ");
-			for (JsonVariant x : json["bars"].asArray())
+			for (JsonVariant x : json["bars"].as<JsonArray>())
 			{
-				matrix->drawLine(x["position"]["x"], x["position"]["y"], x["position"]["x2"], x["position"]["y2"], matrix->Color(x["color"]["r"], x["color"]["g"], x["color"]["b"]));
+				uint8_t r, g, b;
+				if (json["bar"]["hexColor"].as<char *>() != NULL)
+				{
+					ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), r, g, b);
+				}
+				else
+				{
+					r = x["color"]["r"].as<uint8_t>();
+					g = x["color"]["g"].as<uint8_t>();
+					b = x["color"]["b"].as<uint8_t>();
+				}
+				matrix->drawLine(x["position"]["x"], x["position"]["y"], x["position"]["x2"], x["position"]["y2"], matrix->Color(r, g, b));
 			}
 		}
 
@@ -879,7 +901,7 @@ void CreateFrames(JsonObject &json)
 
 			// JsonArray in IntArray konvertieren
 			// dies ist nötik für diverse kleine Logiken z.B. Scrolltext
-			json["bitmap"]["data"].asArray().copyTo(bmpArray);
+			json["bitmap"]["data"].as<JsonArray>().copyTo(bmpArray);
 		}
 
 		// Ist eine BitmapAnimation übergeben worden?
@@ -893,10 +915,10 @@ void CreateFrames(JsonObject &json)
 			}
 
 			int counter = 0;
-			for (JsonVariant x : json["bitmapAnimation"]["data"].asArray())
+			for (JsonVariant x : json["bitmapAnimation"]["data"].as<JsonArray>())
 			{
 				// JsonArray in IntArray konvertieren
-				x.asArray().copyTo(bmpArray);
+				x.as<JsonArray>().copyTo(bmpArray);
 				// Speichern für die Ausgabe
 				for (int i = 0; i < 64; i++)
 				{
@@ -932,11 +954,25 @@ void CreateFrames(JsonObject &json)
 			scrollTextDelay = scrollTextDefaultDelay;
 
 			// Ist ScrollText auto oder true gewählt?
-			scrollTextAktiv = ((json["text"]["scrollText"] == "auto" || (json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"]));
+			scrollTextAktiv = ((json["text"]["scrollText"] == "auto" || ((json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"])));
+
+			uint8_t r, g, b;
+			if (json["text"]["hexColor"].as<char *>() != NULL)
+			{
+				ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+			}
+			else
+			{
+				r = json["text"]["color"]["r"].as<uint8_t>();
+				g = json["text"]["color"]["g"].as<uint8_t>();
+				b = json["text"]["color"]["b"].as<uint8_t>();
+			}
 
 			if (json["text"]["centerText"])
 			{
-				DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], json.containsKey("bitmap") || json.containsKey("bitmapAnimation"), json["text"]["color"]["r"], json["text"]["color"]["g"], json["text"]["color"]["b"]);
+				bool withBMP = json.containsKey("bitmap") || json.containsKey("bitmapAnimation");
+
+				DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], withBMP, r, g, b);
 			}
 			// Ist ScrollText auto oder true gewählt?
 			else if (scrollTextAktiv)
@@ -954,16 +990,16 @@ void CreateFrames(JsonObject &json)
 
 				if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
 				{
-					DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, json["text"]["color"]["r"], json["text"]["color"]["g"], json["text"]["color"]["b"]);
+					DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
 				}
 				else
 				{
-					DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, json["text"]["color"]["r"], json["text"]["color"]["g"], json["text"]["color"]["b"]);
+					DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
 				}
 			}
 			else
 			{
-				DrawText(json["text"]["textString"], json["text"]["bigFont"], json["text"]["color"]["r"], json["text"]["color"]["g"], json["text"]["color"]["b"], json["text"]["position"]["x"], json["text"]["position"]["y"]);
+				DrawText(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
 			}
 		}
 
@@ -985,7 +1021,11 @@ void CreateFrames(JsonObject &json)
 
 String GetConfig()
 {
+#if defined(ESP8266)
+	File configFile = LittleFS.open("/config.json", "r");
+#elif defined(ESP32)
 	File configFile = SPIFFS.open("/config.json", "r");
+#endif
 
 	if (configFile)
 	{
@@ -1003,6 +1043,7 @@ String GetConfig()
 
 		return json;
 	}
+	return "";
 }
 
 String GetDHTSensor()
@@ -1115,9 +1156,7 @@ void DrawAutoTextScrolled(String text, bool bigFont, bool withBMP, bool fadeInRe
 
 void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-	int charSize = 0;
-	int16_t x1, y1;
-	uint16_t xPixelText, h, xPixel;
+	uint16_t xPixelText, xPixel;
 
 	text = Utf8ToAscii(text);
 
@@ -1697,7 +1736,7 @@ int *GetUserCutomCorrection()
 	rgbString.trim();
 
 	// R,G,B / 255,255,255
-	int rgbArray[3];
+	static int rgbArray[3];
 
 	//R
 	rgbArray[0] = rgbString.substring(0, 3).toInt();
@@ -1721,9 +1760,9 @@ void DeserializeSound(JsonObject& soundJson)
 	}
 
 	int counter = 0;
-	for (JsonVariant x : soundJson["sound"].asArray())
+	for (JsonVariant x : soundJson["sound"].as<JsonArray>())
 	{
-		melodyNotes[counter] = GetSound(x["note"].asString());
+		melodyNotes[counter] = GetSound(x["note"].as<char*>());
 		melodyDuration[counter] = x["duration"];
 		melodyPause[counter] = x["pause"];
 		counter++;
@@ -1810,7 +1849,11 @@ void setup()
 
 	// Mounting FileSystem
 	Serial.println(F("Mounting file system..."));
+#if defined(ESP8266)
+	if (LittleFS.begin())
+#elif defined(ESP32)
 	if (SPIFFS.begin())
+#endif
 	{
 		Serial.println(F("Mounted file system."));
 		LoadConfig();
@@ -2025,7 +2068,7 @@ void SendMatrixInfo(bool force)
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0 && OldGetMatrixInfo != matrixInfo)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/matrixinfo")
 			{
@@ -2093,7 +2136,7 @@ void SendDHT(bool force)
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0 && OldGetDHTSensor != dhtSensor)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/dht")
 			{
@@ -2128,7 +2171,7 @@ void SendMp3PlayerInfo(bool force)
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0 && OldGetMP3PlayerInfo != mP3PlayerInfo)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/soundinfo")
 			{
@@ -2145,7 +2188,7 @@ void SendConfig()
 {
 	if (webSocket.connectedClients() > 0)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/config")
 			{

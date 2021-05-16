@@ -22,10 +22,11 @@ int DSToffset(time_t _date, int _clockTimeZone)
 	{
 		_summerTime = false; // no summertime in Jan, Feb, Nov, Dec
 	}
-	else if (month(_date) > 3 && month(_date) < 10) {
+	else if (month(_date) > 3 && month(_date) < 10)
+	{
 		_summerTime = true; // Summertime in Apr, May, Jun, Jul, Aug, Sep
 	}
-	else if (month(_date) == 3 && (hour(_date) + 24 * day(_date)) >= (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 4) % 7)) || month(_date) == 10 && (hour(_date) + 24 * day(_date)) < (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 1) % 7)))
+	else if ((month(_date) == 3 && (hour(_date) + 24 * day(_date)) >= (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 4) % 7))) || (month(_date) == 10 && (hour(_date) + 24 * day(_date))) < (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 1) % 7)))
 	{
 		_summerTime = true;
 	}
@@ -39,9 +40,12 @@ int DSToffset(time_t _date, int _clockTimeZone)
 /// <summary>
 /// Checks if it is a valid IP address
 /// </summary>
-boolean isIP(String _str) {
-	for (char i = 0; i < _str.length(); i++) {
-		if (!(isDigit(_str.charAt(i)) || _str.charAt(i) == '.')) {
+boolean isIP(String _str)
+{
+	for (char i = 0; i < _str.length(); i++)
+	{
+		if (!(isDigit(_str.charAt(i)) || _str.charAt(i) == '.'))
+		{
 			return false;
 		}
 	}
@@ -51,7 +55,8 @@ boolean isIP(String _str) {
 /// <summary>
 /// Convert UTF8 byte to ASCII
 /// </summary>
-byte Utf8ToAscii(byte _ascii) {
+byte Utf8ToAscii(byte _ascii)
+{
 	static byte _thisByte;
 
 	if (_ascii < 128)
@@ -79,17 +84,18 @@ byte Utf8ToAscii(byte _ascii) {
 		}
 		break;
 	}
-	return  _result;
+	return _result;
 }
 
 /// <summary>
 /// Convert UTF8 Chars to ASCII
 /// </summary>
-String Utf8ToAscii(String _str) {
+String Utf8ToAscii(String _str)
+{
 	String _result = "";
 	char _thisChar;
 
-	for (int i = 0; i < _str.length(); i++)
+	for (unsigned int i = 0; i < _str.length(); i++)
 	{
 		_thisChar = Utf8ToAscii(_str.charAt(i));
 
@@ -101,35 +107,35 @@ String Utf8ToAscii(String _str) {
 	return _result;
 }
 
-String uint64ToString(uint64_t input) {
-  String result = "";
-  uint8_t base = 10;
+String uint64ToString(uint64_t input)
+{
+	String result = "";
+	uint8_t base = 10;
 
-  do {
-    char c = input % base;
-    input /= base;
+	do
+	{
+		char c = input % base;
+		input /= base;
 
-    if (c < 10)
-      c +='0';
-    else
-      c += 'A' - 10;
-    result = c + result;
-  } while (input);
-  return result;
+		if (c < 10)
+			c += '0';
+		else
+			c += 'A' - 10;
+		result = c + result;
+	} while (input);
+	return result;
 }
-
-
 
 /// <summary>
 /// Returns the chip id
 /// </summary>
 String GetChipID()
 {
-	#if defined(ESP8266)
+#if defined(ESP8266)
 	return String(ESP.getChipId());
-	#elif defined(ESP32)
+#elif defined(ESP32)
 	return uint64ToString(ESP.getEfuseMac());
-	#endif
+#endif
 }
 
 /// <summary>
