@@ -1911,7 +1911,7 @@ void setup()
 	{
 		client.setServer(mqttServer.c_str(), mqttPort);
 		client.setCallback(callback);
-		client.setBufferSize(8000);
+		client.setBufferSize(4000);
 		Log(F("Setup"), F("MQTT started"));
 	}
 
