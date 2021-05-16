@@ -81,7 +81,7 @@ HTTPUpdateServer httpUpdater;
 #endif
 
 WebSocketsServer webSocket = WebSocketsServer(81);
-LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL);
+LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL, 10);
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
 SoftwareSerial softSerial(D7, D8); // RX | TX
