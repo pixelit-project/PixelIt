@@ -1,18 +1,14 @@
 #if defined(ESP8266)
-#pragma message("ESP8266 stuff happening!")
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
 
 #elif defined(ESP32)
-#pragma message("ESP32 stuff happening!")
 #include <WebServer.h>
 #include <HTTPUpdateServer.h>
 #include <WiFi.h>
 #include <FS.h>
-#else
-#error "This ain't a ESP8266 or ESP32, dumbo!"
 #endif
 
 #include <Arduino.h>
@@ -477,7 +473,6 @@ void HandleGetTestAreaPage()
 	server.send(200, "text/html", testAreaPage);
 }
 
-#pragma region //////////////////////////// HTTP API ////////////////////////////
 void HandleNotFound()
 {
 	if (server.method() == HTTP_OPTIONS)
@@ -590,9 +585,6 @@ void HandleOtaUpdate()
 	//SetOTAUpdate();
 }
 
-#pragma endregion
-
-#pragma region //////////////////////////// MQTT ////////////////////////////
 void callback(char *topic, byte *payload, unsigned int length)
 {
 	if (payload[0] == '{')
@@ -628,9 +620,6 @@ void callback(char *topic, byte *payload, unsigned int length)
 		}
 	}
 }
-#pragma endregion
-
-#pragma region //////////////////////////// Websocket ////////////////////////////
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
@@ -685,15 +674,23 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 		break;
 	}
 	case WStype_BIN:
-		//Serial.printf("[%u] get binary length: %u\n", num, length);
-		//hexdump(payload, length);
-
-		// send message to client
-		// webSocket.sendBIN(num, payload, length);
+		break;
+	case WStype_FRAGMENT_BIN_START:
+		break;
+	case WStype_FRAGMENT_TEXT_START:
+		break;
+	case WStype_FRAGMENT:
+		break;
+	case WStype_FRAGMENT_FIN:
+		break;
+	case WStype_PING:
+		break;
+	case WStype_PONG:
+		break;
+	case WStype_ERROR:
 		break;
 	}
 }
-#pragma endregion
 
 void CreateFrames(JsonObject &json)
 {
@@ -2102,7 +2099,7 @@ void SendLDR(bool force)
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0 && OldGetLuxSensor != luxSensor)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/lux")
 			{
@@ -2260,7 +2257,7 @@ void Log(String function, String message)
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0)
 	{
-		for (int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
 			if (websocketConnection[i] == "/dash")
 			{
