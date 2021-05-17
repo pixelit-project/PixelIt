@@ -1100,9 +1100,6 @@ String GetMatrixInfo()
 
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
-#if defined(ESP8266)
-	root["sketchSize"] = ESP.getSketchSize();
-#endif
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = String(WiFi.RSSI());
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -1111,6 +1108,7 @@ String GetMatrixInfo()
 	root["freeHeap"] = ESP.getFreeHeap();
 
 #if defined(ESP8266)
+	root["sketchSize"] = ESP.getSketchSize();
 	root["chipID"] = ESP.getChipId();
 #elif defined(ESP32)
 	root["chipID"] = uint64ToString(ESP.getEfuseMac());
