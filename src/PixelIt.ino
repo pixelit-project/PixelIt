@@ -207,20 +207,16 @@ void SaveConfig()
 
 void LoadConfig()
 {
+	//file exists, reading and loading
 #if defined(ESP8266)
 	if (LittleFS.exists("/config.json"))
-#elif defined(ESP32)
-	if (SPIFFS.exists("/config.json"))
-#endif
 	{
-
-		//file exists, reading and loading
-#if defined(ESP8266)
 		File configFile = LittleFS.open("/config.json", "r");
 #elif defined(ESP32)
+	if (SPIFFS.exists("/config.json"))
+	{
 		File configFile = SPIFFS.open("/config.json", "r");
 #endif
-
 		if (configFile)
 		{
 			Serial.println("opened config file");
