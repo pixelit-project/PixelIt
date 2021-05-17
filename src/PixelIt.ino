@@ -12,17 +12,17 @@
 #endif
 
 #include <Arduino.h>
-#include <WebSocketsServer.h> // https://github.com/Links2004/arduinoWebSockets
+#include <WebSocketsServer.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
-#include <PubSubClient.h> // Attention in the lib the #define MQTT_MAX_PACKET_SIZE must be increased to 8000!
-#include <TimeLib.h>	  // https://github.com/o0shojo0o/Time
-#include <ArduinoJson.h>  // V5.13.5!!!
+#include <PubSubClient.h>
+#include <TimeLib.h>
+#include <ArduinoJson.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
-#include <FastLED_NeoMatrix.h>		// https://github.com/o0shojo0o/FastLED_NeoMatrix and https://github.com/o0shojo0o/Framebuffer_GFX
-#include <LightDependentResistor.h> // https://github.com/o0shojo0o/Arduino-Light-Dependent-Resistor-Library v1.0.0!!!
+#include <FastLED_NeoMatrix.h>
+#include <LightDependentResistor.h>
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
