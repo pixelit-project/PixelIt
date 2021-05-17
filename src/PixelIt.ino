@@ -33,7 +33,6 @@
 #include "Tools.h"
 #include <Wire.h>
 
-#define DEBUG 0
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
