@@ -84,7 +84,10 @@ DFPlayerMini_Fast mp3Player;
 SoftwareSerial softSerial(D7, D8); // RX | TX
 
 // Matrix Vars
-int matrixtBrightness = 127;
+int currentMatrixBrightness = 127;
+bool matrixBrightnessAutomatic = true;
+int matrixBrightnessMin = 20;
+int matrixBrightnessMax = 100;
 int matrixType = 1;
 String matrixTempCorrection = "default";
 
@@ -142,9 +145,10 @@ int animateBMPFrameCount = 0;
 uint sendLuxPrevMillis = 0;
 uint sendDHTPrevMillis = 0;
 uint sendInfoPrevMillis = 0;
-String OldGetMatrixInfo;
-String OldGetLuxSensor;
-String OldGetDHTSensor;
+String oldGetMatrixInfo;
+String oldGetLuxSensor;
+String oldGetDHTSensor;
+float currentLux = 0.0f;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -170,7 +174,8 @@ void SaveConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &json = jsonBuffer.createObject();
 
-		json["matrixtBrightness"] = matrixtBrightness;
+		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
+		json["matrixBrightness"] = currentMatrixBrightness;
 		json["matrixType"] = matrixType;
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
@@ -225,9 +230,14 @@ void LoadConfig()
 
 			if (json.success())
 			{
-				if (json.containsKey("matrixtBrightness"))
+				if (json.containsKey("matrixBrightnessAutomatic"))
 				{
-					matrixtBrightness = json["matrixtBrightness"];
+					matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
+				}
+
+				if (json.containsKey("matrixBrightness"))
+				{
+					currentMatrixBrightness = json["matrixBrightness"];
 				}
 
 				if (json.containsKey("matrixType"))
@@ -324,10 +334,16 @@ void LoadConfig()
 
 void SetConfig(JsonObject &json)
 {
-	if (json.containsKey("matrixtBrightness"))
+
+	if (json.containsKey("matrixBrightnessAutomatic"))
 	{
-		matrixtBrightness = json["matrixtBrightness"];
-		matrix->setBrightness(matrixtBrightness);
+		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
+	}
+
+	if (json.containsKey("matrixBrightness"))
+	{
+		currentMatrixBrightness = json["matrixBrightness"];
+		matrix->setBrightness(currentMatrixBrightness);
 	}
 
 	if (json.containsKey("matrixType"))
@@ -413,29 +429,6 @@ void SetConfig(JsonObject &json)
 	SaveConfigCallback();
 	SaveConfig();
 }
-
-//void SetOTAUpdate()
-//{
-//	mqttAktiv = false;
-//
-//	t_httpUpdate_return ret = ESPhttpUpdate.update(espClient, F("http://www.bastelbunker.de/pixelit/PixelIt.bin"));
-//	// Or:
-//	//t_httpUpdate_return ret = ESPhttpUpdate.update(client, "server", 80, "file.bin");
-//
-//	switch (ret) {
-//	case HTTP_UPDATE_FAILED:
-//		Log(F("SetUpdate"), "HTTP_UPDATE_FAILD Error (" + String(ESPhttpUpdate.getLastError()) + "): " + ESPhttpUpdate.getLastErrorString());
-//		break;
-//
-//	case HTTP_UPDATE_NO_UPDATES:
-//		Log(F("SetUpdate"), F("HTTP_UPDATE_NO_UPDATES"));
-//		break;
-//
-//	case HTTP_UPDATE_OK:
-//		Log(F("SetUpdate"), F("HTTP_UPDATE_OK"));
-//		break;
-//	}
-//}
 
 void WifiSetup()
 {
@@ -548,14 +541,6 @@ void HandleGetMatrixInfo()
 	server.send(200, "application/json", GetMatrixInfo());
 }
 
-/*
-void HandleGetSoundInfo()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetMp3PlayerInfo());
-}
-*/
-
 void Handle_factoryreset()
 {
 #if defined(ESP8266)
@@ -571,13 +556,6 @@ void Handle_factoryreset()
 	configFile.close();
 	WifiSetup();
 	ESP.restart();
-}
-
-void HandleOtaUpdate()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", "{\"update\":\"started\"}");
-	//SetOTAUpdate();
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -618,7 +596,6 @@ void callback(char *topic, byte *payload, unsigned int length)
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
-
 	switch (type)
 	{
 	case WStype_DISCONNECTED:
@@ -695,7 +672,7 @@ void CreateFrames(JsonObject &json)
 	if (json.containsKey("brightness"))
 	{
 		logMessage += F("Brightness Control, ");
-		matrixtBrightness = json["brightness"];
+		currentMatrixBrightness = json["brightness"];
 	}
 
 	// Sound
@@ -750,7 +727,7 @@ void CreateFrames(JsonObject &json)
 	}
 	else
 	{
-		matrix->setBrightness(matrixtBrightness);
+		matrix->setBrightness(currentMatrixBrightness);
 
 		// Prüfung für die Unterbrechnung der lokalen Schleifen
 		if (json.containsKey("bitmap") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
@@ -1067,30 +1044,13 @@ String GetLuxSensor()
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &root = jsonBuffer.createObject();
 
-	root["lux"] = roundf(photocell.getCurrentLux() * 1000) / 1000;
+	root["lux"] = currentLux;
 
 	String json;
 	root.printTo(json);
 
 	return json;
 }
-
-/*
-String GetMp3PlayerInfo()
-{
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject& root = jsonBuffer.createObject();
-
-	root["playing"] = mp3Player.isPlaying();
-	root["currentSdTrack"] = mp3Player.currentSdTrack();
-	root["volume"] = mp3Player.currentVolume();
-
-	String json;
-	root.printTo(json);
-
-	return json;
-}
-*/
 
 String GetMatrixInfo()
 {
@@ -1205,7 +1165,7 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 	if (scrollText || (autoScrollText && xPixelText > xPixel))
 	{
 
-		matrix->setBrightness(matrixtBrightness);
+		matrix->setBrightness(currentMatrixBrightness);
 
 		scrollTextString = text;
 		scrollposY = posY;
@@ -1529,13 +1489,13 @@ void MqttReconnect()
 
 void FadeOut(int dealy, int minBrightness)
 {
-	int currentBrightness = matrixtBrightness;
+	int currentFadeBrightness = currentMatrixBrightness;
 
 	int counter = 25;
 	while (counter >= 0)
 	{
-		currentBrightness = map(counter, 0, 25, minBrightness, matrixtBrightness);
-		matrix->setBrightness(currentBrightness);
+		currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
+		matrix->setBrightness(currentFadeBrightness);
 		matrix->show();
 		counter--;
 		delay(dealy);
@@ -1544,13 +1504,13 @@ void FadeOut(int dealy, int minBrightness)
 
 void FadeIn(int dealy, int minBrightness)
 {
-	int currentBrightness = minBrightness;
+	int currentFadeBrightness = minBrightness;
 
 	int counter = 0;
 	while (counter <= 25)
 	{
-		currentBrightness = map(counter, 0, 25, minBrightness, matrixtBrightness);
-		matrix->setBrightness(currentBrightness);
+		currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
+		matrix->setBrightness(currentFadeBrightness);
 		matrix->show();
 		counter++;
 		delay(dealy);
@@ -1738,55 +1698,6 @@ int *GetUserCutomCorrection()
 	return rgbArray;
 }
 
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-// Audio
-/*
-void DeserializeSound(JsonObject& soundJson)
-{
-	for (int i = 0; i < 64; i++)
-	{
-		melodyNotes[i] = 0;
-	}
-
-	int counter = 0;
-	for (JsonVariant x : soundJson["sound"].as<JsonArray>())
-	{
-		melodyNotes[counter] = GetSound(x["note"].as<char*>());
-		melodyDuration[counter] = x["duration"];
-		melodyPause[counter] = x["pause"];
-		counter++;
-	}
-	currentNote = 0;
-	mustPlaySound = true;
-}
-
-void PlaySound()
-{
-	if (mustPlaySound)
-	{
-		if (melodyNotes[currentNote] > 0)
-		{
-			unsigned long currentMillis = millis();
-
-			if (currentNote == 0 || currentMillis - melodyPreviousMillis >= melodyTotalPause)
-			{
-				melodyTotalPause = melodyDuration[currentNote] + melodyPause[currentNote];
-				melodyPreviousMillis = currentMillis;
-				tone(soundPin, melodyNotes[currentNote], melodyDuration[currentNote]);
-				currentNote++;
-			}
-		}
-		else
-		{
-			mustPlaySound = false;
-		}
-	}
-}
-*/
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-
 void ClearTextArea()
 {
 	int16_t h = 8;
@@ -1891,7 +1802,7 @@ void setup()
 
 	matrix->begin();
 	matrix->setTextWrap(false);
-	matrix->setBrightness(matrixtBrightness);
+	matrix->setBrightness(currentMatrixBrightness);
 	matrix->clear();
 
 	// Bootscreen
@@ -1941,7 +1852,6 @@ void setup()
 	server.on(F("/dash"), HTTP_GET, HandleGetDashPage);
 	server.on(F("/config"), HTTP_GET, HandleGetConfigPage);
 	server.on(F("/testarea"), HTTP_GET, HandleGetTestAreaPage);
-	server.on(F("/otaupdate"), HTTP_POST, HandleOtaUpdate);
 	server.onNotFound(HandleNotFound);
 
 	server.begin();
@@ -2005,7 +1915,21 @@ void loop()
 	if (millis() - sendLuxPrevMillis >= 1000)
 	{
 		sendLuxPrevMillis = millis();
+
+		currentLux = roundf(photocell.getCurrentLux() * 1000) / 1000;
+
 		SendLDR(false);
+
+		if (matrixBrightnessAutomatic)
+		{
+			float newBrightness = map(currentLux, 0, 300, matrixBrightnessMin, matrixBrightnessMax);
+			if (newBrightness != currentMatrixBrightness)
+			{
+				currentMatrixBrightness = newBrightness;
+				matrix->setBrightness(currentMatrixBrightness);
+				Log(F("Auto Brightnes"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness) + "%");
+			}
+		}
 	}
 
 	if (millis() - sendDHTPrevMillis >= 3000)
@@ -2040,7 +1964,7 @@ void SendMatrixInfo(bool force)
 {
 	if (force)
 	{
-		OldGetMatrixInfo = "";
+		oldGetMatrixInfo = "";
 	}
 
 	String matrixInfo;
@@ -2051,12 +1975,12 @@ void SendMatrixInfo(bool force)
 		matrixInfo = GetMatrixInfo();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetMatrixInfo != matrixInfo)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetMatrixInfo != matrixInfo)
 	{
 		client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
 	}
 	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && OldGetMatrixInfo != matrixInfo)
+	if (webSocket.connectedClients() > 0 && oldGetMatrixInfo != matrixInfo)
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
@@ -2067,14 +1991,14 @@ void SendMatrixInfo(bool force)
 		}
 	}
 
-	OldGetMatrixInfo = matrixInfo;
+	oldGetMatrixInfo = matrixInfo;
 }
 
 void SendLDR(bool force)
 {
 	if (force)
 	{
-		OldGetLuxSensor = "";
+		oldGetLuxSensor = "";
 	}
 
 	String luxSensor;
@@ -2085,12 +2009,12 @@ void SendLDR(bool force)
 		luxSensor = GetLuxSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetLuxSensor != luxSensor)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetLuxSensor != luxSensor)
 	{
 		client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
 	}
 	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && OldGetLuxSensor != luxSensor)
+	if (webSocket.connectedClients() > 0 && oldGetLuxSensor != luxSensor)
 	{
 		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
@@ -2101,14 +2025,14 @@ void SendLDR(bool force)
 		}
 	}
 
-	OldGetLuxSensor = luxSensor;
+	oldGetLuxSensor = luxSensor;
 }
 
 void SendDHT(bool force)
 {
 	if (force)
 	{
-		OldGetDHTSensor = "";
+		oldGetDHTSensor = "";
 	}
 
 	String dhtSensor;
@@ -2119,12 +2043,12 @@ void SendDHT(bool force)
 		dhtSensor = GetDHTSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && OldGetDHTSensor != dhtSensor)
+	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetDHTSensor != dhtSensor)
 	{
 		client.publish((mqttMasterTopic + "dhtsensor").c_str(), dhtSensor.c_str(), true);
 	}
 	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && OldGetDHTSensor != dhtSensor)
+	if (webSocket.connectedClients() > 0 && oldGetDHTSensor != dhtSensor)
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
@@ -2135,44 +2059,8 @@ void SendDHT(bool force)
 		}
 	}
 
-	OldGetDHTSensor = dhtSensor;
+	oldGetDHTSensor = dhtSensor;
 }
-
-/*
-void SendMp3PlayerInfo(bool force)
-{
-	if (force)
-	{
-		OldGetMP3PlayerInfo = "";
-	}
-
-	String mP3PlayerInfo;
-
-	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys) || (webSocket.connectedClients() > 0))
-	{
-		mP3PlayerInfo = GetMp3PlayerInfo();
-	}
-	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < mqttMaxRetrys && OldGetMP3PlayerInfo != mP3PlayerInfo)
-	{
-		client.publish((mqttMasterTopic + "soundinfo").c_str(), mP3PlayerInfo.c_str(), true);
-	}
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && OldGetMP3PlayerInfo != mP3PlayerInfo)
-	{
-		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/soundinfo")
-			{
-				webSocket.sendTXT(i, mP3PlayerInfo);
-			}
-		}
-	}
-
-	OldGetMP3PlayerInfo = mP3PlayerInfo;
-}
-*/
 
 void SendConfig()
 {

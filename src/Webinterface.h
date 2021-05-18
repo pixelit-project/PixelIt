@@ -141,7 +141,11 @@ const char configPage[] PROGMEM = R"=====(
     </div>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="bootScreenAktiv">
-        <label class="custom-control-label" for="bootScreenAktiv">Bootsceen aktiv</label>
+        <label class="custom-control-label" for="bootScreenAktiv">Bootsceen active</label>
+    </div>
+    <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input" id="matrixBrightnessAutomatic">
+        <label class="custom-control-label" for="matrixBrightnessAutomatic">Auto brightness active</label>
     </div>
 </div>
 
@@ -166,7 +170,7 @@ const char configPage[] PROGMEM = R"=====(
     </div>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="clockSwitchAktiv">
-        <label class="custom-control-label" for="clockSwitchAktiv">Switch clock/date aktiv</label>
+        <label class="custom-control-label" for="clockSwitchAktiv">Switch clock/date active</label>
     </div>
     <div class="form-group">Switch clock/date time</label>
         <input type="number" class="form-control" id="clockSwitchSec">
@@ -212,7 +216,7 @@ const char configPage[] PROGMEM = R"=====(
     </div>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="mqttAktiv">
-        <label class="custom-control-label" for="mqttAktiv">MQTT aktiv</label>
+        <label class="custom-control-label" for="mqttAktiv">MQTT active</label>
     </div>
 </div>
 <div class="col-md-12 text-center">
