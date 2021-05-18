@@ -17,6 +17,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) add dashboard.css content in mainPage
 -   (foorschtbar) switches now have the proper mouse pointer
 
 ### 0.3.3 (2021-05-18)
