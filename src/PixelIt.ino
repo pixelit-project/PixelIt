@@ -1011,23 +1011,23 @@ String GetMatrixInfo()
 
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
-	root["note"] = (note.isEmpty() ? "---" : note);
-	root["freeSketchSpace"] = String(ESP.getFreeSketchSpace() / 1024) + " KB";
-	root["wifiRSSI"] = String(WiFi.RSSI()) + " dBm";
-	root["wifiQuality"] = String(GetRSSIasQuality(WiFi.RSSI())) + "%";
+	root["note"] = note;
+	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
+	root["wifiRSSI"] = WiFi.RSSI();
+	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
-	root["freeHeap"] = String(ESP.getFreeHeap() / 1024) + " KB";
+	root["freeHeap"] = ESP.getFreeHeap();
 
 #if defined(ESP8266)
-	root["sketchSize"] = String(ESP.getSketchSize() / 1024) + " KB";
+	root["sketchSize"] = ESP.getSketchSize();
 	root["chipID"] = ESP.getChipId();
 #elif defined(ESP32)
 	root["chipID"] = uint64ToString(ESP.getEfuseMac());
 #endif
 
-	root["cpuFreqMHz"] = String(ESP.getCpuFreqMHz()) + " MHz";
-	root["sleepMode"] = (sleepMode ? "On" : "Off");
+	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+	root["sleepMode"] = sleepMode;
 
 	String json;
 	root.printTo(json);
