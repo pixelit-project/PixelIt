@@ -1,6 +1,6 @@
-![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
-
-# PixelIt ![](https://github.com/o0shojo0o/PixelIt/workflows/Build/badge.svg) ![](https://github.com/o0shojo0o/PixelIt/workflows/Release/badge.svg)
+![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)  
+![](https://github.com/o0shojo0o/PixelIt/workflows/Build/badge.svg) ![](https://github.com/o0shojo0o/PixelIt/workflows/Release/badge.svg)
+# PixelIt 
 
 The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display that is controlled and fed by a JSON API.
 At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) available to the JSON API
