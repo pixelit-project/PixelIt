@@ -8,7 +8,7 @@ const char mainPage[] PROGMEM = R"=====(
     <link rel="stylesheet" href="https://cdn.dietru.de/bootstrap.min.css">
     <link href="https://o0shojo0o.github.io/PixelIt/dashboard.css" rel="stylesheet">
     <script src="https://cdn.dietru.de/jquery-3.3.1.min.js"> </script>
-    <script src="https://cdn.dietru.de/pixelit.js"> </script>
+    <script src="https://o0shojo0o.github.io/PixelIt/pixelit.js"> </script>
     <title>PixelIt the Matrix Display</title>
 </head>
 
