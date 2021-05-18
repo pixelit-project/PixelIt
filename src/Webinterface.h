@@ -83,7 +83,6 @@ const char mainPage[] PROGMEM = R"=====(
         }
         .border-top { border-top: 1px solid #e5e5e5; }
         .border-bottom { border-bottom: 1px solid #e5e5e5; }
->>>>>>> Stashed changes
     </style>
     <title>PixelIt the Matrix Display</title>
 </head>
