@@ -40,7 +40,7 @@ void FadeIn(int = 10, int = 0);
 bool mqttAktiv = false;
 String mqttUser = "";
 String mqttPassword = "";
-String mqttServer = "0.0.0.0";
+String mqttServer = "";
 String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 int mqttRetryCounter = 0;

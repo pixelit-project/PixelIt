@@ -285,8 +285,7 @@ const char configPage[] PROGMEM = R"=====(
     <hr>
     <div class="form-group">
         <label for="mqttServer">Server</label>
-        <input type="text" class="form-control" id="mqttServer" minlength="7" maxlength="15"
-            pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
+        <input type="text" class="form-control" id="mqttServer" placeholder="IP or Hostname">
     </div>
     <div class="form-group">
         <label for="mqttPort">Port</label>
