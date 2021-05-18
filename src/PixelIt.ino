@@ -1871,7 +1871,7 @@ void loop()
 			if (newBrightness != currentMatrixBrightness)
 			{
 				SetCurrentMatrixBrightness(newBrightness);
-				Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness) + "%");
+				Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness));
 			}
 		}
 	}
