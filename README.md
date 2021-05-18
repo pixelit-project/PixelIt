@@ -15,6 +15,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (foorschtbar) switches now have the proper mouse pointer
+
 ### 0.3.3 (2021-05-18)
 
 -   (o0shojo0o) add auto brightness options
