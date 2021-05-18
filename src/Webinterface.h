@@ -12,11 +12,9 @@ const char mainPage[] PROGMEM = R"=====(
         textarea {
             font-size: 12px !important;
         }
-<<<<<<< Updated upstream
         .custom-control-label::before, .custom-control-label::after {
             cursor: pointer;
         }
-=======
         body {
         font-size: .875rem;
         }
