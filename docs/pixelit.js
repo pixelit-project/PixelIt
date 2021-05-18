@@ -4,6 +4,7 @@ var devMode = false;
 var timeleft;
 var rebootTimer;
 var json;
+var titlechanged = false;
 
 if (ipAddress.includes('localhost')) {
     devMode = true;
@@ -32,7 +33,7 @@ function connectionStart() {
     var wsServer = ipAddress;
     // Dev Option
     if (devMode) {
-        wsServer = '192.168.0.109'
+        wsServer = '172.30.100.218'
     }
     connection = new WebSocket('ws://' + wsServer + ':81/' + pageName);
     connection.onopen = function () {
@@ -84,7 +85,7 @@ function connectionStart() {
 }
 
 function RefershData(input) {
-    // PrÃ¼fen ob es ein Json ist
+    // Prüfen ob es ein Json ist
     if (!input.startsWith("{")) {
         return;
     }
@@ -93,7 +94,7 @@ function RefershData(input) {
     // Log Json
     if (json.log) {
         var logArea = $('#log');
-        logArea.append("[" + json.log.timeStamp + "] " + json.log.function+": " + json.log.message + "\n");
+        logArea.append("[" + json.log.timeStamp + "] " + json.log.function + ": " + json.log.message + "\n");
         logArea.scrollTop(logArea[0].scrollHeight);
 
     } else {
@@ -108,6 +109,34 @@ function RefershData(input) {
             }
             // SystemInfo Json
             if (pageName == 'dash') {
+                switch (key) {
+                    case "note":
+                        if (!val.trim()) {
+                            val = "---";
+                        } else if (!titlechanged) {
+                            document.title += " [" + val + "]";
+                            titlechanged = true;
+                        }
+                        break;
+                    case "sketchSize":
+                    case "freeSketchSpace":
+                    case "freeHeap":
+                        val = humanFileSize(val, true);
+                        break;
+                    case "wifiRSSI":
+                        val += " dBm";
+                        break;
+                    case "wifiQuality":
+                        val += " %";
+                        break;
+                    case "cpuFreqMHz":
+                        val += " MHz";
+                        break;
+                    case "sleepMode":
+                        val = (val ? "On" : "Off");
+                        break;
+                }
+
                 $("#" + key).html(val.toString());
             }
         });
@@ -253,4 +282,26 @@ function isNullOrWhitespace(input) {
         return true;
     }
     return input.replace(/\s/g, '').length < 1;
+}
+
+function humanFileSize(bytes, si = false, dp = 1) {
+    const thresh = si ? 1000 : 1024;
+
+    if (Math.abs(bytes) < thresh) {
+        return bytes + ' B';
+    }
+
+    const units = si
+        ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+        : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    let u = -1;
+    const r = 10 ** dp;
+
+    do {
+        bytes /= thresh;
+        ++u;
+    } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+
+
+    return bytes.toFixed(dp) + ' ' + units[u];
 }
