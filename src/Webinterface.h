@@ -8,7 +8,7 @@ const char mainPage[] PROGMEM = R"=====(
     <link rel="stylesheet" href="https://cdn.dietru.de/bootstrap.min.css">
     <link href="https://o0shojo0o.github.io/PixelIt/dashboard.css" rel="stylesheet">
     <script src="https://cdn.dietru.de/jquery-3.3.1.min.js"> </script>
-    <script src="https://o0shojo0o.github.io/PixelIt/pixelit.js"> </script>
+    <script src="https://trash.0x1337.it/pixelit/pixelit.js"> </script>
     <title>PixelIt the Matrix Display</title>
 </head>
 
@@ -44,7 +44,7 @@ const char mainPage[] PROGMEM = R"=====(
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="/update">
+                            <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
                                 <span data-feather="upload"></span> Update
                             </a>
                         </li>
@@ -265,7 +265,6 @@ const char configPage[] PROGMEM = R"=====(
 </script>
 )=====";
 
-
 const char dashPage[] PROGMEM = R"=====(
 <script>
     connectionStart();
@@ -357,7 +356,6 @@ const char dashPage[] PROGMEM = R"=====(
 </div>
 )=====";
 
-
 const char testAreaPage[] PROGMEM = R"=====(
 <script>
     connectionStart();
@@ -417,4 +415,33 @@ const char testAreaPage[] PROGMEM = R"=====(
     feather.replace()
 </script>
 </script>
+)=====";
+
+const char updatePage[] PROGMEM = R"=====(
+
+<div class="col-md-4">
+    <h2 class="text-center">Firmware Update</h2>
+    <hr>
+    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+        <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
+        <br />
+        <br />
+        <div class="col-md-12">
+            <button type="submit" class="btn btn-outline-primary" onclick="SendTest('json',$('#json').val())"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
+        </div>
+    </form>
+</div>
+<div class="col-md-4">
+<h2 class="text-center">Filesystem Update</h2>
+    <hr>
+    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+        <input type='file' accept='.bin,.bin.gz' name='filesystem'>
+        <br />
+        <br />
+        <div class="col-md-12 text-center">
+            <button type="submit" class="btn btn-outline-primary" onclick="SendTest('json',$('#json').val())"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
+        </div>
+    </form>
+</div>
+
 )=====";

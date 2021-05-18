@@ -413,6 +413,12 @@ void HandleGetTestAreaPage()
 	server.send(200, "text/html", testAreaPage);
 }
 
+void HandleGetFWFSUpdatePage()
+{
+	server.sendHeader("Connection", "close");
+	server.send(200, "text/html", updatePage);
+}
+
 void HandleNotFound()
 {
 	if (server.method() == HTTP_OPTIONS)
@@ -1805,6 +1811,7 @@ void setup()
 	server.on(F("/dash"), HTTP_GET, HandleGetDashPage);
 	server.on(F("/config"), HTTP_GET, HandleGetConfigPage);
 	server.on(F("/testarea"), HTTP_GET, HandleGetTestAreaPage);
+	server.on(F("/fwfsupdate"), HTTP_GET, HandleGetFWFSUpdatePage);
 	server.onNotFound(HandleNotFound);
 
 	server.begin();
