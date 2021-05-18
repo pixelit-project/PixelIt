@@ -13,6 +13,9 @@ const char mainPage[] PROGMEM = R"=====(
         textarea {
             font-size: 12px !important;
         }
+        .custom-control-label::before, .custom-control-label::after {
+            cursor: pointer;
+        }
     </style>
     <title>PixelIt the Matrix Display</title>
 </head>
@@ -267,7 +270,6 @@ const char configPage[] PROGMEM = R"=====(
 </script>
 )=====";
 
-
 const char dashPage[] PROGMEM = R"=====(
 <script>
     connectionStart();
@@ -354,7 +356,6 @@ const char dashPage[] PROGMEM = R"=====(
     <textarea class="form-control" id="log" rows="17" wrap="off" disabled style="font: 60"></textarea>
 </div>
 )=====";
-
 
 const char testAreaPage[] PROGMEM = R"=====(
 <script>
