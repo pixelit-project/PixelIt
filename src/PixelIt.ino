@@ -91,6 +91,7 @@ int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
 int matrixType = 1;
+String note = "";
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -189,6 +190,7 @@ void SaveConfig()
 		json["mbaLuxMax"] = mbaLuxMax;
 		json["matrixBrightness"] = currentMatrixBrightness;
 		json["matrixType"] = matrixType;
+		json["note"] = note;
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
 		json["clockTimeZone"] = clockTimeZone;
@@ -297,6 +299,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("matrixType"))
 	{
 		matrixType = json["matrixType"];
+	}
+
+	if (json.containsKey("note"))
+	{
+		note = json["note"].as<char *>();
 	}
 
 	if (json.containsKey("matrixTempCorrection"))
@@ -1004,22 +1011,23 @@ String GetMatrixInfo()
 
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
-	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
-	root["wifiRSSI"] = String(WiFi.RSSI());
-	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
+	root["note"] = (note.isEmpty() ? "---" : note);
+	root["freeSketchSpace"] = String(ESP.getFreeSketchSpace() / 1024) + " KB";
+	root["wifiRSSI"] = String(WiFi.RSSI()) + " dBm";
+	root["wifiQuality"] = String(GetRSSIasQuality(WiFi.RSSI())) + "%";
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
-	root["freeHeap"] = ESP.getFreeHeap();
+	root["freeHeap"] = String(ESP.getFreeHeap() / 1024) + " KB";
 
 #if defined(ESP8266)
-	root["sketchSize"] = ESP.getSketchSize();
+	root["sketchSize"] = String(ESP.getSketchSize() / 1024) + " KB";
 	root["chipID"] = ESP.getChipId();
 #elif defined(ESP32)
 	root["chipID"] = uint64ToString(ESP.getEfuseMac());
 #endif
 
-	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
-	root["sleepMode"] = sleepMode;
+	root["cpuFreqMHz"] = String(ESP.getCpuFreqMHz()) + " MHz";
+	root["sleepMode"] = (sleepMode ? "On" : "Off");
 
 	String json;
 	root.printTo(json);

@@ -138,6 +138,10 @@ const char configPage[] PROGMEM = R"=====(
         <input type="checkbox" class="custom-control-input" id="bootScreenAktiv">
         <label class="custom-control-label" for="bootScreenAktiv">Bootsceen active</label>
     </div>
+    <div class="form-group">
+        <label for="note">Note</label>
+        <input type="text" class="form-control" id="note">
+    </div>
     <br>
     <h2 class="text-center">Auto brightness</h2>
     <hr>
@@ -277,6 +281,10 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="pixelitVersion">Loading...</td>
                 </tr>
                 <tr>
+                    <td class="font-weight-bold">Note:</td>
+                    <td id="note">Loading...</td>
+                </tr>
+                <tr>
                     <td class="font-weight-bold">Sketch Size:</td>
                     <td id="sketchSize">Loading...</td>
                 </tr>
@@ -309,7 +317,7 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="chipID">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">CPU Freq. in MHz:</td>
+                    <td class="font-weight-bold">CPU Freq.:</td>
                     <td id="cpuFreqMHz">Loading...</td>
                 </tr>
                 <tr>
