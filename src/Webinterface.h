@@ -186,7 +186,7 @@ const char configPage[] PROGMEM = R"=====(
     </div>
      <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="clockWithSeconds">
-        <label class="custom-control-label" for="clockWithSeconds">Clock witch sek</label>
+        <label class="custom-control-label" for="clockWithSeconds">Clock with sek</label>
     </div>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="clockSwitchAktiv">
