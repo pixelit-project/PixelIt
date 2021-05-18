@@ -12,7 +12,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
--   (o0shojo0o) Auto brightness
+-   (o0shojo0o) add auto brightness
 
 ### 0.3.2_beta (2021-05-18)
 
