@@ -91,6 +91,7 @@ int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
 int matrixType = 1;
+String note = "";
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -189,6 +190,7 @@ void SaveConfig()
 		json["mbaLuxMax"] = mbaLuxMax;
 		json["matrixBrightness"] = currentMatrixBrightness;
 		json["matrixType"] = matrixType;
+		json["note"] = note;
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
 		json["clockTimeZone"] = clockTimeZone;
@@ -297,6 +299,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("matrixType"))
 	{
 		matrixType = json["matrixType"];
+	}
+
+	if (json.containsKey("note"))
+	{
+		note = json["note"].as<char *>();
 	}
 
 	if (json.containsKey("matrixTempCorrection"))
@@ -1004,8 +1011,9 @@ String GetMatrixInfo()
 
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
+	root["note"] = note;
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
-	root["wifiRSSI"] = String(WiFi.RSSI());
+	root["wifiRSSI"] = WiFi.RSSI();
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
