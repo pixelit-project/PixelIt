@@ -62,7 +62,7 @@ int mqttRetryCounter = 0;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.2_beta"
+#define VERSION "0.3.3"
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
