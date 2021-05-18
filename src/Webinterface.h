@@ -143,6 +143,26 @@ const char configPage[] PROGMEM = R"=====(
         <input type="checkbox" class="custom-control-input" id="bootScreenAktiv">
         <label class="custom-control-label" for="bootScreenAktiv">Bootsceen active</label>
     </div>
+    <br>
+    <h2 class="text-center">Auto brightness</h2>
+    <hr>
+    <div class="form-inline">              
+        <label for="mbaDimMin" class="col-md-5">Min bright</label> 
+        <label for="mbaDimMax" class="col-md-6 offset-md-1">Max bright</label>
+    </div>
+    <div class="form-inline"> 
+        <input type="number" class="form-control col-md-5 text-center" id="mbaDimMin" value="20" step="1" min="0">            
+        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaDimMax" value="255" step="1" min="0" max="255">
+    </div>
+    <div class="form-inline">              
+        <label for="mbaLuxMin" class="col-md-5">From lux</label> 
+        <label for="mbaLuxMax" class="col-md-5 offset-md-2">To lux</label>
+    </div>
+    <div class="form-inline"> 
+        <input type="number" class="form-control col-md-5 text-center" id="mbaLuxMin" value="0" step="1" min="0">            
+        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaLuxMax" value="400" step="1" min="0">
+    </div> 
+    <br>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="matrixBrightnessAutomatic">
         <label class="custom-control-label" for="matrixBrightnessAutomatic">Auto brightness active</label>
@@ -182,7 +202,7 @@ const char configPage[] PROGMEM = R"=====(
     <hr>
     <div class="form-group">
         <label for="matrixtBrightness">Matrix Brightness</label>
-        <input type="number" class="form-control" id="matrixtBrightness">
+        <input type="number" class="form-control" id="matrixBrightness">
     </div>
     <div class="form-group">
         <label for="scrollTextDefaultDelay">ScrollText Delay</label>

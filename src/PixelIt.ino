@@ -86,8 +86,10 @@ SoftwareSerial softSerial(D7, D8); // RX | TX
 // Matrix Vars
 int currentMatrixBrightness = 127;
 bool matrixBrightnessAutomatic = true;
-int matrixBrightnessMin = 20;
-int matrixBrightnessMax = 100;
+int mbaDimMin = 20;
+int mbaDimMax = 100;
+int mbaLuxMin = 0;
+int mbaLuxMax = 400;
 int matrixType = 1;
 String matrixTempCorrection = "default";
 
@@ -161,6 +163,12 @@ void SaveConfigCallback()
 	shouldSaveConfig = true;
 }
 
+void SetCurrentMatrixBrightness(float newBrightness)
+{
+	currentMatrixBrightness = newBrightness;
+	matrix->setBrightness(currentMatrixBrightness);
+}
+
 void EnteredHotspotCallback(WiFiManager *manager)
 {
 	DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
@@ -175,6 +183,10 @@ void SaveConfig()
 		JsonObject &json = jsonBuffer.createObject();
 
 		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
+		json["mbaDimMin"] = mbaDimMin;
+		json["mbaDimMax"] = mbaDimMax;
+		json["mbaLuxMin"] = mbaLuxMin;
+		json["mbaLuxMax"] = mbaLuxMax;
 		json["matrixBrightness"] = currentMatrixBrightness;
 		json["matrixType"] = matrixType;
 		json["matrixTempCorrection"] = matrixTempCorrection;
@@ -230,96 +242,7 @@ void LoadConfig()
 
 			if (json.success())
 			{
-				if (json.containsKey("matrixBrightnessAutomatic"))
-				{
-					matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
-				}
-
-				if (json.containsKey("matrixBrightness"))
-				{
-					currentMatrixBrightness = json["matrixBrightness"];
-				}
-
-				if (json.containsKey("matrixType"))
-				{
-					matrixType = json["matrixType"];
-				}
-
-				if (json.containsKey("matrixTempCorrection"))
-				{
-					matrixTempCorrection = json["matrixTempCorrection"].as<char *>();
-				}
-
-				if (json.containsKey("ntpServer"))
-				{
-					ntpServer = json["ntpServer"].as<char *>();
-				}
-
-				if (json.containsKey("clockTimeZone"))
-				{
-					clockTimeZone = json["clockTimeZone"];
-				}
-
-				if (json.containsKey("clockColor"))
-				{
-					ColorConverter::HexToRgb(json["clockColor"], clockColorR, clockColorG, clockColorB);
-				}
-
-				if (json.containsKey("clockSwitchAktiv"))
-				{
-					clockSwitchAktiv = json["clockSwitchAktiv"];
-				}
-
-				if (json.containsKey("clockSwitchSec"))
-				{
-					clockSwitchSec = json["clockSwitchSec"];
-				}
-
-				if (json.containsKey("clockWithSeconds"))
-				{
-					clockWithSeconds = json["clockWithSeconds"];
-				}
-
-				if (json.containsKey("scrollTextDefaultDelay"))
-				{
-					scrollTextDefaultDelay = json["scrollTextDefaultDelay"];
-				}
-
-				if (json.containsKey("bootScreenAktiv"))
-				{
-					bootScreenAktiv = json["bootScreenAktiv"];
-				}
-
-				if (json.containsKey("mqttAktiv"))
-				{
-					mqttAktiv = json["mqttAktiv"];
-				}
-
-				if (json.containsKey("mqttUser"))
-				{
-					mqttUser = json["mqttUser"].as<char *>();
-				}
-
-				if (json.containsKey("mqttPassword"))
-				{
-					mqttPassword = json["mqttPassword"].as<char *>();
-				}
-
-				if (json.containsKey("mqttServer"))
-				{
-					mqttServer = json["mqttServer"].as<char *>();
-				}
-
-				if (json.containsKey("mqttMasterTopic"))
-				{
-					mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
-				}
-
-				if (json.containsKey("mqttPort"))
-				{
-					mqttPort = json["mqttPort"];
-				}
-
+				SetConfigVaribles(json);
 				Log("LoadConfig", "Loaded");
 			}
 		}
@@ -334,16 +257,41 @@ void LoadConfig()
 
 void SetConfig(JsonObject &json)
 {
+	SetConfigVaribles(json);
+	SaveConfigCallback();
+	SaveConfig();
+}
 
+void SetConfigVaribles(JsonObject &json)
+{
 	if (json.containsKey("matrixBrightnessAutomatic"))
 	{
 		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
 	}
 
+	if (json.containsKey("mbaDimMin"))
+	{
+		mbaDimMin = json["mbaDimMin"];
+	}
+
+	if (json.containsKey("mbaDimMax"))
+	{
+		mbaDimMax = json["mbaDimMax"];
+	}
+
+	if (json.containsKey("mbaLuxMin"))
+	{
+		mbaLuxMin = json["mbaLuxMin"];
+	}
+
+	if (json.containsKey("mbaLuxMax"))
+	{
+		mbaLuxMax = json["mbaLuxMax"];
+	}
+
 	if (json.containsKey("matrixBrightness"))
 	{
-		currentMatrixBrightness = json["matrixBrightness"];
-		matrix->setBrightness(currentMatrixBrightness);
+		SetCurrentMatrixBrightness(json["matrixBrightness"]);
 	}
 
 	if (json.containsKey("matrixType"))
@@ -425,9 +373,6 @@ void SetConfig(JsonObject &json)
 	{
 		mqttPort = json["mqttPort"];
 	}
-
-	SaveConfigCallback();
-	SaveConfig();
 }
 
 void WifiSetup()
@@ -1922,12 +1867,11 @@ void loop()
 
 		if (matrixBrightnessAutomatic)
 		{
-			float newBrightness = map(currentLux, 0, 300, matrixBrightnessMin, matrixBrightnessMax);
+			float newBrightness = map(currentLux, mbaLuxMin, mbaLuxMax, mbaDimMin, mbaDimMax);
 			if (newBrightness != currentMatrixBrightness)
 			{
-				currentMatrixBrightness = newBrightness;
-				matrix->setBrightness(currentMatrixBrightness);
-				Log(F("Auto Brightnes"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness) + "%");
+				SetCurrentMatrixBrightness(newBrightness);
+				Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness) + "%");
 			}
 		}
 	}
