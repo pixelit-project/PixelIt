@@ -17,6 +17,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
+-   (foorschtbar) added a note field and tweaked dashboard a little bit
 -   (foorschtbar) allow a Hostname as MQTT Server (Broker)
 -   (o0shojo0o) add dashboard.css and pixel.js to repo
 -   (foorschtbar) switches now have the proper mouse pointer
