@@ -1,101 +1,98 @@
 const char mainPage[] PROGMEM = R"=====(
-<!doctype html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
-    <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
-    <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
-    <title>PixelIt the Matrix Display</title>
-</head>
-
-<body>
-    <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
-        <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
-        <ul class="navbar-nav px-3">
-            <li class="nav-item text-nowrap">
-                <div class="text-center nav-link">
-                    Connection: <span id="connectionStatus" class="text-danger">Offline</span>
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
+        <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
+        <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
+        <title>PixelIt the Matrix Display</title>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
+            <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
+            <ul class="navbar-nav px-3">
+                <li class="nav-item text-nowrap">
+                    <div class="text-center nav-link">
+                        Connection: <span id="connectionStatus" class="text-danger">Offline</span>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+        <div class="container-fluid">
+            <div class="row">
+                <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                    <div class="sidebar-sticky">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
+                                    <span data-feather="cpu"></span> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" onclick='ChangePage("config")' href="#">
+                                    <span data-feather="sliders"></span> Options
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" onclick='ChangePage("testarea")' href="#">
+                                    <span data-feather="codepen"></span> Test Area
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
+                                    <span data-feather="upload"></span> Update
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
+                                    <span data-feather="image"></span> Pixel Gallery
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
+                                    <span data-feather="edit"></span> Pixel Creator
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
+                                    <span data-feather="layers"></span> Forum
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
+                                    <span data-feather="pen-tool"></span> Blog
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
+                                    <span data-feather="book-open"></span> Documentation
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
+                                    <span data-feather="github"></span> GitHub
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+                <div class="offset-md-2 col-md-10 row" id="mainContent">
+                    <div class="row col-md-12" id="mainRefresh">
+    
+                    </div>
                 </div>
-            </li>
-        </ul>
-    </nav>
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-                <div class="sidebar-sticky">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
-                                <span data-feather="cpu"></span> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("config")' href="#">
-                                <span data-feather="sliders"></span> Options
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("testarea")' href="#">
-                                <span data-feather="codepen"></span> Test Area
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
-                                <span data-feather="upload"></span> Update
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
-                                <span data-feather="image"></span> Pixel Gallery
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
-                                <span data-feather="edit"></span> Pixel Creator
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
-                                <span data-feather="layers"></span> Forum
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
-                                <span data-feather="pen-tool"></span> Blog
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
-                                <span data-feather="book-open"></span> Documentation
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
-                                <span data-feather="github"></span> GitHub
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            <div class="offset-md-2 col-md-10 row" id="mainContent">
-                <div class="row col-md-12" id="mainRefresh">
-
-                </div>
-            </div>
-        </div>
-        <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
-        </script>
-        <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
-        <script>
-            feather.replace()
-        </script>
-</body>
-
-</html>
+            </div>           
+            <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
+            </script>
+            <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
+            <script>
+                feather.replace()
+            </script>
+        </body>
+    </html>
 )=====";
 
 const char configPage[] PROGMEM = R"=====(
@@ -367,6 +364,23 @@ const char dashPage[] PROGMEM = R"=====(
     <hr>
     <textarea class="form-control" id="log" rows="17" wrap="off" disabled style="font: 60"></textarea>
 </div>
+<div class="modal" tabindex="-1" role="dialog" id="changelog_modal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title" id="changelog_modal_title"></h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="changelog_modal_body">    
+        </div>
+        <div class="modal-footer">
+            <a href="" target="_blank" id="changelog_modal_button" type="button" class="btn btn-primary">Got to download</a>
+          </div>
+      </div>
+    </div>
+  </div>
 )=====";
 
 const char testAreaPage[] PROGMEM = R"=====(
@@ -427,11 +441,9 @@ const char testAreaPage[] PROGMEM = R"=====(
 <script>
     feather.replace()
 </script>
-</script>
 )=====";
 
 const char updatePage[] PROGMEM = R"=====(
-
 <div class="col-md-6">
     <h2 class="text-center">Firmware Update</h2>
     <hr>
@@ -456,5 +468,4 @@ const char updatePage[] PROGMEM = R"=====(
         </div>
     </form>
 </div>
-
 )=====";
