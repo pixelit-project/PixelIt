@@ -82,9 +82,9 @@ const char mainPage[] PROGMEM = R"=====(
                 </div>
             </div>
         </div>
-        <script src="https://cdn.dietru.de/bootstrap.min.js">
+        <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
         </script>
-        <script src="https://cdn.dietru.de/feather.min.js"></script>
+        <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
         <script>
             feather.replace()
         </script>
