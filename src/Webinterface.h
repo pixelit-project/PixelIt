@@ -70,7 +70,7 @@ const char mainPage[] PROGMEM = R"=====(
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
-                                <span data-feather="book-open"></span> Wiki
+                                <span data-feather="book-open"></span> Documentation
                             </a>
                         </li>
                     </ul>
