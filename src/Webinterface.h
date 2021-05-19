@@ -73,6 +73,11 @@ const char mainPage[] PROGMEM = R"=====(
                                 <span data-feather="book-open"></span> Documentation
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
+                                <span data-feather="github"></span> GitHub
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </nav>
