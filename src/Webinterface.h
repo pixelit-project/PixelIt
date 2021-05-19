@@ -6,7 +6,7 @@ const char mainPage[] PROGMEM = R"=====(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
-    <link href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
     <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
     <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
     <title>PixelIt the Matrix Display</title>
