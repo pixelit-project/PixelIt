@@ -419,7 +419,7 @@ const char testAreaPage[] PROGMEM = R"=====(
 
 const char updatePage[] PROGMEM = R"=====(
 
-<div class="col-md-4">
+<div class="col-md-6">
     <h2 class="text-center">Firmware Update</h2>
     <hr>
     <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
@@ -431,7 +431,7 @@ const char updatePage[] PROGMEM = R"=====(
         </div>
     </form>
 </div>
-<div class="col-md-4">
+<div class="col-md-6">
 <h2 class="text-center">Filesystem Update</h2>
     <hr>
     <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
