@@ -5,10 +5,10 @@ const char mainPage[] PROGMEM = R"=====(
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://cdn.dietru.de/bootstrap.min.css">
-    <link href="https://o0shojo0o.github.io/PixelIt/dashboard.css" rel="stylesheet">
-    <script src="https://cdn.dietru.de/jquery-3.3.1.min.js"> </script>
-    <script src="https://o0shojo0o.github.io/PixelIt/pixelit.js"> </script>
+    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
+    <link href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css" rel="stylesheet">
+    <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
+    <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
     <title>PixelIt the Matrix Display</title>
 </head>
 
