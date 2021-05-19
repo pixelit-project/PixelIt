@@ -69,7 +69,7 @@ const char mainPage[] PROGMEM = R"=====(
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="https://wiki.dietru.de/books/pixel-it" target="blank">
+                            <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
                                 <span data-feather="book-open"></span> Wiki
                             </a>
                         </li>
