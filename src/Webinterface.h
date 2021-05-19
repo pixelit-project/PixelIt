@@ -139,13 +139,17 @@ const char configPage[] PROGMEM = R"=====(
             <option value="highpressuresodium">HighPressureSodium</option>
         </select>
     </div>
-    <div class="custom-control custom-switch">
-        <input type="checkbox" class="custom-control-input" id="bootScreenAktiv">
-        <label class="custom-control-label" for="bootScreenAktiv">Bootsceen active</label>
+    <div class="form-group">
+        <label for="hostname">Hostname</label>
+        <input type="text" class="form-control" id="hostname">
     </div>
     <div class="form-group">
         <label for="note">Note</label>
         <input type="text" class="form-control" id="note">
+    </div>
+    <div class="custom-control custom-switch">
+        <input type="checkbox" class="custom-control-input" id="bootScreenAktiv">
+        <label class="custom-control-label" for="bootScreenAktiv">Bootsceen active</label>
     </div>
     <br>
     <h2 class="text-center">Auto brightness</h2>
@@ -283,6 +287,10 @@ const char dashPage[] PROGMEM = R"=====(
                 <tr>
                     <td class="font-weight-bold">PixelIt Version:</td>
                     <td id="pixelitVersion">Loading...</td>
+                </tr>
+                <tr>
+                    <td class="font-weight-bold">Hostname:</td>
+                    <td id="hostname">Loading...</td>
                 </tr>
                 <tr>
                     <td class="font-weight-bold">Note:</td>

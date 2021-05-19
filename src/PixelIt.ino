@@ -92,6 +92,7 @@ int mbaLuxMin = 0;
 int mbaLuxMax = 400;
 int matrixType = 1;
 String note = "";
+String hostname = "PixelIt";
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -191,6 +192,7 @@ void SaveConfig()
 		json["matrixBrightness"] = currentMatrixBrightness;
 		json["matrixType"] = matrixType;
 		json["note"] = note;
+		json["hostname"] = hostname;
 		json["matrixTempCorrection"] = matrixTempCorrection;
 		json["ntpServer"] = ntpServer;
 		json["clockTimeZone"] = clockTimeZone;
@@ -304,6 +306,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("note"))
 	{
 		note = json["note"].as<char *>();
+	}
+
+	if (json.containsKey("hostname"))
+	{
+		hostname = json["hostname"].as<char *>();
 	}
 
 	if (json.containsKey("matrixTempCorrection"))
@@ -965,6 +972,11 @@ String GetConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &root = jsonBuffer.parseObject(buf.get());
 
+		if (!root.containsKey("hostname") || String(root["hostname"].asString()).isEmpty())
+		{
+			root["hostname"] = WiFi.hostname();
+		}
+
 		String json;
 		root.printTo(json);
 
@@ -1018,6 +1030,7 @@ String GetMatrixInfo()
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
 	root["note"] = note;
+	root["hostname"] = WiFi.hostname();
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = WiFi.RSSI();
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -1768,6 +1781,11 @@ void setup()
 	if (bootScreenAktiv)
 	{
 		ShowBootAnimation();
+	}
+
+	if (!hostname.isEmpty())
+	{
+		WiFi.hostname(hostname);
 	}
 
 	// Set config save notify callback
