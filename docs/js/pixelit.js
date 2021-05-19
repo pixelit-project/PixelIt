@@ -320,6 +320,5 @@ function getCurrentGitRelease(){
     fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')
     .then(res => res.json())
     .then(data => { return data[0].tag_name }) 
-    .catch(error => console.error('Error:', error));
-    return
+    .catch(error => console.error('Error:', error));    
 }
