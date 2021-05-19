@@ -7,6 +7,9 @@ textarea {
 body {
     font-size: .875rem;
 }
+.red{
+    color: red;
+}
 .feather {
     width: 16px;
     height: 16px;
