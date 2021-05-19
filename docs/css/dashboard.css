@@ -7,8 +7,9 @@ textarea {
 body {
     font-size: .875rem;
 }
-.red{
+.update{
     color: red;
+    cursor: pointer;
 }
 .feather {
     width: 16px;
