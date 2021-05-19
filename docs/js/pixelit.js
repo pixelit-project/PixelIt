@@ -205,7 +205,8 @@ function ChangePage(_pageName) {
             pageName = 'setScreen';
             break;
         case "dash":
-            currentGitRelease = await getCurrentGitRelease();
+            currentGitRelease = getCurrentGitRelease();
+            console.log(`currentGitRelease: ${currentGitRelease}`);
             break;
     }
 }
@@ -315,7 +316,7 @@ function humanFileSize(bytes, si = false, dp = 1) {
     return bytes.toFixed(dp) + ' ' + units[u];
 }
 
-async function getCurrentGitRelease(){
+function getCurrentGitRelease(){
     fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')
     .then(res => res.json())
     .then(data => { return data[0].tag_name }) 
