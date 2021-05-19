@@ -112,7 +112,7 @@ function RefershData(input) {
             if (pageName == 'dash') {
                 switch (key) {
                     case "pixelitVersion":
-                        val = val != currentGitRelease ? `<pre class="red">${val}<pre>` : val;
+                        val = val != currentGitRelease ? `<i class="red">${val}<i>` : val;
                         break;
                     case "note":
                         if (!val.trim()) {
@@ -205,7 +205,7 @@ function ChangePage(_pageName) {
             pageName = 'setScreen';
             break;
         case "dash":
-            currentGitRelease = getCurrentGitRelease();
+            currentGitRelease = await getCurrentGitRelease();
             break;
     }
 }
@@ -315,7 +315,7 @@ function humanFileSize(bytes, si = false, dp = 1) {
     return bytes.toFixed(dp) + ' ' + units[u];
 }
 
-function getCurrentGitRelease(){
+async function getCurrentGitRelease(){
     fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')
     .then(res => res.json())
     .then(data => { return data[0].tag_name }) 
