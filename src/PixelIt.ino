@@ -974,7 +974,11 @@ String GetConfig()
 
 		if (!root.containsKey("hostname") || String(root["hostname"].asString()).isEmpty())
 		{
+#if defined(ESP8266)
 			root["hostname"] = WiFi.hostname();
+#elif defined(ESP32)
+			root["hostname"] = WiFi.getHostname();
+#endif
 		}
 
 		String json;
@@ -1030,7 +1034,11 @@ String GetMatrixInfo()
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
 	root["note"] = note;
+#if defined(ESP8266)
 	root["hostname"] = WiFi.hostname();
+#elif defined(ESP32)
+	root["hostname"] = WiFi.getHostname();
+#endif
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = WiFi.RSSI();
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
