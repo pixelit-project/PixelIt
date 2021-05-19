@@ -12,6 +12,7 @@ if (ipAddress.includes('localhost')) {
 }
 
 $(function () {
+    getCurrentGitRelease();
     // Akive Menu Button select 
     $('.nav-link').click(function () {
         $('.nav-link').removeClass('active');
@@ -204,10 +205,6 @@ function ChangePage(_pageName) {
         case "testarea":
             pageName = 'setScreen';
             break;
-        case "dash":
-            currentGitRelease = getCurrentGitRelease();
-            console.log(`currentGitRelease: ${currentGitRelease}`);
-            break;
     }
 }
 
@@ -319,6 +316,9 @@ function humanFileSize(bytes, si = false, dp = 1) {
 function getCurrentGitRelease(){
     fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')
     .then(res => res.json())
-    .then(data => { return data[0].tag_name }) 
+    .then(data => {
+        currentGitRelease = data[0].tag_name
+        console.log(`currentGitRelease: ${currentGitRelease}`); 
+    }) 
     .catch(error => console.error('Error:', error));    
 }
