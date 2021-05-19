@@ -113,7 +113,7 @@ function RefershData(input) {
             if (pageName == 'dash') {
                 switch (key) {
                     case "pixelitVersion":
-                        val = val != currentGitRelease ? `<i class="red">${val}<i>` : val;
+                        val = val != currentGitRelease ? `<i class="red">${val} update available!<i>` : val;
                         break;
                     case "note":
                         if (!val.trim()) {
