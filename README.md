@@ -17,6 +17,9 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) add GitHub link to dashboard
+-   (o0shojo0o) fix links in dashboard
+-   (o0shojo0o) transferred the other stuff from cdn to repo
 -   (foorschtbar) tweaked dashboard a little bit
 -   (foorschtbar) added a note field 
 -   (foorschtbar) allow a Hostname as MQTT Server (Broker)
