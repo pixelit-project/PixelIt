@@ -131,7 +131,10 @@ function RefershData(input) {
                     case "note":
                         if (!val.trim()) {
                             val = "---";
-                        } else if (!titlechanged) {
+                        }
+                        break;
+                    case "hostname":
+                        if (val.trim() && !titlechanged) {
                             document.title += " [" + val + "]";
                             titlechanged = true;
                         }
