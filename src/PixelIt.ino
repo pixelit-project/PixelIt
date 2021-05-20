@@ -972,7 +972,7 @@ String GetConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &root = jsonBuffer.parseObject(buf.get());
 
-		if (!root.containsKey("hostname") || String(root["hostname"].asString()).isEmpty())
+		if (!root.containsKey("hostname") || String(root["hostname"].as<char *>()).isEmpty())
 		{
 #if defined(ESP8266)
 			root["hostname"] = WiFi.hostname();
