@@ -22,8 +22,8 @@ const char mainPage[] PROGMEM = R"=====(
             </ul>
         </nav>
         <div class="container-fluid">
-            <div class="row">
-                <nav class="col-md-2 d-none d-md-block bg-light sidebar sidebar-sticky">            
+            <div class="row">            
+                <nav class="col-md-2 d-none d-md-block bg-light sidebar">                 
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
@@ -75,8 +75,8 @@ const char mainPage[] PROGMEM = R"=====(
                                 <span data-feather="github"></span> GitHub
                             </a>
                         </li>
-                    </ul>
-                </nav>
+                    </ul>     
+                </nav>           
                 <div class="offset-md-2 col-md-10 row" id="mainContent">
                     <div class="row col-md-12" id="mainRefresh">
     
