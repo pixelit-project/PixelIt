@@ -306,7 +306,7 @@ function checkUpdateavailable(curentVersion) {
 
 function showChangelog(){
     $('#changelog_modal_title').html(`Changelog for version ${gitData.tag_name}`);
-    $('#changelog_modal_body').html(gitData.body.replaceAll('\r\n','<br>'));
+    $('#changelog_modal_body').html(`<ul>${gitData.body.replaceAll('-','<li>').replaceAll('\r\n','</li>')}</li></ul>`);
     $('#changelog_modal_button').attr("href", gitData.html_url)
     $('#changelog_modal').modal('show')           
 }
