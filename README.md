@@ -17,6 +17,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) bugfix for Firefox
 -   (foorschtbar) added a customizable hostname
 -   (o0shojo0o) add update notification to dashboard
 -   (o0shojo0o) add GitHub link to dashboard

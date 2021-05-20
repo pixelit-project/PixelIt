@@ -23,68 +23,66 @@ const char mainPage[] PROGMEM = R"=====(
         </nav>
         <div class="container-fluid">
             <div class="row">
-                <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-                    <div class="sidebar-sticky">
-                        <ul class="nav flex-column">
-                            <li class="nav-item">
-                                <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
-                                    <span data-feather="cpu"></span> Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" onclick='ChangePage("config")' href="#">
-                                    <span data-feather="sliders"></span> Options
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" onclick='ChangePage("testarea")' href="#">
-                                    <span data-feather="codepen"></span> Test Area
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
-                                    <span data-feather="upload"></span> Update
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
-                                    <span data-feather="image"></span> Pixel Gallery
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
-                                    <span data-feather="edit"></span> Pixel Creator
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
-                                    <span data-feather="layers"></span> Forum
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
-                                    <span data-feather="pen-tool"></span> Blog
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
-                                    <span data-feather="book-open"></span> Documentation
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
-                                    <span data-feather="github"></span> GitHub
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+                <nav class="col-md-2 d-none d-md-block bg-light sidebar sidebar-sticky">            
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
+                                <span data-feather="cpu"></span> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick='ChangePage("config")' href="#">
+                                <span data-feather="sliders"></span> Options
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick='ChangePage("testarea")' href="#">
+                                <span data-feather="codepen"></span> Test Area
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
+                                <span data-feather="upload"></span> Update
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
+                                <span data-feather="image"></span> Pixel Gallery
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
+                                <span data-feather="edit"></span> Pixel Creator
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
+                                <span data-feather="layers"></span> Forum
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
+                                <span data-feather="pen-tool"></span> Blog
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
+                                <span data-feather="book-open"></span> Documentation
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
+                                <span data-feather="github"></span> GitHub
+                            </a>
+                        </li>
+                    </ul>
                 </nav>
                 <div class="offset-md-2 col-md-10 row" id="mainContent">
                     <div class="row col-md-12" id="mainRefresh">
     
                     </div>
                 </div>
-            </div>           
+            </div>
             <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
             </script>
             <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
