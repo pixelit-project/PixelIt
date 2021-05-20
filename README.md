@@ -15,7 +15,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.4 (2021-05-20)
 
 -   (foorschtbar) improved MQTT reconnect
 -   (o0shojo0o) support decimal number input for UTC
