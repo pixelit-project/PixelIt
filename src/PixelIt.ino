@@ -1747,7 +1747,7 @@ void setup()
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
 	}
-	else if (userColorTemp != UncorrectedColor)
+	else if (userColorTemp != UncorrectedTemperature)
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
 	}
@@ -1858,18 +1858,18 @@ void loop()
 			if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
 			{
 				mqttLastReconnectAttempt = millis();
-				
+
 				// try to reconnect
 				if (MQTTreconnect())
 				{
 					mqttLastReconnectAttempt = 0;
 				}
 			}
-			
-		} else {
+		}
+		else
+		{
 			client.loop();
 		}
-
 	}
 
 	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
