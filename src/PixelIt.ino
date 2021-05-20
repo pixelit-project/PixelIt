@@ -43,8 +43,8 @@ String mqttPassword = "";
 String mqttServer = "";
 String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
-int mqttRetryCounter = 0;
-#define MQTT_MAX_RETRYS 3
+unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
+const int MQTT_RECONNECT_INTERVAL = 5000;
 //#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
@@ -91,8 +91,8 @@ int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
 int matrixType = 1;
-String note = "";
-String hostname = "PixelIt";
+String note;
+String hostname;
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -972,15 +972,6 @@ String GetConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &root = jsonBuffer.parseObject(buf.get());
 
-		if (!root.containsKey("hostname") || String(root["hostname"].as<char *>()).isEmpty())
-		{
-#if defined(ESP8266)
-			root["hostname"] = WiFi.hostname();
-#elif defined(ESP32)
-			root["hostname"] = WiFi.getHostname();
-#endif
-		}
-
 		String json;
 		root.printTo(json);
 
@@ -1034,11 +1025,7 @@ String GetMatrixInfo()
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
 	root["note"] = note;
-#if defined(ESP8266)
-	root["hostname"] = WiFi.hostname();
-#elif defined(ESP32)
-	root["hostname"] = WiFi.getHostname();
-#endif
+	root["hostname"] = hostname;
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = WiFi.RSSI();
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -1418,50 +1405,40 @@ void DrawWeekDay()
 	}
 }
 
-void MqttReconnect()
+boolean MQTTreconnect()
 {
-	// Loop until we're reconnected
-	while (!client.connected() && mqttRetryCounter < MQTT_MAX_RETRYS)
-	{
-		bool connected = false;
-		if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
-		{
-			Log(F("MqttReconnect"), F("MQTT connect to server with User and Password"));
-			connected = client.connect(("PixelIt_" + GetChipID()).c_str(), mqttUser.c_str(), mqttPassword.c_str(), "state", 0, true, "diconnected");
-		}
-		else
-		{
-			Log(F("MqttReconnect"), F("MQTT connect to server without User and Password"));
-			connected = client.connect(("PixelIt_" + GetChipID()).c_str(), "state", 0, true, "diconnected");
-		}
 
-		// Attempt to connect
-		if (connected)
-		{
-			Log(F("MqttReconnect"), F("MQTT connected!"));
-			// ... and resubscribe
-			client.subscribe((mqttMasterTopic + "setScreen").c_str());
-			client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
-			client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
-			client.subscribe((mqttMasterTopic + "getConfig").c_str());
-			client.subscribe((mqttMasterTopic + "setConfig").c_str());
-			// ... and publish
-			client.publish((mqttMasterTopic + "state").c_str(), "connected");
-		}
-		else
-		{
-			Log(F("MqttReconnect"), F("MQTT not connected!"));
-			Log(F("MqttReconnect"), F("Wait 5 seconds before retrying...."));
-			mqttRetryCounter++;
-			// Wait 5 seconds before retrying
-			delay(5000);
-		}
+	bool connected = false;
+	if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
+	{
+		Log(F("MQTTreconnect"), F("MQTT connecting to broker with user and password"));
+		connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), "state", 0, true, "diconnected");
+	}
+	else
+	{
+		Log(F("MQTTreconnect"), F("MQTT connecting to broker without user and password"));
+		connected = client.connect(hostname.c_str(), "state", 0, true, "diconnected");
 	}
 
-	if (mqttRetryCounter >= MQTT_MAX_RETRYS)
+	// Attempt to connect
+	if (connected)
 	{
-		Log(F("MqttReconnect"), F("No connection to MQTT-Server, MQTT temporarily deactivated!"));
+		Log(F("MQTTreconnect"), F("MQTT connected!"));
+		// ... and resubscribe
+		client.subscribe((mqttMasterTopic + "setScreen").c_str());
+		client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
+		client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
+		client.subscribe((mqttMasterTopic + "getConfig").c_str());
+		client.subscribe((mqttMasterTopic + "setConfig").c_str());
+		// ... and publish
+		client.publish((mqttMasterTopic + "state").c_str(), "connected");
 	}
+	else
+	{
+		Log(F("MQTTreconnect"), F("MQTT connect failed! Retry in a few seconds..."));
+	}
+
+	return connected;
 }
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -1770,7 +1747,7 @@ void setup()
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
 	}
-	else if (userColorTemp != UncorrectedColor)
+	else if (userColorTemp != UncorrectedTemperature)
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
 	}
@@ -1791,10 +1768,12 @@ void setup()
 		ShowBootAnimation();
 	}
 
-	if (!hostname.isEmpty())
+	// Hostname
+	if (hostname.isEmpty())
 	{
-		WiFi.hostname(hostname);
+		hostname = "PixelIt";
 	}
+	WiFi.hostname(hostname);
 
 	// Set config save notify callback
 	wifiManager.setSaveConfigCallback(SaveConfigCallback);
@@ -1871,13 +1850,26 @@ void loop()
 	server.handleClient();
 	webSocket.loop();
 
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS)
+	if (mqttAktiv == true)
 	{
 		if (!client.connected())
 		{
-			MqttReconnect();
+			// MQTT connect
+			if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
+			{
+				mqttLastReconnectAttempt = millis();
+
+				// try to reconnect
+				if (MQTTreconnect())
+				{
+					mqttLastReconnectAttempt = 0;
+				}
+			}
 		}
-		client.loop();
+		else
+		{
+			client.loop();
+		}
 	}
 
 	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
@@ -1955,12 +1947,12 @@ void SendMatrixInfo(bool force)
 	String matrixInfo;
 
 	// Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		matrixInfo = GetMatrixInfo();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetMatrixInfo != matrixInfo)
+	if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
 	{
 		client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
 	}
@@ -1989,12 +1981,12 @@ void SendLDR(bool force)
 	String luxSensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		luxSensor = GetLuxSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetLuxSensor != luxSensor)
+	if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
 	{
 		client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
 	}
@@ -2023,12 +2015,12 @@ void SendDHT(bool force)
 	String dhtSensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		dhtSensor = GetDHTSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetDHTSensor != dhtSensor)
+	if (mqttAktiv == true && client.connected() && oldGetDHTSensor != dhtSensor)
 	{
 		client.publish((mqttMasterTopic + "dhtsensor").c_str(), dhtSensor.c_str(), true);
 	}
