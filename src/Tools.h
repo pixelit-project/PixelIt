@@ -1,32 +1,32 @@
 /// <summary>
 /// Adds a leading 0 to a number if it is smaller than 10
 /// </summary>
-String IntFormat(int _int)
+String IntFormat(int inputInt)
 {
-	if (_int < 10)
+	if (inputInt < 10)
 	{
-		return "0" + String(_int);
+		return "0" + String(inputInt);
 	}
 
-	return String(_int);
+	return String(inputInt);
 }
 
 /// <summary>
 /// Returns 1 hour in daylight saving time and outside 0
 /// </summary>
-int DSToffset(time_t _date, int _clockTimeZone)
+int DSToffset(time_t date, float clockTimeZone)
 {
 	bool _summerTime;
 
-	if (month(_date) < 3 || month(_date) > 10)
+	if (month(date) < 3 || month(date) > 10)
 	{
 		_summerTime = false; // no summertime in Jan, Feb, Nov, Dec
 	}
-	else if (month(_date) > 3 && month(_date) < 10)
+	else if (month(date) > 3 && month(date) < 10)
 	{
 		_summerTime = true; // Summertime in Apr, May, Jun, Jul, Aug, Sep
 	}
-	else if ((month(_date) == 3 && (hour(_date) + 24 * day(_date)) >= (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 4) % 7))) || (month(_date) == 10 && (hour(_date) + 24 * day(_date))) < (1 + String(_clockTimeZone).toInt() + 24 * (31 - (5 * year(_date) / 4 + 1) % 7)))
+	else if ((month(date) == 3 && (hour(date) + 24 * day(date)) >= (1 + clockTimeZone + 24 * (31 - (5 * year(date) / 4 + 4) % 7))) || (month(date) == 10 && (hour(date) + 24 * day(date))) < (1 + clockTimeZone + 24 * (31 - (5 * year(date) / 4 + 1) % 7)))
 	{
 		_summerTime = true;
 	}
@@ -40,11 +40,11 @@ int DSToffset(time_t _date, int _clockTimeZone)
 /// <summary>
 /// Checks if it is a valid IP address
 /// </summary>
-boolean isIP(String _str)
+boolean isIP(String str)
 {
-	for (char i = 0; i < _str.length(); i++)
+	for (char i = 0; i < str.length(); i++)
 	{
-		if (!(isDigit(_str.charAt(i)) || _str.charAt(i) == '.'))
+		if (!(isDigit(str.charAt(i)) || str.charAt(i) == '.'))
 		{
 			return false;
 		}
@@ -55,36 +55,36 @@ boolean isIP(String _str)
 /// <summary>
 /// Convert UTF8 byte to ASCII
 /// </summary>
-byte Utf8ToAscii(byte _ascii)
+byte Utf8ToAscii(byte ascii)
 {
-	static byte _thisByte;
+	static byte thisByte;
 
-	if (_ascii < 128)
+	if (ascii < 128)
 	{
-		_thisByte = 0;
-		return (_ascii);
+		thisByte = 0;
+		return (ascii);
 	}
 
-	byte last = _thisByte;
-	_thisByte = _ascii;
-	byte _result = 0;
+	byte last = thisByte;
+	thisByte = ascii;
+	byte result = 0;
 
 	switch (last)
 	{
 	case 0xC2:
-		_result = _ascii - 34;
+		result = ascii - 34;
 		break;
 	case 0xC3:
-		_result = (_ascii | 0xC0) - 34;
+		result = (ascii | 0xC0) - 34;
 		break;
 	case 0x82:
-		if (_ascii == 0xAC)
+		if (ascii == 0xAC)
 		{
-			_result = (0xEA);
+			result = (0xEA);
 		}
 		break;
 	}
-	return _result;
+	return result;
 }
 
 /// <summary>
@@ -92,19 +92,19 @@ byte Utf8ToAscii(byte _ascii)
 /// </summary>
 String Utf8ToAscii(String _str)
 {
-	String _result = "";
-	char _thisChar;
+	String result = "";
+	char thisChar;
 
 	for (unsigned int i = 0; i < _str.length(); i++)
 	{
-		_thisChar = Utf8ToAscii(_str.charAt(i));
+		thisChar = Utf8ToAscii(_str.charAt(i));
 
-		if (_thisChar != 0)
+		if (thisChar != 0)
 		{
-			_result += _thisChar;
+			result += thisChar;
 		}
 	}
-	return _result;
+	return result;
 }
 
 String uint64ToString(uint64_t input)

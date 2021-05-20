@@ -117,7 +117,7 @@ bool clockWithSeconds = false;
 int clockSwitchSec = 7;
 int clockCounterClock = 0;
 int clockCounterDate = 0;
-int clockTimeZone = 1;
+float clockTimeZone = 1;
 time_t clockLastUpdate;
 uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 
@@ -325,7 +325,7 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("clockTimeZone"))
 	{
-		clockTimeZone = json["clockTimeZone"];
+		clockTimeZone = json["clockTimeZone"].as<float>();
 	}
 
 	if (json.containsKey("clockColor"))
@@ -2086,7 +2086,7 @@ time_t getNtpTime()
 			secsSince1900 |= (time_t)packetBuffer[42] << 8;
 			secsSince1900 |= (time_t)packetBuffer[43];
 			time_t secsSince1970 = secsSince1900 - 2208988800UL;
-			int totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
+			float totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
 		}
 		yield();
