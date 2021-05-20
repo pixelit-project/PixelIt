@@ -95,7 +95,7 @@ function RefershData(input) {
             if (pageName == 'dash') {
                 switch (key) {
                     case "pixelitVersion":                                                
-                            jsonObj[key] = checkUpdateavailable(jsonObj[key]) ? `<i class="update" onclick="showChanglog();">${jsonObj[key]} update available!</i>  <a href="#" onclick="showChanglog();"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></a>` : jsonObj[key];                                       
+                            jsonObj[key] = checkUpdateavailable(jsonObj[key]) ? `<i class="update" onclick="showChangelog();">${jsonObj[key]} update available!</i>  <a href="#" onclick="showChangelog();"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></a>` : jsonObj[key];                                       
                         break;
                     case "note":
                         if (!jsonObj[key].trim()) {
@@ -304,12 +304,11 @@ function checkUpdateavailable(curentVersion) {
     return false;
 }
 
-function showChanglog(){
+function showChangelog(){
     $('#changelog_modal_title').html(`Changelog for version ${gitData.tag_name}`);
     $('#changelog_modal_body').html(gitData.body.replaceAll('\r\n','<br>'));
     $('#changelog_modal_button').attr("href", gitData.html_url)
-    $('#changelog_modal').modal('show')
-           
+    $('#changelog_modal').modal('show')           
 }
 
 async function getCurrentGitReleaseData() {
