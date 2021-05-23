@@ -7,7 +7,9 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 [Docu](https://docs.bastelbunker.de/pixelit/) |
 [Forum](https://forum.bastelbunker.de/t/pixel-it) |
-[Blog](https://www.bastelbunker.de/pixel-it/)
+[Blog](https://www.bastelbunker.de/pixel-it/) | 
+[Telegram](https://t.me/pixelitdisplay) | 
+[Discord](https://discord.gg/JHE9P9zczW)
 
 ## Changelog
 
