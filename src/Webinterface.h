@@ -24,7 +24,7 @@ const char mainPage[] PROGMEM = R"=====(
         <div class="container-fluid">
             <div class="row">            
                 <nav class="col-md-2 d-none d-md-block bg-light sidebar">                 
-                    <ul class="nav flex-column">#
+                    <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
                                 <span data-feather="cpu"></span> Dashboard
