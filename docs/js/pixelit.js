@@ -311,15 +311,12 @@ function showChangelog(){
     $('#changelog_modal').modal('show')           
 }
 
-function createDonwloadStats(){
-    const totalDonwloads = [];
+function createDownloadStats(){
     let html = '';
-
     for(const key in gitData) {
         const assets = gitData[key].assets;
         const totalDownloads = assets.reduce((result, x) => result + x.download_count, 0);
         const readmeLink = `https://github.com/o0shojo0o/PixelIt#${gitData[key].name.replaceAll('.','')}-${gitData[key].published_at.split('T')[0]}`;
-
         html+= `<li><a href='${readmeLink}' target='_blank'><b>Version ${gitData[key].name}</b> - ${gitData[key].published_at.split('T')[0]}</a> - [${totalDownloads}]</li>`;
         html+= `<ul>`;
         for(const kkey in assets){        
