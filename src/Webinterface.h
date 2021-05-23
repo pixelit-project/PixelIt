@@ -24,7 +24,7 @@ const char mainPage[] PROGMEM = R"=====(
         <div class="container-fluid">
             <div class="row">            
                 <nav class="col-md-2 d-none d-md-block bg-light sidebar">                 
-                    <ul class="nav flex-column">
+                    <ul class="nav flex-column">#
                         <li class="nav-item">
                             <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
                                 <span data-feather="cpu"></span> Dashboard
@@ -442,28 +442,42 @@ const char testAreaPage[] PROGMEM = R"=====(
 )=====";
 
 const char updatePage[] PROGMEM = R"=====(
-<div class="col-md-6">
-    <h2 class="text-center">Firmware Update</h2>
-    <hr>
-    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-        <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
-        <br />
-        <br />
-        <div class="col-md-12">
-            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
+    <script>
+        connectionStart();
+    </script>
+    <div class="col-md-3">
+        <h2 class="text-center">Firmware Update</h2>
+        <hr>
+        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+            <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
+            <br />
+            <br />
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-3 offset-1">
+        <h2 class="text-center">Filesystem Update</h2>
+        <hr>
+        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+            <input type='file' accept='.bin,.bin.gz' name='filesystem'>
+            <br />
+            <br />
+            <div class="col-md-12 text-center">
+                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="col-md-4 offset-1">
+        <h2 class="text-center">Download Stats</h2>
+        <hr />
+        <div class="alert alert-secondary d-flex justify-content-center">
+            <ul id="downloadStats">           
+            </ul>          
         </div>
-    </form>
-</div>
-<div class="col-md-6">
-<h2 class="text-center">Filesystem Update</h2>
-    <hr>
-    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-        <input type='file' accept='.bin,.bin.gz' name='filesystem'>
-        <br />
-        <br />
-        <div class="col-md-12 text-center">
-            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
-        </div>
-    </form>
-</div>
+    <script>
+        createDownloadStats();
+    </script>
 )=====";

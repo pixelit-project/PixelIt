@@ -15,6 +15,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) download statistics added to the update page
+
 ### 0.3.4 (2021-05-20)
 
 -   (foorschtbar) improved MQTT reconnect

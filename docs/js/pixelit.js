@@ -297,23 +297,44 @@ function humanFileSize(bytes, si = false, dp = 1) {
 }
 
 function checkUpdateavailable(curentVersion) {    
-    if (gitData && gitData.tag_name){
-        return curentVersion != gitData.tag_name;
+    if (gitData && gitData[0] && gitData[0].name){
+        return curentVersion != gitData[0].name;
     }
     getCurrentGitReleaseData();
     return false;
 }
 
 function showChangelog(){
-    $('#changelog_modal_title').html(`Changelog for version ${gitData.tag_name}`);
-    $('#changelog_modal_body').html(`<ul>${gitData.body.replaceAll('-','<li>').replaceAll('\r\n','</li>')}</li></ul>`);
-    $('#changelog_modal_button').attr("href", gitData.html_url)
+    $('#changelog_modal_title').html(`Changelog for version ${gitData[0].name}`);
+    $('#changelog_modal_body').html(`<ul>${gitData[0].body.replaceAll('-','<li>').replaceAll('\r\n','</li>')}</li></ul>`);
+    $('#changelog_modal_button').attr("href", gitData[0].html_url)
     $('#changelog_modal').modal('show')           
+}
+
+function createDonwloadStats(){
+    const totalDonwloads = [];
+    let html = '';
+
+    for(const key in gitData) {
+        const assets = gitData[key].assets;
+        const totalDownloads = assets.reduce((result, x) => result + x.download_count, 0);
+        const readmeLink = `https://github.com/o0shojo0o/PixelIt#${gitData[key].name.replaceAll('.','')}-${gitData[key].published_at.split('T')[0]}`;
+
+        html+= `<li><a href='${readmeLink}' target='_blank'><b>Version ${gitData[key].name}</b> - ${gitData[key].published_at.split('T')[0]}</a> - [${totalDownloads}]</li>`;
+        html+= `<ul>`;
+        for(const kkey in assets){        
+            html+= `<li>${assets[kkey].name.replace('firmware_','').replace('.bin','').toLowerCase()} - [${assets[kkey].download_count}]</li>`;
+        }
+        html+= `</ul>`;   
+        html+= `<br />`;           
+    }
+
+    $("#downloadStats").html(html);
 }
 
 async function getCurrentGitReleaseData() {
     try {
-        gitData = (await(await fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')).json())[0];
+        gitData = (await(await fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')).json());       
         console.log('getCurrentGitReleaseData: successful');
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);  
