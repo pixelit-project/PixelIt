@@ -7,8 +7,8 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 [Docu](https://docs.bastelbunker.de/pixelit/) |
 [Forum](https://forum.bastelbunker.de/t/pixel-it) |
-[Blog](https://www.bastelbunker.de/pixel-it/) | 
-[Telegram](https://t.me/pixelitdisplay) | 
+[Blog](https://www.bastelbunker.de/pixel-it/) |
+[Telegram](https://t.me/pixelitdisplay) |
 [Discord](https://discord.gg/JHE9P9zczW)
 
 ## Changelog
@@ -19,6 +19,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) extension of the API with the call setGpio
 -   (o0shojo0o) download statistics added to the update page
 
 ### 0.3.4 (2021-05-20)
