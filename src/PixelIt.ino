@@ -36,6 +36,15 @@
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
+class SetGPIO
+{
+public:
+	int gpio;
+	ulong resetMillis;
+};
+#define SET_GPIO_SIZE 8
+SetGPIO setGPIOReset[SET_GPIO_SIZE];
+
 //// MQTT Config
 bool mqttAktiv = false;
 String mqttUser = "";
@@ -638,6 +647,55 @@ void CreateFrames(JsonObject &json)
 	{
 		logMessage += F("Brightness Control, ");
 		currentMatrixBrightness = json["brightness"];
+	}
+
+	// Set GPIO {"setGpio": {"gpio":"14",set":ture,duration:1000}}
+	if (json.containsKey("setGpio"))
+	{
+		logMessage += F("Set Gpio, ");
+		if (json["setGpio"]["set"].is<bool>() && json["setGpio"]["gpio"].is<uint8_t>())
+		{
+			//Todo set timeout?!
+			uint8_t gpio = json["setGpio"]["gpio"].as<uint8_t>();
+
+			// If the GPIO is already present in the array?
+			// has been found, this is to be replaced.
+			if (json["setGpio"]["duration"].is<ulong>())
+			{
+				int arrayIndex = -1;
+				for (int i = 0; i < SET_GPIO_SIZE; i++)
+				{
+					if (setGPIOReset[i].gpio == gpio)
+					{
+						arrayIndex = i;
+						break;
+					}
+				}
+				// Search free place in array.
+				if (arrayIndex == -1)
+				{
+					for (int i = 0; i < SET_GPIO_SIZE; i++)
+					{
+						if (setGPIOReset[i].gpio == -1)
+						{
+							arrayIndex = i;
+							break;
+						}
+					}
+				}
+				// Save data in array for the reset.
+				setGPIOReset[arrayIndex].gpio = gpio;
+				setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
+				Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
+			}
+			else
+			{
+				Log(F("SetGPIO"), "GPIO: " + String(gpio) + ", Value: " + json["setGpio"]["set"].as<char *>());
+			}
+			// Set GPIO
+			pinMode(gpio, OUTPUT);
+			digitalWrite(gpio, json["setGpio"]["set"].as<bool>());
+		}
 	}
 
 	// Sound
@@ -1721,6 +1779,13 @@ void setup()
 		Serial.println(F("Failed to mount FS"));
 	}
 
+	// Init SetGPIO Array
+	for (int i = 0; i < SET_GPIO_SIZE; i++)
+	{
+		setGPIOReset[i].gpio = -1;
+		setGPIOReset[i].resetMillis = -1;
+	}
+
 	// Matix Type 1
 	if (matrixType == 1)
 	{
@@ -1849,6 +1914,21 @@ void loop()
 
 	server.handleClient();
 	webSocket.loop();
+
+	// Reset GPIO based on the array, as far as something is present in the array.
+	for (int i = 0; i < SET_GPIO_SIZE; i++)
+	{
+		if (setGPIOReset[i].gpio != -1)
+		{
+			if (setGPIOReset[i].resetMillis <= millis())
+			{
+				Log(F("ResetSetGPIO"), "Pos: " + String(i) + ", GPIO: " + String(setGPIOReset[i].gpio) + ", Value: false");
+				digitalWrite(setGPIOReset[i].gpio, false);
+				setGPIOReset[i].gpio = -1;
+				setGPIOReset[i].resetMillis = -1;
+			}
+		}
+	}
 
 	if (mqttAktiv == true)
 	{
