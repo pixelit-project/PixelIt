@@ -42,7 +42,7 @@ public:
 	int gpio;
 	ulong resetMillis;
 };
-#define SET_GPIO_SIZE 8
+#define SET_GPIO_SIZE 4
 SetGPIO setGPIOReset[SET_GPIO_SIZE];
 
 //// MQTT Config
@@ -683,10 +683,18 @@ void CreateFrames(JsonObject &json)
 						}
 					}
 				}
-				// Save data in array for the reset.
-				setGPIOReset[arrayIndex].gpio = gpio;
-				setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
-				Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
+
+				if (arrayIndex == -1)
+				{
+					Log(F("SetGPIO"), F("Error: no free place in array found!"));
+				}
+				else
+				{
+					// Save data in array for the reset.
+					setGPIOReset[arrayIndex].gpio = gpio;
+					setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
+					Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
+				}
 			}
 			else
 			{
