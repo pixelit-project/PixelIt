@@ -649,13 +649,12 @@ void CreateFrames(JsonObject &json)
 		currentMatrixBrightness = json["brightness"];
 	}
 
-	// Set GPIO {"setGpio": {"gpio":"14",set":ture,duration:1000}}
+	// Set GPIO
 	if (json.containsKey("setGpio"))
 	{
 		logMessage += F("Set Gpio, ");
 		if (json["setGpio"]["set"].is<bool>() && json["setGpio"]["gpio"].is<uint8_t>())
 		{
-			//Todo set timeout?!
 			uint8_t gpio = json["setGpio"]["gpio"].as<uint8_t>();
 
 			// If the GPIO is already present in the array?
