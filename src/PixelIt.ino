@@ -71,7 +71,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.4"
+#define VERSION "0.3.5"
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;

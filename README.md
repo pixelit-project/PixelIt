@@ -17,7 +17,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.5 (2021-05-26)
 
 -   (o0shojo0o) extension of the API with the call setGpio
 -   (o0shojo0o) download statistics added to the update page
