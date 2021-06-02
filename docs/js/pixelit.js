@@ -332,7 +332,7 @@ function createDownloadStats(){
 async function getCurrentGitReleaseData() {
     try {
         gitData = (await(await fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')).json());       
-        console.log('getCurrentGitReleaseData: successful');
+        console.log('getCurrentGitReleaseData: successfull');
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);  
     }
