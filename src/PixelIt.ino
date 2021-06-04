@@ -13,11 +13,9 @@
 
 #include <Arduino.h>
 // BME Sensor
-#include <SlowSoftWire.h>
-#include <SPI.h>
+#include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-//#include <BME280_t.h>
 // WiFi & Web
 #include <WebSocketsServer.h>
 #include <WiFiClient.h>
@@ -89,8 +87,11 @@ CRGB leds[NUMMATRIX];
 
 #define VERSION "0.3.5"
 
-SlowSoftWire Wire2 = SlowSoftWire(I2C_SDA, I2C_SCL);
-//BME280<> BMESensor();
+#if defined(ESP32)
+TwoWire twowire(BME280_ADDRESS_ALTERNATE);
+#else
+TwoWire twowire;
+#endif
 Adafruit_BME280 bme;
 
 FastLED_NeoMatrix *matrix;
@@ -1087,15 +1088,9 @@ String GetSensor()
 
 	if (tempSensor == TempSensor_BME280)
 	{
-
 		root["temperature"] = bme.readTemperature();
 		root["humidity"] = bme.readHumidity();
 		root["pressure"] = bme.readPressure() / 100.0F;
-
-		//BMESensor.refresh();
-		// root["temperature"] = roundf( BMESensor.temperature);
-		// root["humidity"] = round(BMESensor.humidity);
-		// root["pressure"] = roundf(BMESensor.pressure / 100.0F);
 	}
 	else if (tempSensor == TempSensor_DHT)
 	{
@@ -1811,7 +1806,6 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-
 void setup()
 {
 
@@ -1841,10 +1835,10 @@ void setup()
 	}
 
 	// Temp Sensors
-
-	if (bme.begin(BME280_ADDRESS_ALTERNATE, &Wire2))
+	twowire.begin(I2C_SDA, I2C_SCL);
+	if (bme.begin(BME280_ADDRESS_ALTERNATE, &twowire))
 	{
-		Log(F("Setup"), F("BME started"));
+		Log(F("Setup"), F("BME280 started"));
 		tempSensor = TempSensor_BME280;
 	}
 	else
@@ -1854,6 +1848,10 @@ void setup()
 		{
 			Log(F("Setup"), F("DHT started"));
 			tempSensor = TempSensor_DHT;
+		}
+		else
+		{
+			Log(F("Setup"), F("No BME or DHT Sensor found"));
 		}
 	}
 
