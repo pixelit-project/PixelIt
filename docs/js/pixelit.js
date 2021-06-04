@@ -83,51 +83,67 @@ function RefershData(input) {
         logArea.scrollTop(logArea[0].scrollHeight);
     } else {
         for (const key in jsonObj) {
+            value = jsonObj[key];
             // Config Json
             if (pageName == 'config') {
-                if (typeof jsonObj[key] === 'boolean') {
-                    $("#" + key).prop('checked', jsonObj[key]);
+                if (typeof value === 'boolean') {
+                    $("#" + key).prop('checked', value);
                 } else {
-                    $("#" + key).val(jsonObj[key].toString());
+                    $("#" + key).val(value.toString());
                 }
             }
             // SystemInfo Json
             if (pageName == 'dash') {
                 switch (key) {
                     case "pixelitVersion":                                                
-                            jsonObj[key] = checkUpdateavailable(jsonObj[key]) ? `<a href="#" class="update" onclick="showChangelog();">${jsonObj[key]} update available!</a>  <a href="#" onclick="showChangelog();"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></a>` : `<a href="#" onclick="showChangelog();">${jsonObj[key]}</a>`;                                       
+                            value = checkUpdateavailable(value) ? `<a href="#" class="update" onclick="showChangelog();">${value} update available!</a>  <a href="#" onclick="showChangelog();"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></a>` : `<a href="#" onclick="showChangelog();">${value}</a>`;                                       
                         break;
                     case "note":
-                        if (!jsonObj[key].trim()) {
-                            jsonObj[key] = "---";
+                        if (!value.trim()) {
+                            value = "---";
                         }
                         break;
                     case "hostname":
-                        if (jsonObj[key].trim() && !titlechanged) {
-                            document.title += `[${jsonObj[key]}]`;
+                        if (value.trim() && !titlechanged) {
+                            document.title += `[${value}]`;
                             titlechanged = true;
                         }
                         break;
                     case "sketchSize":
                     case "freeSketchSpace":
                     case "freeHeap":
-                        jsonObj[key] = humanFileSize(jsonObj[key], true);
+                        value = humanFileSize(value, true);
                         break;
                     case "wifiRSSI":
-                        jsonObj[key] += " dBm";
+                        value += " dBm";
                         break;
                     case "wifiQuality":
-                        jsonObj[key] += " %";
+                        value += " %";
                         break;
                     case "cpuFreqMHz":
-                        jsonObj[key] += " MHz";
+                        value += " MHz";
                         break;
                     case "sleepMode":
-                        jsonObj[key] = (jsonObj[key] ? "On" : "Off");
+                        value = (value ? "On" : "Off");
+                        break;
+                    case "temperature":
+                        if (typeof value == "number") {
+                            value = (value).toFixed(1) + " °C"
+                        }
+                        break;
+                    case "humidity":
+                        if (typeof value == "number") {
+                            value = (value).toFixed(1) + " %"
+                        }
+                        break;
+                    case "pressure":
+                        if (typeof value == "number") {
+                            value = Math.round(value) + " hPa"
+                        }
                         break;
                 }
 
-                $("#" + key).html(jsonObj[key].toString());
+                $("#" + key).html(value.toString());
             }
         }
     }
