@@ -1,4 +1,4 @@
-name: Build
+name: Build ESP8266
 
 # Because a PR results in a push; this workflow will run when a PR is merged
 # or when a commit is pushed directly to any branch.
@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Set up Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
 
     - name: Install pio and its dependencies
       run: |
@@ -23,4 +23,4 @@ jobs:
         pip install platformio
 
     - name: Run PlatformIO build on selected platforms
-      run: platformio run -e wemos_d1_mini32 -e ESP8266 -e d1_mini
+      run: platformio run -e ESP8266

@@ -40,6 +40,15 @@
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
+class SetGPIO
+{
+public:
+	int gpio;
+	ulong resetMillis;
+};
+#define SET_GPIO_SIZE 4
+SetGPIO setGPIOReset[SET_GPIO_SIZE];
+
 //// MQTT Config
 bool mqttAktiv = false;
 String mqttUser = "";
@@ -47,8 +56,8 @@ String mqttPassword = "";
 String mqttServer = "";
 String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
-int mqttRetryCounter = 0;
-#define MQTT_MAX_RETRYS 3
+unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
+const int MQTT_RECONNECT_INTERVAL = 5000;
 //#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
@@ -72,7 +81,7 @@ int mqttRetryCounter = 0;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.3"
+#define VERSION "0.3.5"
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -111,8 +120,8 @@ int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
 int matrixType = 1;
-String note = "";
-String hostname = "PixelIt";
+String note;
+String hostname;
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -137,7 +146,7 @@ bool clockWithSeconds = false;
 int clockSwitchSec = 7;
 int clockCounterClock = 0;
 int clockCounterDate = 0;
-int clockTimeZone = 1;
+float clockTimeZone = 1;
 time_t clockLastUpdate;
 uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 
@@ -345,7 +354,7 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("clockTimeZone"))
 	{
-		clockTimeZone = json["clockTimeZone"];
+		clockTimeZone = json["clockTimeZone"].as<float>();
 	}
 
 	if (json.containsKey("clockColor"))
@@ -664,6 +673,62 @@ void CreateFrames(JsonObject &json)
 	{
 		logMessage += F("Brightness Control, ");
 		currentMatrixBrightness = json["brightness"];
+	}
+
+	// Set GPIO
+	if (json.containsKey("setGpio"))
+	{
+		logMessage += F("Set Gpio, ");
+		if (json["setGpio"]["set"].is<bool>() && json["setGpio"]["gpio"].is<uint8_t>())
+		{
+			uint8_t gpio = json["setGpio"]["gpio"].as<uint8_t>();
+
+			// If the GPIO is already present in the array?
+			// has been found, this is to be replaced.
+			if (json["setGpio"]["duration"].is<ulong>())
+			{
+				int arrayIndex = -1;
+				for (int i = 0; i < SET_GPIO_SIZE; i++)
+				{
+					if (setGPIOReset[i].gpio == gpio)
+					{
+						arrayIndex = i;
+						break;
+					}
+				}
+				// Search free place in array.
+				if (arrayIndex == -1)
+				{
+					for (int i = 0; i < SET_GPIO_SIZE; i++)
+					{
+						if (setGPIOReset[i].gpio == -1)
+						{
+							arrayIndex = i;
+							break;
+						}
+					}
+				}
+
+				if (arrayIndex == -1)
+				{
+					Log(F("SetGPIO"), F("Error: no free place in array found!"));
+				}
+				else
+				{
+					// Save data in array for the reset.
+					setGPIOReset[arrayIndex].gpio = gpio;
+					setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
+					Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
+				}
+			}
+			else
+			{
+				Log(F("SetGPIO"), "GPIO: " + String(gpio) + ", Value: " + json["setGpio"]["set"].as<char *>());
+			}
+			// Set GPIO
+			pinMode(gpio, OUTPUT);
+			digitalWrite(gpio, json["setGpio"]["set"].as<bool>());
+		}
 	}
 
 	// Sound
@@ -998,15 +1063,6 @@ String GetConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &root = jsonBuffer.parseObject(buf.get());
 
-		if (!root.containsKey("hostname") || String(root["hostname"].asString()).isEmpty())
-		{
-#if defined(ESP8266)
-			root["hostname"] = WiFi.hostname();
-#elif defined(ESP32)
-			root["hostname"] = WiFi.getHostname();
-#endif
-		}
-
 		String json;
 		root.printTo(json);
 
@@ -1066,11 +1122,7 @@ String GetMatrixInfo()
 	root["pixelitVersion"] = VERSION;
 	//// Matrix Config
 	root["note"] = note;
-#if defined(ESP8266)
-	root["hostname"] = WiFi.hostname();
-#elif defined(ESP32)
-	root["hostname"] = WiFi.getHostname();
-#endif
+	root["hostname"] = hostname;
 	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
 	root["wifiRSSI"] = WiFi.RSSI();
 	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -1450,50 +1502,40 @@ void DrawWeekDay()
 	}
 }
 
-void MqttReconnect()
+boolean MQTTreconnect()
 {
-	// Loop until we're reconnected
-	while (!client.connected() && mqttRetryCounter < MQTT_MAX_RETRYS)
-	{
-		bool connected = false;
-		if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
-		{
-			Log(F("MqttReconnect"), F("MQTT connect to server with User and Password"));
-			connected = client.connect(("PixelIt_" + GetChipID()).c_str(), mqttUser.c_str(), mqttPassword.c_str(), "state", 0, true, "diconnected");
-		}
-		else
-		{
-			Log(F("MqttReconnect"), F("MQTT connect to server without User and Password"));
-			connected = client.connect(("PixelIt_" + GetChipID()).c_str(), "state", 0, true, "diconnected");
-		}
 
-		// Attempt to connect
-		if (connected)
-		{
-			Log(F("MqttReconnect"), F("MQTT connected!"));
-			// ... and resubscribe
-			client.subscribe((mqttMasterTopic + "setScreen").c_str());
-			client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
-			client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
-			client.subscribe((mqttMasterTopic + "getConfig").c_str());
-			client.subscribe((mqttMasterTopic + "setConfig").c_str());
-			// ... and publish
-			client.publish((mqttMasterTopic + "state").c_str(), "connected");
-		}
-		else
-		{
-			Log(F("MqttReconnect"), F("MQTT not connected!"));
-			Log(F("MqttReconnect"), F("Wait 5 seconds before retrying...."));
-			mqttRetryCounter++;
-			// Wait 5 seconds before retrying
-			delay(5000);
-		}
+	bool connected = false;
+	if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
+	{
+		Log(F("MQTTreconnect"), F("MQTT connecting to broker with user and password"));
+		connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), "state", 0, true, "diconnected");
+	}
+	else
+	{
+		Log(F("MQTTreconnect"), F("MQTT connecting to broker without user and password"));
+		connected = client.connect(hostname.c_str(), "state", 0, true, "diconnected");
 	}
 
-	if (mqttRetryCounter >= MQTT_MAX_RETRYS)
+	// Attempt to connect
+	if (connected)
 	{
-		Log(F("MqttReconnect"), F("No connection to MQTT-Server, MQTT temporarily deactivated!"));
+		Log(F("MQTTreconnect"), F("MQTT connected!"));
+		// ... and resubscribe
+		client.subscribe((mqttMasterTopic + "setScreen").c_str());
+		client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
+		client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
+		client.subscribe((mqttMasterTopic + "getConfig").c_str());
+		client.subscribe((mqttMasterTopic + "setConfig").c_str());
+		// ... and publish
+		client.publish((mqttMasterTopic + "state").c_str(), "connected");
 	}
+	else
+	{
+		Log(F("MQTTreconnect"), F("MQTT connect failed! Retry in a few seconds..."));
+	}
+
+	return connected;
 }
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -1776,6 +1818,13 @@ void setup()
 		Serial.println(F("Failed to mount FS"));
 	}
 
+	// Init SetGPIO Array
+	for (int i = 0; i < SET_GPIO_SIZE; i++)
+	{
+		setGPIOReset[i].gpio = -1;
+		setGPIOReset[i].resetMillis = -1;
+	}
+
 	// Matix Type 1
 	if (matrixType == 1)
 	{
@@ -1802,7 +1851,7 @@ void setup()
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
 	}
-	else if (userColorTemp != UncorrectedColor)
+	else if (userColorTemp != UncorrectedTemperature)
 	{
 		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
 	}
@@ -1823,10 +1872,12 @@ void setup()
 		ShowBootAnimation();
 	}
 
-	if (!hostname.isEmpty())
+	// Hostname
+	if (hostname.isEmpty())
 	{
-		WiFi.hostname(hostname);
+		hostname = "PixelIt";
 	}
+	WiFi.hostname(hostname);
 
 	// Set config save notify callback
 	wifiManager.setSaveConfigCallback(SaveConfigCallback);
@@ -1918,13 +1969,41 @@ void loop()
 	server.handleClient();
 	webSocket.loop();
 
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS)
+	// Reset GPIO based on the array, as far as something is present in the array.
+	for (int i = 0; i < SET_GPIO_SIZE; i++)
+	{
+		if (setGPIOReset[i].gpio != -1)
+		{
+			if (setGPIOReset[i].resetMillis <= millis())
+			{
+				Log(F("ResetSetGPIO"), "Pos: " + String(i) + ", GPIO: " + String(setGPIOReset[i].gpio) + ", Value: false");
+				digitalWrite(setGPIOReset[i].gpio, false);
+				setGPIOReset[i].gpio = -1;
+				setGPIOReset[i].resetMillis = -1;
+			}
+		}
+	}
+
+	if (mqttAktiv == true)
 	{
 		if (!client.connected())
 		{
-			MqttReconnect();
+			// MQTT connect
+			if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
+			{
+				mqttLastReconnectAttempt = millis();
+
+				// try to reconnect
+				if (MQTTreconnect())
+				{
+					mqttLastReconnectAttempt = 0;
+				}
+			}
 		}
-		client.loop();
+		else
+		{
+			client.loop();
+		}
 	}
 
 	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
@@ -2002,12 +2081,12 @@ void SendMatrixInfo(bool force)
 	String matrixInfo;
 
 	// Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		matrixInfo = GetMatrixInfo();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetMatrixInfo != matrixInfo)
+	if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
 	{
 		client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
 	}
@@ -2036,12 +2115,12 @@ void SendLDR(bool force)
 	String luxSensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		luxSensor = GetLuxSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetLuxSensor != luxSensor)
+	if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
 	{
 		client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
 	}
@@ -2070,12 +2149,12 @@ void SendSensor(bool force)
 	String Sensor;
 
 	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS) || (webSocket.connectedClients() > 0))
+	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
 	{
 		Sensor = GetSensor();
 	}
 	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && mqttRetryCounter < MQTT_MAX_RETRYS && oldGetSensor != Sensor)
+	if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
 	{
 		client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
 		client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
@@ -2134,7 +2213,7 @@ time_t getNtpTime()
 			secsSince1900 |= (time_t)packetBuffer[42] << 8;
 			secsSince1900 |= (time_t)packetBuffer[43];
 			time_t secsSince1970 = secsSince1900 - 2208988800UL;
-			int totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
+			float totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
 		}
 		yield();
@@ -2175,7 +2254,8 @@ void Log(String function, String message)
 		{
 			if (websocketConnection[i] == "/dash")
 			{
-				webSocket.sendTXT(i, "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}");
+				String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
+				webSocket.sendTXT(i, payload);
 			}
 		}
 	}

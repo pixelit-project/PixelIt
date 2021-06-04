@@ -1,40 +1,27 @@
-var ipAddress = $(location).attr('hostname');
-var pageName = 'dash';
-var devMode = false;
-var timeleft;
-var rebootTimer;
-var json;
-var titlechanged = false;
-let currentGitRelease
+//@ts-check
+const ipAddress = $(location).attr('hostname');
+let pageName = 'dash';
+let devMode = false;
+let timeleft;
+let rebootTimer;
+let json;
+let titlechanged = false;
+let gitData;
 
 if (ipAddress.includes('localhost')) {
     devMode = true;
 }
 
 $(function () {
-    fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')
-    .then(res => res.json())
-    .then(data => {
-        currentGitRelease = data[0].tag_name
-        console.log(`currentGitRelease: ${currentGitRelease}`); 
-        start();
-    }) 
-    .catch(error => {
-        console.error('Error:', error)
-        start();
-    });       
-});
-
-function start() {
-    // Akive Menu Button select 
-    $('.nav-link').click(function () {
+     // Akive Menu Button select 
+     $('.nav-link').click(function () {
         $('.nav-link').removeClass('active');
         $(this).addClass('active');
     });
     ChangePage("dash");
-}
+});
 
-var connection = null;
+let connection = null;
 
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -45,10 +32,10 @@ function connectionStart() {
         connection.close();
     }
 
-    var wsServer = ipAddress;
+    let wsServer = ipAddress;
     // Dev Option
     if (devMode) {
-        wsServer = '172.30.100.218'
+        wsServer = '192.168.0.137';
     }
     connection = new WebSocket('ws://' + wsServer + ':81/' + pageName);
     connection.onopen = function () {
@@ -60,8 +47,6 @@ function connectionStart() {
             connection.send(json);
             connection.close();
         }
-
-        //KeepAlive();
     }
     connection.onclose = function (e) {
         // Debug
@@ -69,13 +54,6 @@ function connectionStart() {
         $("#connectionStatus").html("Offline");
         $("#connectionStatus").removeClass("text-success");
         $("#connectionStatus").addClass("text-danger");
-        /*
-        if (pageName != 'config') {
-            setTimeout(function () {
-                connectionStart()
-            }, 1000);
-              }
-              */
     }
     connection.onerror = function (error) {
         // Debug
@@ -89,14 +67,6 @@ function connectionStart() {
         console.log('WebSocket incomming message: ' + e.data);
         RefershData(e.data)
     }
-
-    function KeepAlive() {
-        var timeout = 1000;
-        if (connection.readyState == WebSocket.OPEN) {
-            connection.send("KeepAlive");
-        }
-        setTimeout(KeepAlive, timeout);
-    }
 }
 
 function RefershData(input) {
@@ -105,73 +75,70 @@ function RefershData(input) {
         return;
     }
 
-    var json = $.parseJSON(input);
+    const jsonObj = $.parseJSON(input);
     // Log Json
-    if (json.log) {
-        var logArea = $('#log');
-        logArea.append("[" + json.log.timeStamp + "] " + json.log.function + ": " + json.log.message + "\n");
+    if (jsonObj.log) {
+        const logArea = $('#log');
+        logArea.append(`[${jsonObj.log.timeStamp}] ${jsonObj.log.function}: ${jsonObj.log.message}\n`);
         logArea.scrollTop(logArea[0].scrollHeight);
-
     } else {
-        $.each(json, function (key, val) {
+        for (const key in jsonObj) {
             // Config Json
             if (pageName == 'config') {
-                if (typeof val === 'boolean') {
-                    $("#" + key).prop('checked', val);
+                if (typeof jsonObj[key] === 'boolean') {
+                    $("#" + key).prop('checked', jsonObj[key]);
                 } else {
-                    $("#" + key).val(val.toString());
+                    $("#" + key).val(jsonObj[key].toString());
                 }
             }
             // SystemInfo Json
             if (pageName == 'dash') {
                 switch (key) {
-                    case "pixelitVersion":
-                        val = val != currentGitRelease ? `<i class="red">${val} update available!<i>` : val;
+                    case "pixelitVersion":                                                
+                            jsonObj[key] = checkUpdateavailable(jsonObj[key]) ? `<a href="#" class="update" onclick="showChangelog();">${jsonObj[key]} update available!</a>  <a href="#" onclick="showChangelog();"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-info"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></a>` : `<a href="#" onclick="showChangelog();">${jsonObj[key]}</a>`;                                       
                         break;
                     case "note":
-                        if (!val.trim()) {
-                            val = "---";
+                        if (!jsonObj[key].trim()) {
+                            jsonObj[key] = "---";
                         }
                         break;
                     case "hostname":
-                        if (val.trim() && !titlechanged) {
-                            document.title += " [" + val + "]";
+                        if (jsonObj[key].trim() && !titlechanged) {
+                            document.title += `[${jsonObj[key]}]`;
                             titlechanged = true;
                         }
                         break;
                     case "sketchSize":
                     case "freeSketchSpace":
                     case "freeHeap":
-                        val = humanFileSize(val, true);
+                        jsonObj[key] = humanFileSize(jsonObj[key], true);
                         break;
                     case "wifiRSSI":
-                        val += " dBm";
+                        jsonObj[key] += " dBm";
                         break;
                     case "wifiQuality":
-                        val += " %";
+                        jsonObj[key] += " %";
                         break;
                     case "cpuFreqMHz":
-                        val += " MHz";
+                        jsonObj[key] += " MHz";
                         break;
                     case "sleepMode":
-                        val = (val ? "On" : "Off");
+                        jsonObj[key] = (jsonObj[key] ? "On" : "Off");
                         break;
                 }
 
-                $("#" + key).html(val.toString());
+                $("#" + key).html(jsonObj[key].toString());
             }
-        });
+        }
     }
 }
 
 function SaveConfig() {
-    var obj = {};
+    const obj = {};
     // Alle Inputs auslesen
     $("input").each(function () {
         // Debug
-        console.log('SaveConfig -> ID: ' + this.id + ', Val: ' + (this.type == 'checkbox' ? $(this)
-            .prop('checked') : $(this).val()));
-
+        console.log(`SaveConfig -> ID: ${this.id}, Val: ${(this.type == 'checkbox' ? $(this).prop('checked') : $(this).val())}`);
         if (this.type == 'checkbox') {
             obj[this.id] = $(this).prop('checked');
         } else {
@@ -195,7 +162,7 @@ function SaveConfig() {
     connectionStart();
 
     // Restart Countdown usw.
-    var timeout = 12000;
+    const timeout = 12000;
     StartCountDown(timeout / 1000);
 
     setTimeout(function () {
@@ -241,7 +208,7 @@ function SendTest(type, input) {
         return;
     }
 
-    var obj = {};
+    let obj = {};
 
     switch (type) {
         case 'brightness':
@@ -328,3 +295,45 @@ function humanFileSize(bytes, si = false, dp = 1) {
 
     return bytes.toFixed(dp) + ' ' + units[u];
 }
+
+function checkUpdateavailable(curentVersion) {    
+    if (gitData && gitData[0] && gitData[0].name){
+        return curentVersion != gitData[0].name;
+    }
+    getCurrentGitReleaseData();
+    return false;
+}
+
+function showChangelog(){
+    $('#changelog_modal_title').html(`Changelog for version ${gitData[0].name}`);
+    $('#changelog_modal_body').html(`<ul>${gitData[0].body.replaceAll('-','<li>').replaceAll('\r\n','</li>')}</li></ul>`);
+    $('#changelog_modal_button').attr("href", gitData[0].html_url)
+    $('#changelog_modal').modal('show')           
+}
+
+function createDownloadStats(){
+    let html = '';
+    for(const key in gitData) {
+        const assets = gitData[key].assets;
+        const totalDownloads = assets.reduce((result, x) => result + x.download_count, 0);
+        const readmeLink = `https://github.com/o0shojo0o/PixelIt#${gitData[key].name.replaceAll('.','')}-${gitData[key].published_at.split('T')[0]}`;
+        html+= `<li><a href='${readmeLink}' target='_blank'><b>Version ${gitData[key].name}</b> - ${gitData[key].published_at.split('T')[0]}</a> - [${totalDownloads}]</li>`;
+        html+= `<ul>`;
+        for(const kkey in assets){        
+            html+= `<li>${assets[kkey].name.replace('firmware_','').replace('.bin','').toLowerCase()} - [${assets[kkey].download_count}]</li>`;
+        }
+        html+= `</ul>`;   
+        html+= `<br />`;           
+    }
+
+    $("#downloadStats").html(html);
+}
+
+async function getCurrentGitReleaseData() {
+    try {
+        gitData = (await(await fetch('https://api.github.com/repos/o0shojo0o/PixelIt/releases')).json());       
+        console.log('getCurrentGitReleaseData: successfull');
+    } catch (error) {
+        console.log(`getCurrentGitReleaseData: error (${error})`);  
+    }
+}   

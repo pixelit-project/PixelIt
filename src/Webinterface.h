@@ -1,32 +1,29 @@
 const char mainPage[] PROGMEM = R"=====(
-<!doctype html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
-    <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
-    <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
-    <title>PixelIt the Matrix Display</title>
-</head>
-
-<body>
-    <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
-        <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
-        <ul class="navbar-nav px-3">
-            <li class="nav-item text-nowrap">
-                <div class="text-center nav-link">
-                    Connection: <span id="connectionStatus" class="text-danger">Offline</span>
-                </div>
-            </li>
-        </ul>
-    </nav>
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-                <div class="sidebar-sticky">
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
+        <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
+        <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
+        <title>PixelIt the Matrix Display</title>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
+            <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
+            <ul class="navbar-nav px-3">
+                <li class="nav-item text-nowrap">
+                    <div class="text-center nav-link">
+                        Connection: <span id="connectionStatus" class="text-danger">Offline</span>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+        <div class="container-fluid">
+            <div class="row">            
+                <nav class="col-md-2 d-none d-md-block bg-light sidebar">                 
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
@@ -78,24 +75,22 @@ const char mainPage[] PROGMEM = R"=====(
                                 <span data-feather="github"></span> GitHub
                             </a>
                         </li>
-                    </ul>
-                </div>
-            </nav>
-            <div class="offset-md-2 col-md-10 row" id="mainContent">
-                <div class="row col-md-12" id="mainRefresh">
-
+                    </ul>     
+                </nav>           
+                <div class="offset-md-2 col-md-10 row" id="mainContent">
+                    <div class="row col-md-12" id="mainRefresh">
+    
+                    </div>
                 </div>
             </div>
-        </div>
-        <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
-        </script>
-        <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
-        <script>
-            feather.replace()
-        </script>
-</body>
-
-</html>
+            <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
+            </script>
+            <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
+            <script>
+                feather.replace()
+            </script>
+        </body>
+    </html>
 )=====";
 
 const char configPage[] PROGMEM = R"=====(
@@ -371,6 +366,23 @@ const char dashPage[] PROGMEM = R"=====(
     <hr>
     <textarea class="form-control" id="log" rows="17" wrap="off" disabled style="font: 60"></textarea>
 </div>
+<div class="modal" tabindex="-1" role="dialog" id="changelog_modal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title" id="changelog_modal_title"></h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="changelog_modal_body">    
+        </div>
+        <div class="modal-footer">
+            <a href="" target="_blank" id="changelog_modal_button" type="button" class="btn btn-primary">Got to download</a>
+          </div>
+      </div>
+    </div>
+  </div>
 )=====";
 
 const char testAreaPage[] PROGMEM = R"=====(
@@ -431,34 +443,45 @@ const char testAreaPage[] PROGMEM = R"=====(
 <script>
     feather.replace()
 </script>
-</script>
 )=====";
 
 const char updatePage[] PROGMEM = R"=====(
-
-<div class="col-md-6">
-    <h2 class="text-center">Firmware Update</h2>
-    <hr>
-    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-        <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
-        <br />
-        <br />
-        <div class="col-md-12">
-            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
+    <script>
+        connectionStart();
+    </script>
+    <div class="col-md-3">
+        <h2 class="text-center">Firmware Update</h2>
+        <hr>
+        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+            <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
+            <br />
+            <br />
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-3 offset-1">
+        <h2 class="text-center">Filesystem Update</h2>
+        <hr>
+        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+            <input type='file' accept='.bin,.bin.gz' name='filesystem'>
+            <br />
+            <br />
+            <div class="col-md-12 text-center">
+                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
+            </div>
+        </form>
+    </div>
+    
+    <div class="col-md-4 offset-1">
+        <h2 class="text-center">Download Stats</h2>
+        <hr />
+        <div class="alert alert-secondary d-flex justify-content-center">
+            <ul id="downloadStats">           
+            </ul>          
         </div>
-    </form>
-</div>
-<div class="col-md-6">
-<h2 class="text-center">Filesystem Update</h2>
-    <hr>
-    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-        <input type='file' accept='.bin,.bin.gz' name='filesystem'>
-        <br />
-        <br />
-        <div class="col-md-12 text-center">
-            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
-        </div>
-    </form>
-</div>
-
+    <script>
+        createDownloadStats();
+    </script>
 )=====";
