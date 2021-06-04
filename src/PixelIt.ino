@@ -12,26 +12,32 @@
 #endif
 
 #include <Arduino.h>
+// BME Sensor
+#include <SlowSoftWire.h>
+#include <SPI.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+//#include <BME280_t.h>
+// WiFi & Web
 #include <WebSocketsServer.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
+// MQTT
 #include <PubSubClient.h>
-#include <TimeLib.h>
-#include <ArduinoJson.h>
+// Matrix
+#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
+// Misc
 #include <LightDependentResistor.h>
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
 #include "ColorConverterLib.h"
-// BME Sensor
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+#include <TimeLib.h>
+#include <ArduinoJson.h>
 // PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
@@ -83,6 +89,10 @@ CRGB leds[NUMMATRIX];
 
 #define VERSION "0.3.5"
 
+SlowSoftWire Wire2 = SlowSoftWire(I2C_SDA, I2C_SCL);
+//BME280<> BMESensor();
+Adafruit_BME280 bme;
+
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
 WiFiUDP udp;
@@ -99,7 +109,6 @@ HTTPUpdateServer httpUpdater;
 WebSocketsServer webSocket = WebSocketsServer(81);
 LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL, 10);
 DHTesp dht;
-Adafruit_BME280 bme;
 DFPlayerMini_Fast mp3Player;
 SoftwareSerial softSerial(D7, D8); // RX | TX
 
@@ -1078,9 +1087,15 @@ String GetSensor()
 
 	if (tempSensor == TempSensor_BME280)
 	{
-		root["humidity"] = bme.readHumidity();
+
 		root["temperature"] = bme.readTemperature();
-		root["pressure"] = bme.readPressure();
+		root["humidity"] = bme.readHumidity();
+		root["pressure"] = bme.readPressure() / 100.0F;
+
+		//BMESensor.refresh();
+		// root["temperature"] = roundf( BMESensor.temperature);
+		// root["humidity"] = round(BMESensor.humidity);
+		// root["pressure"] = roundf(BMESensor.pressure / 100.0F);
 	}
 	else if (tempSensor == TempSensor_DHT)
 	{
@@ -1825,6 +1840,23 @@ void setup()
 		setGPIOReset[i].resetMillis = -1;
 	}
 
+	// Temp Sensors
+
+	if (bme.begin(BME280_ADDRESS_ALTERNATE, &Wire2))
+	{
+		Log(F("Setup"), F("BME started"));
+		tempSensor = TempSensor_BME280;
+	}
+	else
+	{
+		dht.setup(DHT_PIN, DHTesp::DHT22);
+		if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+		{
+			Log(F("Setup"), F("DHT started"));
+			tempSensor = TempSensor_DHT;
+		}
+	}
+
 	// Matix Type 1
 	if (matrixType == 1)
 	{
@@ -1937,23 +1969,6 @@ void setup()
 		client.setCallback(callback);
 		client.setBufferSize(8000);
 		Log(F("Setup"), F("MQTT started"));
-	}
-
-	Wire.begin(I2C_SDA, I2C_SCL);
-
-	if (bme.begin(BME280_ADDRESS_ALTERNATE, &Wire) || bme.begin(BME280_ADDRESS, &Wire))
-	{
-		Log(F("Setup"), F("BME started"));
-		tempSensor = TempSensor_BME280;
-	}
-	else
-	{
-		dht.setup(DHT_PIN, DHTesp::DHT22);
-		if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
-		{
-			Log(F("Setup"), F("DHT started"));
-			tempSensor = TempSensor_DHT;
-		}
 	}
 
 	softSerial.begin(9600);
