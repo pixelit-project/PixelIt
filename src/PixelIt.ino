@@ -2206,7 +2206,8 @@ void Log(String function, String message)
 		{
 			if (websocketConnection[i] == "/dash")
 			{
-				webSocket.sendTXT(i, "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}");
+				String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
+				webSocket.sendTXT(i, payload);
 			}
 		}
 	}
