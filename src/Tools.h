@@ -159,3 +159,11 @@ int GetRSSIasQuality(int rssi)
 	}
 	return quality;
 }
+
+/// <summary>
+/// Convert celsius to fahrenheit
+/// </summary>
+float CelsiusToFahrenheit(float celsius)
+{
+	return (celsius * 9 / 5) + 32;
+}
