@@ -122,6 +122,14 @@ enum TempSensor
 };
 TempSensor tempSensor = TempSensor_None;
 
+// TemperatureUnit
+enum TemperatureUnit
+{
+	TemperatureUnit_Celsius,
+	TemperatureUnit_Fahrenheit
+};
+TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
+
 // Matrix Vars
 int currentMatrixBrightness = 127;
 bool matrixBrightnessAutomatic = true;
@@ -223,6 +231,7 @@ void SaveConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &json = jsonBuffer.createObject();
 
+		json["temperatureUnit"] = static_cast<int>(temperatureUnit);
 		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
 		json["mbaDimMin"] = mbaDimMin;
 		json["mbaDimMax"] = mbaDimMax;
@@ -307,6 +316,11 @@ void SetConfig(JsonObject &json)
 
 void SetConfigVaribles(JsonObject &json)
 {
+	if (json.containsKey("temperatureUnit"))
+	{
+		temperatureUnit = static_cast<TemperatureUnit>(json["temperatureUnit"].as<int>());
+	}
+
 	if (json.containsKey("matrixBrightnessAutomatic"))
 	{
 		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
@@ -1091,12 +1105,22 @@ String GetSensor()
 		root["temperature"] = bme.readTemperature();
 		root["humidity"] = bme.readHumidity();
 		root["pressure"] = bme.readPressure() / 100.0F;
+
+		if (temperatureUnit == TemperatureUnit_Fahrenheit)
+		{
+			root["temperature"] = CelsiusToFahrenheit(root["temperature"].as<float>());
+		}
 	}
 	else if (tempSensor == TempSensor_DHT)
 	{
-		root["humidity"] = roundf(dht.getHumidity());
 		root["temperature"] = dht.getTemperature();
+		root["humidity"] = roundf(dht.getHumidity());
 		root["pressure"] = "Not installed";
+
+		if (temperatureUnit == TemperatureUnit_Fahrenheit)
+		{
+			root["temperature"] = CelsiusToFahrenheit(root["temperature"].as<float>());
+		}
 	}
 	else
 	{

@@ -1,96 +1,99 @@
 const char mainPage[] PROGMEM = R"=====(
-    <!doctype html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
-        <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
-        <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
-        <title>PixelIt the Matrix Display</title>
-    </head>
-    <body>
-        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
-            <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
-            <ul class="navbar-nav px-3">
-                <li class="nav-item text-nowrap">
-                    <div class="text-center nav-link">
-                        Connection: <span id="connectionStatus" class="text-danger">Offline</span>
-                    </div>
-                </li>
-            </ul>
-        </nav>
-        <div class="container-fluid">
-            <div class="row">            
-                <nav class="col-md-2 d-none d-md-block bg-light sidebar">                 
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
-                                <span data-feather="cpu"></span> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("config")' href="#">
-                                <span data-feather="sliders"></span> Options
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("testarea")' href="#">
-                                <span data-feather="codepen"></span> Test Area
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
-                                <span data-feather="upload"></span> Update
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
-                                <span data-feather="image"></span> Pixel Gallery
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
-                                <span data-feather="edit"></span> Pixel Creator
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
-                                <span data-feather="layers"></span> Forum
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
-                                <span data-feather="pen-tool"></span> Blog
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
-                                <span data-feather="book-open"></span> Documentation
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
-                                <span data-feather="github"></span> GitHub
-                            </a>
-                        </li>
-                    </ul>     
-                </nav>           
-                <div class="offset-md-2 col-md-10 row" id="mainContent">
-                    <div class="row col-md-12" id="mainRefresh">
-    
-                    </div>
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://o0shojo0o.github.io/PixelIt/css/dashboard.css">
+    <script src="https://o0shojo0o.github.io/PixelIt/js/jquery-3.3.1.min.js"> </script>
+    <script src="https://o0shojo0o.github.io/PixelIt/js/pixelit.js"> </script>
+    <title>PixelIt the Matrix Display</title>
+</head>
+
+<body>
+    <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0">
+        <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="#"><b>PixelIt</b> the Matrix Display</a>
+        <ul class="navbar-nav px-3">
+            <li class="nav-item text-nowrap">
+                <div class="text-center nav-link">
+                    Connection: <span id="connectionStatus" class="text-danger">Offline</span>
+                </div>
+            </li>
+        </ul>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="dash" onclick='ChangePage("dash")' href="#">
+                            <span data-feather="cpu"></span> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick='ChangePage("config")' href="#">
+                            <span data-feather="sliders"></span> Options
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick='ChangePage("testarea")' href="#">
+                            <span data-feather="codepen"></span> Test Area
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick='ChangePage("fwfsupdate")' href="#">
+                            <span data-feather="upload"></span> Update
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelGallery" target="blank">
+                            <span data-feather="image"></span> Pixel Gallery
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://pixelit.bastelbunker.de/PixelCreator" target="blank">
+                            <span data-feather="edit"></span> Pixel Creator
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
+                            <span data-feather="layers"></span> Forum
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://www.bastelbunker.de/pixel-it/" target="blank">
+                            <span data-feather="pen-tool"></span> Blog
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://docs.bastelbunker.de/pixelit/" target="blank">
+                            <span data-feather="book-open"></span> Documentation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt" target="blank">
+                            <span data-feather="github"></span> GitHub
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="offset-md-2 col-md-10 row" id="mainContent">
+                <div class="row col-md-12" id="mainRefresh">
+
                 </div>
             </div>
-            <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
-            </script>
-            <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
-            <script>
-                feather.replace()
-            </script>
-        </body>
-    </html>
+        </div>
+        <script src="https://o0shojo0o.github.io/PixelIt/js/bootstrap.min.js">
+        </script>
+        <script src="https://o0shojo0o.github.io/PixelIt/js/feather.min.js"></script>
+        <script>
+            feather.replace()
+        </script>
+</body>
+
+</html>
 )=====";
 
 const char configPage[] PROGMEM = R"=====(
@@ -149,22 +152,24 @@ const char configPage[] PROGMEM = R"=====(
     <br>
     <h2 class="text-center">Auto brightness</h2>
     <hr>
-    <div class="form-inline">              
-        <label for="mbaDimMin" class="col-md-5">Min bright</label> 
+    <div class="form-inline">
+        <label for="mbaDimMin" class="col-md-5">Min bright</label>
         <label for="mbaDimMax" class="col-md-6 offset-md-1">Max bright</label>
     </div>
-    <div class="form-inline"> 
-        <input type="number" class="form-control col-md-5 text-center" id="mbaDimMin" value="20" step="1" min="0">            
-        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaDimMax" value="255" step="1" min="0" max="255">
+    <div class="form-inline">
+        <input type="number" class="form-control col-md-5 text-center" id="mbaDimMin" value="20" step="1" min="0">
+        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaDimMax" value="255" step="1"
+            min="0" max="255">
     </div>
-    <div class="form-inline">              
-        <label for="mbaLuxMin" class="col-md-5">From lux</label> 
+    <div class="form-inline">
+        <label for="mbaLuxMin" class="col-md-5">From lux</label>
         <label for="mbaLuxMax" class="col-md-5 offset-md-2">To lux</label>
     </div>
-    <div class="form-inline"> 
-        <input type="number" class="form-control col-md-5 text-center" id="mbaLuxMin" value="0" step="1" min="0">            
-        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaLuxMax" value="400" step="1" min="0">
-    </div> 
+    <div class="form-inline">
+        <input type="number" class="form-control col-md-5 text-center" id="mbaLuxMin" value="0" step="1" min="0">
+        <input type="number" class="form-control col-md-5 offset-md-2 text-center" id="mbaLuxMax" value="400" step="1"
+            min="0">
+    </div>
     <br>
     <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="matrixBrightnessAutomatic">
@@ -187,7 +192,7 @@ const char configPage[] PROGMEM = R"=====(
         <label for="clockColor">Color</label>
         <input type="color" class="form-control" value="#ff0000" id="clockColor">
     </div>
-     <div class="custom-control custom-switch">
+    <div class="custom-control custom-switch">
         <input type="checkbox" class="custom-control-input" id="clockWithSeconds">
         <label class="custom-control-label" for="clockWithSeconds">Clock with sek</label>
     </div>
@@ -210,6 +215,13 @@ const char configPage[] PROGMEM = R"=====(
     <div class="form-group">
         <label for="scrollTextDefaultDelay">ScrollText Delay</label>
         <input type="number" class="form-control" id="scrollTextDefaultDelay">
+    </div>
+    <div class="form-group">
+        <label for="temperatureUnit">Temperature Unit</label>
+        <select type="select" class="form-control" id="temperatureUnit">
+            <option value="0">Celsius °C</option>
+            <option value="1">Fahrenheit °F</option>
+        </select>
     </div>
 </div>
 
@@ -349,7 +361,7 @@ const char dashPage[] PROGMEM = R"=====(
                     <td class="font-weight-bold">Temperature Sensor:</td>
                     <td id="temperature">Loading...</td>
                 </tr>
-				<tr>
+                <tr>
                     <td class="font-weight-bold">Humidity Sensor:</td>
                     <td id="humidity">Loading...</td>
                 </tr>
@@ -368,21 +380,22 @@ const char dashPage[] PROGMEM = R"=====(
 </div>
 <div class="modal" tabindex="-1" role="dialog" id="changelog_modal">
     <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header bg-light">
-          <h5 class="modal-title" id="changelog_modal_title"></h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="changelog_modal_title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="changelog_modal_body">
+            </div>
+            <div class="modal-footer">
+                <a href="" target="_blank" id="changelog_modal_button" type="button" class="btn btn-primary">Got to
+                    download</a>
+            </div>
         </div>
-        <div class="modal-body" id="changelog_modal_body">    
-        </div>
-        <div class="modal-footer">
-            <a href="" target="_blank" id="changelog_modal_button" type="button" class="btn btn-primary">Got to download</a>
-          </div>
-      </div>
     </div>
-  </div>
+</div>
 )=====";
 
 const char testAreaPage[] PROGMEM = R"=====(
@@ -446,42 +459,52 @@ const char testAreaPage[] PROGMEM = R"=====(
 )=====";
 
 const char updatePage[] PROGMEM = R"=====(
-    <script>
-        connectionStart();
-    </script>
-    <div class="col-md-3">
-        <h2 class="text-center">Firmware Update</h2>
-        <hr>
-        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-            <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
-            <br />
-            <br />
-            <div class="col-md-12">
-                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Firmware</button>
-            </div>
-        </form>
-    </div>
-    <div class="col-md-3 offset-1">
-        <h2 class="text-center">Filesystem Update</h2>
-        <hr>
-        <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
-            <input type='file' accept='.bin,.bin.gz' name='filesystem'>
-            <br />
-            <br />
-            <div class="col-md-12 text-center">
-                <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Update Filesystem</button>
-            </div>
-        </form>
-    </div>
-    
-    <div class="col-md-4 offset-1">
-        <h2 class="text-center">Download Stats</h2>
-        <hr />
-        <div class="alert alert-secondary d-flex justify-content-center">
-            <ul id="downloadStats">           
-            </ul>          
+<script>
+    connectionStart();
+</script>
+<div class="col-md-3">
+    <h2 class="text-center">Firmware Update</h2>
+    <hr>
+    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+        <input type='file' accept='.bin,.bin.gz' name='firmware' id="firmware">
+        <br />
+        <br />
+        <div class="col-md-12">
+            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24"
+                    height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" class="feather feather-send">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg> Update Firmware</button>
         </div>
+    </form>
+</div>
+<div class="col-md-3 offset-1">
+    <h2 class="text-center">Filesystem Update</h2>
+    <hr>
+    <form method='POST' action='/update' enctype='multipart/form-data' class="text-center">
+        <input type='file' accept='.bin,.bin.gz' name='filesystem'>
+        <br />
+        <br />
+        <div class="col-md-12 text-center">
+            <button type="submit" class="btn btn-outline-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24"
+                    height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" class="feather feather-send">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg> Update Filesystem</button>
+        </div>
+    </form>
+</div>
+
+<div class="col-md-4 offset-1">
+    <h2 class="text-center">Download Stats</h2>
+    <hr />
+    <div class="alert alert-secondary d-flex justify-content-center">
+        <ul id="downloadStats">
+        </ul>
+    </div>
     <script>
         createDownloadStats();
     </script>
-)=====";
+    )=====";
