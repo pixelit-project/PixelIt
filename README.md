@@ -23,6 +23,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 -->
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o)  added config for temperature (°C or °F)
 -   (foorschtbar) added support for BME280
 -   (foorschtbar) moved most libs to common section
 
