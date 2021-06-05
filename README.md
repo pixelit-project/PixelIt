@@ -21,6 +21,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 <!--
 ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+-   (foorschtbar) added support for BME280
+-   (foorschtbar) moved most libs to common section
 
 ### 0.3.5 (2021-05-26)
 
