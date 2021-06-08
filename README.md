@@ -24,7 +24,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 <!--
 ### **WORK IN PROGRESS**
 -->
-### 0.3.6 (2021-08-06)
+### **WORK IN PROGRESS**
 
 -   (o0shojo0o)  added config for temperature (°C or °F)
 -   (foorschtbar) added support for BME280
