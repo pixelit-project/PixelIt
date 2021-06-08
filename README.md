@@ -4,8 +4,10 @@
 
 ![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20wemos_d1_mini32/badge.svg)
 ![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20ESP8266/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20d1_mini/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Release/badge.svg)
+![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20d1_mini/badge.svg)  
+![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20wemos_d1_mini32/badge.svg)
+![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20ESP8266/badge.svg)
+![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20wemos_d1_mini/badge.svg)
 
 The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display that is controlled and fed by a JSON API.
 At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) available to the JSON API
@@ -22,7 +24,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 <!--
 ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.3.6 (2021-08-06)
 
 -   (o0shojo0o)  added config for temperature (°C or °F)
 -   (foorschtbar) added support for BME280
