@@ -547,6 +547,12 @@ void HandleGetLuxSensor()
 	server.send(200, "application/json", GetLuxSensor());
 }
 
+void HandelGetBrightness()
+{
+	server.sendHeader("Connection", "close");
+	server.send(200, "application/json", GetBrightness());
+}
+
 void HandleGetDHTSensor() // Legancy
 {
 	server.sendHeader("Connection", "close");
@@ -1141,6 +1147,20 @@ String GetLuxSensor()
 	JsonObject &root = jsonBuffer.createObject();
 
 	root["lux"] = currentLux;
+
+	String json;
+	root.printTo(json);
+
+	return json;
+}
+
+String GetBrightness()
+{
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject &root = jsonBuffer.createObject();
+
+	root["brightness_255"] = currentMatrixBrightness;
+	root["brightness"] = map(currentMatrixBrightness, 0, 255, 0, 100);
 
 	String json;
 	root.printTo(json);
@@ -1965,6 +1985,7 @@ void setup()
 
 	server.on(F("/api/screen"), HTTP_POST, HandleScreen);
 	server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
+	server.on(F("/api/brightness"), HTTP_GET, HandelGetBrightness);
 	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legancy
 	server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
 	server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);

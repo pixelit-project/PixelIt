@@ -15,7 +15,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 [Docu](https://docs.bastelbunker.de/pixelit/) |
 [Forum](https://github.com/o0shojo0o/PixelIt/discussions) |
 [Blog](https://www.bastelbunker.de/pixel-it/) |
-[PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery) | 
+[PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery) |
 [Telegram](https://t.me/pixelitdisplay) |
 [Discord](https://discord.gg/JHE9P9zczW)
 
@@ -24,9 +24,11 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 <!--
 ### **WORK IN PROGRESS**
 -->
+
 ### **WORK IN PROGRESS**
 
--   (o0shojo0o)  added config for temperature (°C or °F)
+-   (o0shojo0o) added API endpoint `/api/brightness`
+-   (o0shojo0o) added config for temperature (°C or °F)
 -   (foorschtbar) added support for BME280
 -   (foorschtbar) moved most libs to common section
 
