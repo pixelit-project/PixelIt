@@ -151,7 +151,6 @@ bool shouldSaveConfig = false;
 uint16_t bmpArray[64];
 
 // Timerserver Vars
-IPAddress timeServerIP;
 String ntpServer = "de.pool.ntp.org";
 int ntpRetryCounter = 0;
 #define NTP_MAX_RETRYS 3
@@ -2073,11 +2072,7 @@ void loop()
 		}
 		else
 		{
-			if (!timeServerIP.fromString(ntpServer))
-			{
-				WiFi.hostByName(ntpServer.c_str(), timeServerIP);
-			}
-			Log(F("Sync TimeServer"), ntpServer + ": " + timeServerIP.toString() + " waiting for sync");
+			Log(F("Sync TimeServer"), ntpServer + " waiting for sync");
 			setSyncProvider(getNtpTime);
 		}
 	}
@@ -2256,7 +2251,7 @@ time_t getNtpTime()
 {
 	while (udp.parsePacket() > 0)
 		;
-	sendNTPpacket(timeServerIP);
+	sendNTPpacket(ntpServer);
 	uint32_t beginWait = millis();
 	while (millis() - beginWait < 1500)
 	{
@@ -2279,7 +2274,7 @@ time_t getNtpTime()
 	ntpRetryCounter++;
 	return 0;
 }
-void sendNTPpacket(IPAddress &address)
+void sendNTPpacket(String &address)
 {
 	memset(packetBuffer, 0, NTP_PACKET_SIZE);
 
@@ -2293,7 +2288,7 @@ void sendNTPpacket(IPAddress &address)
 	packetBuffer[14] = 49;
 	packetBuffer[15] = 52;
 
-	udp.beginPacket(address, 123);
+	udp.beginPacket(address.c_str(), 123);
 	udp.write(packetBuffer, NTP_PACKET_SIZE);
 	udp.endPacket();
 }
