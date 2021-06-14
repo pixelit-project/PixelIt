@@ -25,7 +25,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.6 (2021-06-14)
 
 -   (o0shojo0o) added API endpoint `/api/brightness`
 -   (o0shojo0o) added config for temperature (°C or °F)
