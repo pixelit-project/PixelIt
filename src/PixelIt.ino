@@ -876,8 +876,8 @@ void CreateFrames(JsonObject &json)
 			logMessage += F("InternalClock Control, ");
 			if (json["clock"]["show"])
 			{
-				//scrollTextAktivLoop = false;
-				//animateBMPAktivLoop = false;
+				scrollTextAktivLoop = false;
+				animateBMPAktivLoop = false;
 				clockAktiv = true;
 
 				clockCounterClock = 0;
