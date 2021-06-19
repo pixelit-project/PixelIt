@@ -146,6 +146,8 @@ String matrixTempCorrection = "default";
 bool sleepMode = false;
 bool bootScreenAktiv = true;
 bool shouldSaveConfig = false;
+// Millis timestamp of the last receiving screen
+uint lastScreenMessageMillis = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -160,17 +162,19 @@ bool clockBlink = false;
 bool clockAktiv = true;
 bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
-int clockSwitchSec = 7;
-int clockCounterClock = 0;
-int clockCounterDate = 0;
+bool clockAutoFallbackActive = false;
+uint clockSwitchSec = 7;
+uint clockCounterClock = 0;
+uint clockCounterDate = 0;
 float clockTimeZone = 1;
 time_t clockLastUpdate;
 uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
+uint clockAutoFallbackTime = 30;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
 uint scrollTextPrevMillis = 0;
-int scrollTextDefaultDelay = 100;
+uint scrollTextDefaultDelay = 100;
 uint scrollTextDelay;
 int scrollPos;
 int scrollposY;
@@ -182,7 +186,7 @@ String scrollTextString;
 uint16_t animationBmpList[10][64];
 bool animateBMPAktivLoop = false;
 uint animateBMPPrevMillis = 0;
-int animateBMPCounter = 0;
+uint animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
 uint animateBMPDelay;
@@ -251,6 +255,8 @@ void SaveConfig()
 		json["clockSwitchAktiv"] = clockSwitchAktiv;
 		json["clockSwitchSec"] = clockSwitchSec;
 		json["clockWithSeconds"] = clockWithSeconds;
+		json["clockAutoFallbackActive"] = clockAutoFallbackActive;
+		json["clockAutoFallbackTime"] = clockAutoFallbackTime;
 		json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 		json["bootScreenAktiv"] = bootScreenAktiv;
 		json["mqttAktiv"] = mqttAktiv;
@@ -322,37 +328,37 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("matrixBrightnessAutomatic"))
 	{
-		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"];
+		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"].as<bool>();
 	}
 
 	if (json.containsKey("mbaDimMin"))
 	{
-		mbaDimMin = json["mbaDimMin"];
+		mbaDimMin = json["mbaDimMin"].as<int>();
 	}
 
 	if (json.containsKey("mbaDimMax"))
 	{
-		mbaDimMax = json["mbaDimMax"];
+		mbaDimMax = json["mbaDimMax"].as<int>();
 	}
 
 	if (json.containsKey("mbaLuxMin"))
 	{
-		mbaLuxMin = json["mbaLuxMin"];
+		mbaLuxMin = json["mbaLuxMin"].as<int>();
 	}
 
 	if (json.containsKey("mbaLuxMax"))
 	{
-		mbaLuxMax = json["mbaLuxMax"];
+		mbaLuxMax = json["mbaLuxMax"].as<int>();
 	}
 
 	if (json.containsKey("matrixBrightness"))
 	{
-		SetCurrentMatrixBrightness(json["matrixBrightness"]);
+		SetCurrentMatrixBrightness(json["matrixBrightness"].as<float>());
 	}
 
 	if (json.containsKey("matrixType"))
 	{
-		matrixType = json["matrixType"];
+		matrixType = json["matrixType"].as<int>();
 	}
 
 	if (json.containsKey("note"))
@@ -382,37 +388,47 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("clockColor"))
 	{
-		ColorConverter::HexToRgb(json["clockColor"], clockColorR, clockColorG, clockColorB);
+		ColorConverter::HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
 	}
 
 	if (json.containsKey("clockSwitchAktiv"))
 	{
-		clockSwitchAktiv = json["clockSwitchAktiv"];
+		clockSwitchAktiv = json["clockSwitchAktiv"].as<bool>();
 	}
 
 	if (json.containsKey("clockSwitchSec"))
 	{
-		clockSwitchSec = json["clockSwitchSec"];
+		clockSwitchSec = json["clockSwitchSec"].as<uint>();
 	}
 
 	if (json.containsKey("clockWithSeconds"))
 	{
-		clockWithSeconds = json["clockWithSeconds"];
+		clockWithSeconds = json["clockWithSeconds"].as<bool>();
+	}
+
+	if (json.containsKey("clockAutoFallbackActive"))
+	{
+		clockAutoFallbackActive = json["clockAutoFallbackActive"].as<bool>();
+	}
+
+	if (json.containsKey("clockAutoFallbackTime"))
+	{
+		clockAutoFallbackTime = json["clockAutoFallbackTime"].as<uint>();
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
 	{
-		scrollTextDefaultDelay = json["scrollTextDefaultDelay"];
+		scrollTextDefaultDelay = json["scrollTextDefaultDelay"].as<uint>();
 	}
 
 	if (json.containsKey("bootScreenAktiv"))
 	{
-		bootScreenAktiv = json["bootScreenAktiv"];
+		bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
 	}
 
 	if (json.containsKey("mqttAktiv"))
 	{
-		mqttAktiv = json["mqttAktiv"];
+		mqttAktiv = json["mqttAktiv"].as<bool>();
 	}
 
 	if (json.containsKey("mqttUser"))
@@ -437,7 +453,7 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("mqttPort"))
 	{
-		mqttPort = json["mqttPort"];
+		mqttPort = json["mqttPort"].as<int>();
 	}
 }
 
@@ -817,6 +833,7 @@ void CreateFrames(JsonObject &json)
 		// Prüfung für die Unterbrechnung der lokalen Schleifen
 		if (json.containsKey("bitmap") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
 		{
+			lastScreenMessageMillis = millis();
 			clockAktiv = false;
 			scrollTextAktivLoop = false;
 			animateBMPAktivLoop = false;
@@ -859,8 +876,8 @@ void CreateFrames(JsonObject &json)
 			logMessage += F("InternalClock Control, ");
 			if (json["clock"]["show"])
 			{
-				scrollTextAktivLoop = false;
-				animateBMPAktivLoop = false;
+				//scrollTextAktivLoop = false;
+				//animateBMPAktivLoop = false;
 				clockAktiv = true;
 
 				clockCounterClock = 0;
@@ -2063,6 +2080,16 @@ void loop()
 		}
 	}
 
+	// Clock Auto Fallback
+	if (clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000))
+	{
+		scrollTextAktivLoop = false;
+		animateBMPAktivLoop = false;
+		// Might be necessary if the temporary settings of the clock were changed at runtime
+		//LoadConfig();
+		clockAktiv = true;
+	}
+
 	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
 	{
 		if (timeStatus() != timeNotSet)
@@ -2120,8 +2147,6 @@ void loop()
 		scrollTextPrevMillis = millis();
 		ScrollText(false);
 	}
-
-	//PlaySound();
 }
 
 void SendMatrixInfo(bool force)
