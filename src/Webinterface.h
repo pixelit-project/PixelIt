@@ -58,7 +58,7 @@ const char mainPage[] PROGMEM = R"=====(
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://forum.bastelbunker.de/t/pixel-it" target="blank">
+                        <a class="nav-link" href="https://github.com/o0shojo0o/PixelIt/discussions" target="blank">
                             <span data-feather="layers"></span> Forum
                         </a>
                     </li>
