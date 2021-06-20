@@ -106,9 +106,9 @@ const char configPage[] PROGMEM = R"=====(
     <div class="form-group">
         <label for="matrixType">Matrix type</label>
         <select type="select" class="form-control" id="matrixType">
-            <option value="1">Type 1</option>
-            <option value="2">Type 2</option>
-            <option value="3">Type 3</option>
+            <option value="1">Type 1 - Colum major</option>
+            <option value="2">Type 2 - Row major</option>
+            <option value="3">Type 3 - Tiled 4x 8x8 CJMCU</option>
         </select>
     </div>
     <div class="form-group">

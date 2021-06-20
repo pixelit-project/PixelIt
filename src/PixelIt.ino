@@ -1945,17 +1945,17 @@ void setup()
 		}
 	}
 
-	// Matix Type 1
+	// Matix Type 1 (Colum major)
 	if (matrixType == 1)
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
 	}
-	// Matix Type 2
+	// Matix Type 2 (Row major)
 	else if (matrixType == 2)
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
 	}
-	// Matix Type 3
+	// Matix Type 3 (Tiled 4x 8x8 CJMCU)
 	else if (matrixType == 3)
 	{
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_PROGRESSIVE);
