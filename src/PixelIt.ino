@@ -203,6 +203,10 @@ String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
 float currentLux = 0.0f;
+float luxOffset = 0.0f;
+float temperatureOffset = 0.0f;
+float humidityOffset = 0.0f;
+float pressureOffset = 0.0f;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -265,6 +269,10 @@ void SaveConfig()
 		json["mqttServer"] = mqttServer;
 		json["mqttMasterTopic"] = mqttMasterTopic;
 		json["mqttPort"] = mqttPort;
+		json["luxOffset"] = luxOffset;
+		json["temperatureOffset"] = temperatureOffset;
+		json["humidityOffset"] = humidityOffset;
+		json["pressureOffset"] = pressureOffset;
 
 #if defined(ESP8266)
 		File configFile = LittleFS.open("/config.json", "w");
@@ -454,6 +462,26 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("mqttPort"))
 	{
 		mqttPort = json["mqttPort"].as<int>();
+	}
+
+	if (json.containsKey("luxOffset"))
+	{
+		luxOffset = json["luxOffset"].as<float>();
+	}
+
+	if (json.containsKey("temperatureOffset"))
+	{
+		temperatureOffset = json["temperatureOffset"].as<float>();
+	}
+
+	if (json.containsKey("humidityOffset"))
+	{
+		humidityOffset = json["humidityOffset"].as<float>();
+	}
+
+	if (json.containsKey("pressureOffset"))
+	{
+		pressureOffset = json["pressureOffset"].as<float>();
 	}
 }
 
@@ -1124,24 +1152,26 @@ String GetSensor()
 
 	if (tempSensor == TempSensor_BME280)
 	{
-		root["temperature"] = bme.readTemperature();
-		root["humidity"] = bme.readHumidity();
-		root["pressure"] = bme.readPressure() / 100.0F;
+		const float currentTemp = bme.readTemperature();
+		root["temperature"] = currentTemp + temperatureOffset;
+		root["humidity"] = bme.readHumidity() + humidityOffset;
+		root["pressure"] = (bme.readPressure() / 100.0F) + pressureOffset;
 
 		if (temperatureUnit == TemperatureUnit_Fahrenheit)
 		{
-			root["temperature"] = CelsiusToFahrenheit(root["temperature"].as<float>());
+			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
 		}
 	}
 	else if (tempSensor == TempSensor_DHT)
 	{
-		root["temperature"] = dht.getTemperature();
-		root["humidity"] = roundf(dht.getHumidity());
+		const float currentTemp = dht.getTemperature();
+		root["temperature"] = currentTemp + temperatureOffset;
+		root["humidity"] = roundf(dht.getHumidity() + humidityOffset);
 		root["pressure"] = "Not installed";
 
 		if (temperatureUnit == TemperatureUnit_Fahrenheit)
 		{
-			root["temperature"] = CelsiusToFahrenheit(root["temperature"].as<float>());
+			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
 		}
 	}
 	else
@@ -2108,7 +2138,7 @@ void loop()
 	{
 		sendLuxPrevMillis = millis();
 
-		currentLux = roundf(photocell.getCurrentLux() * 1000) / 1000;
+		currentLux = (roundf(photocell.getCurrentLux() * 1000) / 1000) + luxOffset;
 
 		SendLDR(false);
 

@@ -225,12 +225,31 @@ const char configPage[] PROGMEM = R"=====(
         <label for="scrollTextDefaultDelay">ScrollText Delay</label>
         <input type="number" class="form-control" id="scrollTextDefaultDelay">
     </div>
+
+    <h2 class="text-center">Sensor</h2>
+    <hr>
+    <div class="form-group">
+        <label for="luxOffset">Lux offset</label>
+        <input type="number" class="form-control" id="luxOffset" value="0">
+    </div>
+    <div class="form-group">
+        <label for="temperatureOffset">Temperature offset</label>
+        <input type="number" class="form-control" id="temperatureOffset" value="0">
+    </div>
     <div class="form-group">
         <label for="temperatureUnit">Temperature Unit</label>
         <select type="select" class="form-control" id="temperatureUnit">
             <option value="0">Celsius °C</option>
             <option value="1">Fahrenheit °F</option>
         </select>
+    </div>
+    <div class="form-group">
+        <label for="humidityOffset">Humidity offset</label>
+        <input type="number" class="form-control" id="humidityOffset" value="0">
+    </div>
+    <div class="form-group">
+        <label for="pressureOffset">Pressure offset</label>
+        <input type="number" class="form-control" id="pressureOffset" value="0">
     </div>
 </div>
 
