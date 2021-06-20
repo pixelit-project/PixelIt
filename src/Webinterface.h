@@ -104,7 +104,7 @@ const char configPage[] PROGMEM = R"=====(
     <h2 class="text-center">Matrix</h2>
     <hr>
     <div class="form-group">
-        <label for="matrixType">Matrix Type</label>
+        <label for="matrixType">Matrix type</label>
         <select type="select" class="form-control" id="matrixType">
             <option value="1">Type 1</option>
             <option value="2">Type 2</option>
@@ -112,7 +112,7 @@ const char configPage[] PROGMEM = R"=====(
         </select>
     </div>
     <div class="form-group">
-        <label for="matrixTempCorrection">Matrix Correction</label>
+        <label for="matrixTempCorrection">Matrix correction</label>
         <select type="select" class="form-control" id="matrixTempCorrection">
             <option value="default">Default</option>
             <option value="typicalsmd5050">TypicalSMD5050</option>
@@ -181,11 +181,11 @@ const char configPage[] PROGMEM = R"=====(
     <h2 class="text-center">Time</h2>
     <hr>
     <div class="form-group">
-        <label for="ntpServer">NTP Server</label>
+        <label for="ntpServer">NTP-Server</label>
         <input type="text" class="form-control" id="ntpServer">
     </div>
     <div class="form-group">
-        <label for="clockTimeZone">UTC Offset</label>
+        <label for="clockTimeZone">UTC offset</label>
         <input type="number" class="form-control" id="clockTimeZone">
     </div>
     <h2 class="text-center">Clock</h2>
@@ -218,15 +218,15 @@ const char configPage[] PROGMEM = R"=====(
     <h2 class="text-center">Defaults</h2>
     <hr>
     <div class="form-group">
-        <label for="matrixtBrightness">Matrix Brightness</label>
+        <label for="matrixtBrightness">Matrix brightness</label>
         <input type="number" class="form-control" id="matrixBrightness">
     </div>
     <div class="form-group">
-        <label for="scrollTextDefaultDelay">ScrollText Delay</label>
+        <label for="scrollTextDefaultDelay">ScrollText belay</label>
         <input type="number" class="form-control" id="scrollTextDefaultDelay">
     </div>
 
-    <h2 class="text-center">Sensor</h2>
+    <h2 class="text-center">Sensors</h2>
     <hr>
     <div class="form-group">
         <label for="luxOffset">Lux offset</label>
@@ -237,7 +237,7 @@ const char configPage[] PROGMEM = R"=====(
         <input type="number" class="form-control" id="temperatureOffset" value="0">
     </div>
     <div class="form-group">
-        <label for="temperatureUnit">Temperature Unit</label>
+        <label for="temperatureUnit">Temperature unit</label>
         <select type="select" class="form-control" id="temperatureUnit">
             <option value="0">Celsius °C</option>
             <option value="1">Fahrenheit °F</option>
@@ -273,7 +273,7 @@ const char configPage[] PROGMEM = R"=====(
         <input type="password" class="form-control" id="mqttPassword" placeholder="Optional">
     </div>
     <div class="form-group">
-        <label for="mqttMasterTopic">MasterTopic</label>
+        <label for="mqttMasterTopic">Master topic</label>
         <input type="text" class="form-control" id="mqttMasterTopic">
     </div>
     <div class="custom-control custom-switch">
@@ -320,7 +320,7 @@ const char dashPage[] PROGMEM = R"=====(
         <table class="table table-striped table-sm" id="table">
             <tbody>
                 <tr>
-                    <td class="font-weight-bold">PixelIt Version:</td>
+                    <td class="font-weight-bold">PixelIt version:</td>
                     <td id="pixelitVersion">Loading...</td>
                 </tr>
                 <tr>
@@ -332,11 +332,11 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="note">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Sketch Size:</td>
+                    <td class="font-weight-bold">Sketch size:</td>
                     <td id="sketchSize">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Free Sketch Space:</td>
+                    <td class="font-weight-bold">Free sketch space:</td>
                     <td id="freeSketchSpace">Loading...</td>
                 </tr>
                 <tr>
@@ -344,7 +344,7 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="wifiRSSI">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Wifi Quality:</td>
+                    <td class="font-weight-bold">Wifi quality:</td>
                     <td id="wifiQuality">Loading...</td>
                 </tr>
                 <tr>
@@ -356,7 +356,7 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="ipAddress">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Free Heap:</td>
+                    <td class="font-weight-bold">Free heap:</td>
                     <td id="freeHeap">Loading...</td>
                 </tr>
                 <tr>
@@ -364,11 +364,11 @@ const char dashPage[] PROGMEM = R"=====(
                     <td id="chipID">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">CPU Freq.:</td>
+                    <td class="font-weight-bold">CPU freq.:</td>
                     <td id="cpuFreqMHz">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Sleep Mode:</td>
+                    <td class="font-weight-bold">Sleep mode:</td>
                     <td id="sleepMode">Loading...</td>
                 </tr>
             </tbody>
@@ -382,19 +382,19 @@ const char dashPage[] PROGMEM = R"=====(
         <table class="table table-striped table-sm" id="table">
             <tbody>
                 <tr>
-                    <td class="font-weight-bold">Lux Sensor:</td>
+                    <td class="font-weight-bold">Lux:</td>
                     <td id="lux">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Temperature Sensor:</td>
+                    <td class="font-weight-bold">Temperature:</td>
                     <td id="temperature">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Humidity Sensor:</td>
+                    <td class="font-weight-bold">Humidity:</td>
                     <td id="humidity">Loading...</td>
                 </tr>
                 <tr>
-                    <td class="font-weight-bold">Pressure Sensor:</td>
+                    <td class="font-weight-bold">Pressure:</td>
                     <td id="pressure">Loading...</td>
                 </tr>
             </tbody>
@@ -443,9 +443,7 @@ const char testAreaPage[] PROGMEM = R"=====(
     <br />
     <div class="col-md-12 text-center">
         <button type="button" class="btn btn-outline-primary" onclick="SendTest('json',$('#json').val())"><span
-                data-feather="send"></span>
-            Send
-            JSON</button>
+                data-feather="send"></span> Send JSON</button>
     </div>
 </div>
 <div class="col-md-4">
@@ -462,9 +460,7 @@ const char testAreaPage[] PROGMEM = R"=====(
     <br />
     <div class="col-md-12 text-center">
         <button type="button" class="btn btn-outline-primary" onclick="SendTest('text',$('#text').val())"><span
-                data-feather="send"></span>
-            Send
-            Text</button>
+                data-feather="send"></span> Send Text</button>
     </div>
 </div>
 <div class="col-md-4">
@@ -475,9 +471,7 @@ const char testAreaPage[] PROGMEM = R"=====(
     <br />
     <div class="col-md-12 text-center">
         <button type="button" class="btn btn-outline-primary" onclick="SendTest('bitmap',$('#bitmap').val())"><span
-                data-feather="send"></span>
-            Send
-            Bitmap</button>
+                data-feather="send"></span> Send Bitmap</button>
     </div>
 </div>
 
