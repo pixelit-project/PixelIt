@@ -439,7 +439,7 @@ const char testAreaPage[] PROGMEM = R"=====(
     <h2 class="text-center">JSON</h2>
     <hr>
     <textarea class="form-control" id="json" rows="17" wrap="off"
-        placeholder='{"text":{"textString":"Test It :D","scrollText":"auto","bigFont":false,"centerText":false,"position":{"x":0,"y":1},"color":{"r":255,"g":255,"b":255}}}}'></textarea>
+        placeholder='{"text":{"textString":"Test It :D","scrollText":"auto","bigFont":false,"centerText":false,"position":{"x":0,"y":1},"color":{"r":255,"g":255,"b":255}}}'></textarea>
     <br />
     <div class="col-md-12 text-center">
         <button type="button" class="btn btn-outline-primary" onclick="SendTest('json',$('#json').val())"><span
