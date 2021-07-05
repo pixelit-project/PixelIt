@@ -260,7 +260,7 @@ const uint8_t PixelItBitmaps[] PROGMEM = {
     0x50, 0xF8, 0xF8, 0x70, 0x20,       // [197 | 229 | 0xE5] Heart ♥ (0xE299A5)
     0x70, 0x70, 0xF8, 0x70, 0x20, 0xF8, // [198 | 230 | 0xE6] Download ↧ (0xE286A7)
     0x00, 0x38, 0xCC, 0xFC, 0x48,       // [199 | 231 | 0xE7] Car 🚗 (0xF09F9A97)
-    0x00, 0xD8, 0xD8, 0x20, 0x88, 0x70  // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    0x50, 0x50, 0x20, 0x88, 0x70        // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
 };
 
 // {offset, width, height, advance cursor, x offset, y offset}
@@ -469,7 +469,7 @@ const GFXglyph PixelItGlyphs[] PROGMEM = {
     {890, 8, 5, 6, 0, -5}, // [197 | 229 | 0xE5] Heart ♥ (0xE299A5)
     {895, 8, 6, 6, 0, -5}, // [198 | 230 | 0xE6] Download ↧ (0xE286A7)
     {901, 8, 5, 7, 0, -5}, // [199 | 231 | 0xE7] Car 🚗 (0xF09F9A97)
-    {906, 8, 6, 6, 0, -6}  // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    {906, 8, 5, 6, 0, -5}  // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
 };
 
 const GFXfont PixelItFont PROGMEM = {(uint8_t *)PixelItBitmaps, (GFXglyph *)PixelItGlyphs, 0x20, 0xE8, 6};
