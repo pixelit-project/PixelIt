@@ -25,7 +25,8 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.7 (2021-07-05)
+
 -   (foorschtbar) added some UTF8 icons
 -   (foorschtbar) rewirtten UTF8 mapper function
 -   (o0shojo0o) added offset options for sensors
