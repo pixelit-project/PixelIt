@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 /// <summary>
 /// Adds a leading 0 to a number if it is smaller than 10
 /// </summary>
@@ -57,33 +59,110 @@ boolean isIP(String str)
 /// </summary>
 byte Utf8ToAscii(byte ascii)
 {
-	static byte thisByte;
+	static unsigned long fullSeq; // Full UTF-8 Byte Sequences
+	static int firstBytePos;	  // Pos of the 1st Byte
+	unsigned long tmpSeq;		  // Buffer to shift UTF-8 Byte Sequences while extracting
+	int maxByteSeq = 0;			  // Holds legal UTF-8 Byte Sequences lenght
+	byte result = 0;			  // Function result
+	byte bytes[4] = {0, 0, 0, 0}; // Holds 1-4 Bytes from Full UTF-8 Byte Sequences
 
-	if (ascii < 128)
+	// Shift UTF-8 Byte Sequences to right
+	// Add new ASCII byte at the end
+	fullSeq = fullSeq << 8;
+	fullSeq = fullSeq | ascii;
+
+	// Extract 1-4 Byte from UTF-8 Byte Sequences
+	// and store them at the right postion
+	// 0 = 1st Byte
+	// 1 = 2nd Byte
+	// 2 = 3rd Byte
+	// 3 =  4th Byte
+	tmpSeq = fullSeq;
+	for (int i = firstBytePos; i >= 0; i--)
 	{
-		thisByte = 0;
-		return (ascii);
+		bytes[i] = tmpSeq & 0xff;
+		tmpSeq = tmpSeq >> 8;
 	}
 
-	byte last = thisByte;
-	thisByte = ascii;
-	byte result = 0;
+	// Set where we find the 1st Byte
+	firstBytePos += 1;
 
-	switch (last)
+	switch (fullSeq)
 	{
-	case 0xC2:
-		result = ascii - 34;
+	case 0 ... 127: // Basic Latin (Decimal 0-127)
+		result = ascii;
 		break;
-	case 0xC3:
-		result = (ascii | 0xC0) - 34;
+	case 0xC2A1 ... 0xC2BF: // Latin1 Supplement (Decimal 160-191)
+		result = bytes[1] - 34;
 		break;
-	case 0x82:
-		if (ascii == 0xAC)
-		{
-			result = (0xEA);
-		}
+	case 0xC380 ... 0xC3BF:
+		result = (bytes[1] | 0xC0) - 34;
+		break;
+	case 0xE282AC:  // Euro €
+		result = 0xDE;
+		break;
+	case 0xE28690: // Arrow left ←
+		result = 0xDF;
+		break;
+	case 0xE28691: // Arrow up ↑
+		result = 0xE0;
+		break;
+	case 0xE28692: // Arrow right →
+		result = 0xE1;
+		break;
+	case 0xE28693: // Arrow down ↓
+		result = 0xE2;
+		break;
+	case 0XE29885: // Star ★
+		result = 0xE3;
+		break;
+	case 0xF09F9381: // File 📁
+		result = 0xE4;
+		break;
+	case 0xE299A5: // Heart ♥
+		result = 0xE5;
+		break;
+	case 0xE286A7: // Download ↧
+		result = 0xE6;
+		break;
+	case 0xF09F9A97: // Car 🚗
+		result = 0xE7;
+		break;
+	case 0xF09F9880: // Smiley 😀
+		result = 0xE8;
 		break;
 	}
+
+	// Legal UTF-8 Byte Sequences
+	// https://www.unicode.org/versions/corrigendum1.html
+	// Check 1st Byte
+	switch (bytes[0])
+	{
+	case 0x00 ... 0x7F:
+		maxByteSeq = 1;
+		break;
+	case 0xC2 ... 0xDF:
+		maxByteSeq = 2;
+		break;
+	case 0xE0 ... 0xEF:
+		maxByteSeq = 3;
+		break;
+	case 0xF0 ... 0xF4:
+		maxByteSeq = 4;
+		break;
+	default:
+		maxByteSeq = 0;
+		break;
+	}
+
+	// Reset static cache and shift if we have an
+	// result or we exceed Legal UTF-8 Byte Sequences
+	if (result != 0 || firstBytePos >= maxByteSeq)
+	{
+		firstBytePos = 0;
+		fullSeq = 0;
+	}
+
 	return result;
 }
 
