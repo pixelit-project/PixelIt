@@ -26,7 +26,8 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 -->
 
 ### **WORK IN PROGRESS**
--   (foorschtbar) added up (ú) + down (ù) arrows to font
+-   (foorschtbar) added some UTF8 icons
+-   (foorschtbar) rewirtten UTF8 mapper function
 -   (o0shojo0o) added offset options for sensors
 -   (o0shojo0o) added `Clock auto fallback` function
 -   (o0shojo0o) added config for `Clock auto fallback` function
