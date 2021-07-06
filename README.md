@@ -27,7 +27,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 
 ### 0.3.7 (2021-07-05)
 
--   (foorschtbar) added some UTF8 icons
+-   (foorschtbar) added some UTF8 icons to [font](https://docs.bastelbunker.de/pixelit/api.html#text)
 -   (foorschtbar) rewirtten UTF8 mapper function
 -   (o0shojo0o) added offset options for sensors
 -   (o0shojo0o) added `Clock auto fallback` function
