@@ -16,7 +16,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 [Forum](https://github.com/o0shojo0o/PixelIt/discussions) |
 [Blog](https://www.bastelbunker.de/pixel-it/) |
 [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery) |
-[![](https://img.shields.io/endpoint?style=flat-square&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay) |
+[![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay) |
 [![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
 
 ## Changelog
