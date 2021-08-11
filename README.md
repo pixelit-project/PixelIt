@@ -25,7 +25,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### 0.3.8 (2021-07-05)
+### 0.3.8 (2021-08-11)
 
 -   (o0shojo0o) bugfix for [bitmapAnimation -> rubberbanding](https://docs.bastelbunker.de/pixelit/api.html#bitmap-animation)
 
