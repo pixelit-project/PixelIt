@@ -186,7 +186,7 @@ String scrollTextString;
 uint16_t animationBmpList[10][64];
 bool animateBMPAktivLoop = false;
 uint animateBMPPrevMillis = 0;
-uint animateBMPCounter = 0;
+int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
 uint animateBMPDelay;

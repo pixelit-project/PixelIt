@@ -25,6 +25,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) bugfix for [bitmapAnimation -> rubberbanding](https://docs.bastelbunker.de/pixelit/api.html#bitmap-animation)
+
 ### 0.3.7 (2021-07-05)
 
 -   (foorschtbar) added some UTF8 icons to [font](https://docs.bastelbunker.de/pixelit/api.html#text)
