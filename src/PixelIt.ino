@@ -2145,6 +2145,17 @@ void loop()
 		if (matrixBrightnessAutomatic)
 		{
 			float newBrightness = map(currentLux, mbaLuxMin, mbaLuxMax, mbaDimMin, mbaDimMax);
+			// Max brightness 255
+			if (newBrightness > 255)
+			{
+				newBrightness = 255;
+			}
+			// Min brightness 0
+			if (newBrightness < 0)
+			{
+				newBrightness = 0;
+			}
+
 			if (newBrightness != currentMatrixBrightness)
 			{
 				SetCurrentMatrixBrightness(newBrightness);
