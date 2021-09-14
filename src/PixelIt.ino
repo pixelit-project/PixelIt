@@ -85,7 +85,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.9"
+#define VERSION "0.3.10"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -154,8 +154,10 @@ uint16_t bmpArray[64];
 
 // Timerserver Vars
 String ntpServer = "de.pool.ntp.org";
-int ntpRetryCounter = 0;
+uint ntpRetryCounter = 0;
+uint ntpTimeOut = 0;
 #define NTP_MAX_RETRYS 3
+#define NTP_TIMEOUT_SEC 60
 
 // Clock  Vars
 bool clockBlink = false;
@@ -2120,18 +2122,24 @@ void loop()
 		clockAktiv = true;
 	}
 
-	if (clockAktiv && now() != clockLastUpdate && ntpRetryCounter < NTP_MAX_RETRYS)
+	if (clockAktiv && now() != clockLastUpdate)
 	{
-		if (timeStatus() != timeNotSet)
+		if (timeStatus() == timeNotSet && ntpTimeOut <= millis())
 		{
-			clockLastUpdate = now();
-			DrawClock(false);
+			if (ntpRetryCounter >= NTP_MAX_RETRYS)
+			{
+				ntpTimeOut = (millis() + (NTP_TIMEOUT_SEC * 1000));
+				ntpRetryCounter = 0;
+				Log(F("Sync TimeServer"), "sync timeout for " + String(NTP_TIMEOUT_SEC) + " seconds!");
+			}
+			else
+			{
+				Log(F("Sync TimeServer"), ntpServer + " waiting for sync");
+				setSyncProvider(getNtpTime);
+			}
 		}
-		else
-		{
-			Log(F("Sync TimeServer"), ntpServer + " waiting for sync");
-			setSyncProvider(getNtpTime);
-		}
+		clockLastUpdate = now();
+		DrawClock(false);
 	}
 
 	if (millis() - sendLuxPrevMillis >= 1000)
@@ -2334,6 +2342,7 @@ time_t getNtpTime()
 			time_t secsSince1970 = secsSince1900 - 2208988800UL;
 			float totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
+			ntpRetryCounter = 0;
 		}
 		yield();
 	}

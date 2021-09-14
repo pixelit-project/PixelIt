@@ -25,6 +25,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### 0.3.10 (2021-09-14)
+
+-   (o0shojo0o) bugfix clock draw
+
 ### 0.3.9 (2021-09-02)
 
 -   (o0shojo0o) bugfix auto brightness, to high values
