@@ -2222,10 +2222,7 @@ void SendMatrixInfo(bool force)
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/matrixinfo")
-			{
-				webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
-			}
+			webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
 		}
 	}
 
