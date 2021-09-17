@@ -302,7 +302,7 @@ void LoadConfig()
 #endif
 		if (configFile)
 		{
-			Serial.println("opened config file");
+			//Serial.println("opened config file");
 
 			DynamicJsonBuffer jsonBuffer;
 			JsonObject &json = jsonBuffer.parseObject(configFile);
@@ -1130,7 +1130,7 @@ String GetConfig()
 
 	if (configFile)
 	{
-		Log(F("GetConfig"), F("Opened config file"));
+		//Log(F("GetConfig"), F("Opened config file"));
 		size_t size = configFile.size();
 		// Allocate a buffer to store contents of the file.
 		std::unique_ptr<char[]> buf(new char[size]);
@@ -2224,7 +2224,7 @@ void SendMatrixInfo(bool force)
 		{
 			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/matrixinfo")
 			{
-				webSocket.sendTXT(i, matrixInfo);
+				webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
 			}
 		}
 	}
@@ -2256,10 +2256,7 @@ void SendLDR(bool force)
 	{
 		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/lux")
-			{
-				webSocket.sendTXT(i, luxSensor);
-			}
+			webSocket.sendTXT(i, "{\"sensor\":" + luxSensor + "}");
 		}
 	}
 
@@ -2291,10 +2288,7 @@ void SendSensor(bool force)
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			if (websocketConnection[i] == "/dash" || websocketConnection[i] == "/sensor")
-			{
-				webSocket.sendTXT(i, Sensor);
-			}
+			webSocket.sendTXT(i, "{\"sensor\":" + Sensor + "}");
 		}
 	}
 
@@ -2307,11 +2301,8 @@ void SendConfig()
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			if (websocketConnection[i] == "/config")
-			{
-				String config = GetConfig();
-				webSocket.sendTXT(i, config);
-			}
+			String config = GetConfig();
+			webSocket.sendTXT(i, "{\"config\":" + config + "}");
 		}
 	}
 }
@@ -2380,11 +2371,8 @@ void Log(String function, String message)
 	{
 		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			if (websocketConnection[i] == "/dash")
-			{
-				String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
-				webSocket.sendTXT(i, payload);
-			}
+			String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
+			webSocket.sendTXT(i, payload);
 		}
 	}
 }
