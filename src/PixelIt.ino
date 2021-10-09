@@ -707,13 +707,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 			// Logausgabe
 			Log("WebSocketEvent", "Incomming Json length: " + String(json.measureLength()));
 
-			if (websocketConnection[num] == "/setScreen")
+			if (json.containsKey("setScreen"))
 			{
-				CreateFrames(json);
+				CreateFrames(json["setScreen"]);
 			}
-			else if (websocketConnection[num] == "/setConfig")
+			else if (json.containsKey("setConfig"))
 			{
-				SetConfig(json);
+				SetConfig(json["setConfig"]);
 				delay(500);
 				ESP.restart();
 			}
