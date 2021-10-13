@@ -500,30 +500,6 @@ void HandleGetMainPage()
 	server.send(200, "text/html", mainPage);
 }
 
-void HandleGetDashPage()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "text/html", dashPage);
-}
-
-void HandleGetConfigPage()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "text/html", configPage);
-}
-
-void HandleGetTestAreaPage()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "text/html", testAreaPage);
-}
-
-void HandleGetFWFSUpdatePage()
-{
-	server.sendHeader("Connection", "close");
-	server.send(200, "text/html", updatePage);
-}
-
 void HandleNotFound()
 {
 	if (server.method() == HTTP_OPTIONS)
@@ -2041,10 +2017,6 @@ void setup()
 	server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
 	server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
 	server.on(F("/"), HTTP_GET, HandleGetMainPage);
-	server.on(F("/dash"), HTTP_GET, HandleGetDashPage);
-	server.on(F("/config"), HTTP_GET, HandleGetConfigPage);
-	server.on(F("/testarea"), HTTP_GET, HandleGetTestAreaPage);
-	server.on(F("/fwfsupdate"), HTTP_GET, HandleGetFWFSUpdatePage);
 	server.onNotFound(HandleNotFound);
 
 	server.begin();

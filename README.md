@@ -25,6 +25,10 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) new webinterface on vue base
+
 ### 0.3.10 (2021-09-14)
 
 -   (o0shojo0o) bugfix clock draw
