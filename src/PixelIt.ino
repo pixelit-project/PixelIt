@@ -163,6 +163,7 @@ uint ntpTimeOut = 0;
 bool clockBlink = false;
 bool clockAktiv = true;
 bool clock24Hours = true;
+bool clockDayLightSaving = true;
 bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
 bool clockAutoFallbackActive = false;
@@ -263,6 +264,7 @@ void SaveConfig()
 		json["clockSwitchAktiv"] = clockSwitchAktiv;
 		json["clockSwitchSec"] = clockSwitchSec;
 		json["clock24Hours"] = clock24Hours;
+		json["clockDayLightSaving"] = clockDayLightSaving;
 		json["clockWithSeconds"] = clockWithSeconds;
 		json["clockAutoFallbackActive"] = clockAutoFallbackActive;
 		json["clockAutoFallbackTime"] = clockAutoFallbackTime;
@@ -431,6 +433,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("clock24Hours"))
 	{
 		clock24Hours = json["clock24Hours"].as<bool>();
+	}
+
+	if (json.containsKey("clockDayLightSaving"))
+	{
+		clockDayLightSaving = json["clockDayLightSaving"].as<bool>();
 	}
 
 	if (json.containsKey("clockWithSeconds"))
@@ -2336,7 +2343,11 @@ time_t getNtpTime()
 			secsSince1900 |= (time_t)packetBuffer[42] << 8;
 			secsSince1900 |= (time_t)packetBuffer[43];
 			time_t secsSince1970 = secsSince1900 - 2208988800UL;
-			float totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
+			float totalOffset = clockTimeZone;
+			if (clockDayLightSaving)
+			{
+				totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
+			}
 			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
 			ntpRetryCounter = 0;
 		}
