@@ -25,6 +25,11 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) add option for DayLightSaving
+-   (o0shojo0o) add option for 12H / 24H
+
 ### 0.3.11 (2021-10-14)
 
 -   (o0shojo0o) new webinterface on vue base
