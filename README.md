@@ -25,7 +25,7 @@ At the moment there is also a Node-Red Node ([node-red-contrib-pixelit](https://
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.12 (2021-10-16)
 
 -   (o0shojo0o) add option for DayLightSaving
 -   (o0shojo0o) add option for 12H / 24H
