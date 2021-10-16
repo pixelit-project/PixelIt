@@ -1,0 +1,322 @@
+import Vue from 'vue'
+import Vuex from 'vuex'
+
+let pingInterval;
+
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    socket: {
+      isConnected: false,
+      reconnectError: false,
+    },
+    testarea: {
+        brightness: 0,
+        json: JSON.stringify({text:{
+               textString:"Pixel it 😀",
+               scrollText:"auto",
+               bigFont:false,
+               centerText:false,
+               scrollTextDelay: 40,
+               hexColor: "#FFFFFF",
+               position:{
+                  x:0,
+                  y:1
+               }              
+            }}, null, 4),
+         text: "€ ← ↑ → ↓ ★ 📁 ♥ ↧ 🚗 😀",
+         image: '[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,0,65535,44373,44373,0,65535,33808,33808,0,65535,33808,33808,0,65535,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,44373,44373,44373,44373,44373,44373,33808,33808,44373,44373,44373,44373,44373,44373,33808,33808,0,0,33808,33808,0,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0]',
+    },
+    newVersionAvailable: false,
+    version: null,
+    gitVersion: null,    
+    gitDownloadUrl: null,
+    gitReleases: [],
+    pixelItIpAdress: null,
+    logData: [],
+    sensorData: [],
+    sysInfoData: [],
+    configData: {},
+    rules:{
+          required: value => (!!value || value == '0') || 'Required.',
+          max20Chars: value => value.length <= 20 || 'Max 20 characters',
+          email: value => {
+            const pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+            return pattern.test(value) || 'Invalid e-mail.'
+          },
+          min0: value => value >= 0 || 'Must be greater than or equal to 0',
+          max255: value => value <= 255 || 'Must be less than or equal to 255',
+          minMinus12: value => value >= -12 || 'Must be greater than or equal to -12',
+          max14: value => value <= 14 || 'Must be less than or equal to 14',
+          portRange: value => value > 0 && value <= 65535 || 'Must be between 1 and 65535',
+    },   
+    navLinks: [
+        { title: "Dashboard", icon: "mdi-memory", page: "/" },
+        { title: "Options", icon: "mdi-tune-vertical", page: "/options" },
+        { title: "Test Area", icon: "mdi-cube-outline", page: "/testarea" },
+        { title: "Update", icon: "mdi-tray-arrow-up", page: "/update" },
+        { title: "Pixel Gallery", icon: "mdi-image-outline", url: "https://pixelit.bastelbunker.de/PixelGallery", target: "_blank" },
+        { title: "Pixel Creator", icon: "mdi-pencil-box-outline", url: "https://pixelit.bastelbunker.de/PixelCreator", target: "_blank" },
+        { title: "Forum", icon: "mdi-forum-outline", url: "https://github.com/o0shojo0o/PixelIt/discussions", target: "_blank" },
+        { title: "Blog", icon: "mdi-post-outline", url: "https://www.bastelbunker.de/pixel-it/", target: "_blank" },
+        { title: "Documentation", icon: "mdi-book-open-page-variant-outline", url: "https://docs.bastelbunker.de/pixelit/", target: "_blank" },
+        { title: "GitHub", icon: "mdi-github", url: "https://github.com/o0shojo0o/PixelIt", target: "_blank" },
+    ],
+    matrixTypes: [
+        { text: "Type 1 - Colum major", value: 1 },
+        { text: "Type 2 - Row major", value: 2 },
+        { text: "Type 3 - Tiled 4x 8x8 CJMCU", value: 3 },
+    ],
+    matrixCorrection:[
+        { text: "Default", value: "default" },
+        { text: "Typical SMD 5050", value: "typicalsmd5050" },
+        { text: "Typica l8mm Pixel", value: "typical8mmpixel" },
+        { text: "Tungsten 40W", value: "tungsten40w" },
+        { text: "Tungsten 100W", value: "tungsten100w" },
+        { text: "Halogen", value: "halogen" },
+        { text: "Carbon Arc", value: "carbonarc" },
+        { text: "High Noon Sun", value: "highnoonsun" },
+        { text: "Direct Sunlight", value: "directsunlight" },
+        { text: "Overcast Sky", value: "overcastsky" },
+        { text: "Clear Blue Sky", value: "clearbluesky" },
+        { text: "Warm Fluorescent", value: "warmfluorescent" },
+        { text: "Standard Fluorescent", value: "standardfluorescent" },
+        { text: "Cool White Fluorescent", value: "coolwhitefluorescent" },
+        { text: "Full Spectrum Fluorescent", value: "fullspectrumfluorescent" },
+        { text: "Grow Light Fluorescent", value: "growlightfluorescent" },
+        { text: "Black Light Fluorescent", value: "blacklightfluorescent" },
+        { text: "Mercury Vapor", value: "mercuryvapor" },
+        { text: "Sodium Vapor", value: "sodiumvapor" },
+        { text: "Metal Halide", value: "metalhalide" },
+        { text: "High Pressure Sodium", value: "highpressuresodium" },
+    ],
+    // matrixColorOrder:[
+    //     { text: "RGB - Red, Green, Blue", value: 0 },
+    //     { text: "RBG - Red, Blue, Green", value: 1 },
+    //     { text: "GRB - Green, Red, Blue", value: 2 },
+    //     { text: "GBR - Green, Blue, Red", value: 3 },
+    //     { text: "BRG - Blue, Red, Green", value: 4 },
+    //     { text: "BGR - Blue, Green, Red", value: 5 },
+    // ],
+    temperatureUnits:  [
+        { text: "Celsius °C", value: 0 },
+        { text: "Fahrenheit °F", value: 1 },
+    ],
+  },
+  mutations: {
+    SOCKET_ONOPEN (state, event)  {
+      Vue.prototype.$socket = event.currentTarget
+      state.socket.isConnected = true;
+      // Send Ping!? 
+      pingInterval =  setInterval(() => {
+        Vue.prototype.$socket.send(0x9)
+        }, 1000);
+    },
+    SOCKET_ONCLOSE (state)  {
+      state.socket.isConnected = false
+      clearInterval(pingInterval);
+    },
+    SOCKET_ONERROR (state, event)  {
+      console.error(state, event)
+    },
+    // default handler called for all methods
+    SOCKET_ONMESSAGE (state, message)  {
+      //console.log(message);  
+      // Log
+      if (message.log) {
+          addToLogData(message.log, state);
+      }
+      // Sensor
+      else if (message.sensor) {
+          addToSensorData(message.sensor, state);
+      }
+      // Config
+      else if (message.config) {
+          addToConfigData(message.config, state);
+      }
+      // SystemInfo
+      else if (message.sysinfo) {
+          addToSysInfoData(message.sysinfo, state);
+      }
+    },
+    // mutations for reconnect methods
+    SOCKET_RECONNECT(state, count) {
+      console.info(state, count)
+    },
+    SOKE(state) {
+        state.socket.reconnectError = true;
+      },
+    SOCKET_RECONNECT_ERROR(state) {
+      state.socket.reconnectError = true;
+    },
+  },
+  actions: {
+  },
+  modules: {
+  }
+})
+
+function addToLogData(obj, state) {
+  state.logData.unshift(`[${obj.timeStamp}] ${obj.function}: ${obj.message}`);
+  if (state.logData.length > 100) {
+      state.logData = state.logData.slice(0, 100);
+  }
+}
+
+function addToSensorData(obj, state) {
+  for (const key in obj) {
+      const oldEntry = state.sensorData.find((x) => x.name == getDisplayName(key));
+      if (oldEntry) {
+          oldEntry.value = getDisplayValue(key, obj[key]);
+      } else {
+          state.sensorData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
+      }
+  }
+}
+
+function addToConfigData(obj, state) {
+  state.configData = obj;
+  state.testarea.brightness = obj.matrixBrightness;
+}
+
+function addToSysInfoData(obj, state) {
+  for (const key in obj) {
+      const oldEntry = state.sysInfoData.find((x) => x.name === getDisplayName(key));
+      if (oldEntry) {
+          oldEntry.value = getDisplayValue(key, obj[key]);
+      } else {
+          state.sysInfoData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
+      }
+      if (key === "pixelitVersion") {
+          state.version = obj[key];
+      }
+  }
+}
+
+function getDisplayName(key) {
+  switch (key) {
+      case "lux":
+          key = "Luminance";
+          break;
+      case "temperature":
+          key = "Temperature";
+          break;
+      case "humidity":
+          key = "Humidity";
+          break;
+      case "pressure":
+          key = "Pressure";
+          break;
+      case "pixelitVersion":
+          key = "PixelIt version";
+          break;
+      case "hostname":
+          key = "Hostname";
+          break;
+      case "note":
+          key = "Note";
+          break;
+      case "sketchSize":
+          key = "Sketch size";
+          break;
+      case "freeSketchSpace":
+          key = "Free sketch space";
+          break;
+      case "wifiRSSI":
+          key = "Wifi RSSI";
+          break;
+      case "wifiQuality":
+          key = "Wifi quality";
+          break;
+      case "wifiSSID":
+          key = "Wifi SSID";
+          break;
+      case "ipAddress":
+          key = "IP-Address";
+          break;
+      case "freeHeap":
+          key = "Free heap";
+          break;
+      case "chipID":
+          key = "ChipID";
+          break;
+      case "cpuFreqMHz":
+          key = "CPU freq.";
+          break;
+      case "sleepMode":
+          key = "Sleep mode";
+          break;
+  }
+  return key;
+}
+
+function getDisplayValue(key, value) {
+  switch (key) {
+      case "lux":
+          if (typeof value == "number") {
+              value = value.toFixed(3) + " lux";
+          }
+          break;
+      case "note":
+          if (!value.trim()) {
+              value = "---";
+          }
+          break;
+      case "sketchSize":
+      case "freeSketchSpace":
+      case "freeHeap":
+          value = humanFileSize(value, true);
+          break;
+      case "wifiRSSI":
+          value += " dBm";
+          break;
+      case "wifiQuality":
+          value += " %";
+          break;
+      case "cpuFreqMHz":
+          value += " MHz";
+          break;
+      case "sleepMode":
+          value = value ? "On" : "Off";
+          break;
+      case "temperature":
+          if (typeof value == "number") {
+              value = value.toFixed(1) + " °C";
+          }
+          break;
+      case "humidity":
+          if (typeof value == "number") {
+              value = value.toFixed(1) + " %";
+          }
+          break;
+      case "pressure":
+          if (typeof value == "number") {
+              value = Math.round(value) + " hPa";
+          }
+          break;
+  }
+  return value;
+}
+
+function humanFileSize(bytes, si = false, dp = 1) {
+  const thresh = si ? 1000 : 1024;
+
+  if (Math.abs(bytes) < thresh) {
+      return bytes + " B";
+  }
+
+  const units = si ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"] : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+  let u = -1;
+  const r = 10 ** dp;
+
+  do {
+      bytes /= thresh;
+      ++u;
+  } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+
+  return bytes.toFixed(dp) + " " + units[u];
+}
+
+

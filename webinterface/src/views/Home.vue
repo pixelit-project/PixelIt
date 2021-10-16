@@ -1,0 +1,77 @@
+<template>
+    <v-container class="home">
+        <v-row>
+            <v-col cols="12" lg="3">
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
+                        <h2>System</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <div class="text-center updateMessage" v-if="newVersionAvailable">
+                        <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a> <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
+                    </div>
+                    <ListInfo :items="systemItems" />
+                </v-card>
+            </v-col>
+            <v-col cols="12" lg="3">
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
+                        <h2>Sensors</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <ListInfo :items="sensorItems" />
+                </v-card>
+            </v-col>
+            <v-col cols="12" lg="6">
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
+                        <h2>Logs</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <Log :log="log" />
+                </v-card>
+            </v-col>
+        </v-row>
+    </v-container>
+</template>
+
+<script>
+import Log from "../components/Log";
+import ListInfo from "../components/ListInfo";
+export default {
+    name: "Home",
+    components: {
+        Log,
+        ListInfo,
+    },
+    computed: {
+        systemItems() {
+            return this.$store.state.sysInfoData;
+        },
+        sensorItems() {
+            return this.$store.state.sensorData;
+        },
+        log() {
+            return this.$store.state.logData.join("\n");
+        },
+        newVersionAvailable() {
+            return this.$store.state.newVersionAvailable;
+        },
+        gitVersion() {
+            return this.$store.state.gitVersion;
+        },
+        gitUpdateURL() {
+            return this.$store.state.gitDownloadUrl;
+        },
+    },
+};
+</script>
+<style scoped>
+.updateMessage {
+    color: rgb(255, 102, 0);
+    font-weight: bold;
+}
+</style>
