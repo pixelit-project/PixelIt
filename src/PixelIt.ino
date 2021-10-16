@@ -85,7 +85,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.11"
+#define VERSION "0.3.11_beta"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -162,6 +162,7 @@ uint ntpTimeOut = 0;
 // Clock  Vars
 bool clockBlink = false;
 bool clockAktiv = true;
+bool clock24Hours = true;
 bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
 bool clockAutoFallbackActive = false;
@@ -240,6 +241,7 @@ void SaveConfig()
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject &json = jsonBuffer.createObject();
 
+		json["version"] = VERSION;
 		json["temperatureUnit"] = static_cast<int>(temperatureUnit);
 		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
 		json["mbaDimMin"] = mbaDimMin;
@@ -260,6 +262,7 @@ void SaveConfig()
 
 		json["clockSwitchAktiv"] = clockSwitchAktiv;
 		json["clockSwitchSec"] = clockSwitchSec;
+		json["clock24Hours"] = clock24Hours;
 		json["clockWithSeconds"] = clockWithSeconds;
 		json["clockAutoFallbackActive"] = clockAutoFallbackActive;
 		json["clockAutoFallbackTime"] = clockAutoFallbackTime;
@@ -331,6 +334,20 @@ void SetConfig(JsonObject &json)
 
 void SetConfigVaribles(JsonObject &json)
 {
+	if (json.containsKey("version"))
+	{
+		if (json["version"] != VERSION)
+		{
+			Log("LoadConfig", "New version, create new variables in config if necessary");
+			SaveConfigCallback();
+		}
+	}
+	else
+	{
+		Log("LoadConfig", "No version found, create new variables in config");
+		SaveConfigCallback();
+	}
+
 	if (json.containsKey("temperatureUnit"))
 	{
 		temperatureUnit = static_cast<TemperatureUnit>(json["temperatureUnit"].as<int>());
@@ -409,6 +426,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("clockSwitchSec"))
 	{
 		clockSwitchSec = json["clockSwitchSec"].as<uint>();
+	}
+
+	if (json.containsKey("clock24Hours"))
+	{
+		clock24Hours = json["clock24Hours"].as<bool>();
 	}
 
 	if (json.containsKey("clockWithSeconds"))
@@ -1477,11 +1499,25 @@ void DrawClock(bool fromJSON)
 
 	sprintf_P(date, PSTR("%02d.%02d."), day(), month());
 
-	if (clockWithSeconds)
+	if (clock24Hours && clockWithSeconds)
+	{
+		xPosTime = 2;
+		sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
+	}
+	else if (!clock24Hours)
 	{
 		xPosTime = 2;
 
-		sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
+		if (clockBlink)
+		{
+			clockBlink = false;
+			sprintf_P(time, PSTR("%02d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+		}
+		else
+		{
+			clockBlink = !clockBlink;
+			sprintf_P(time, PSTR("%02d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+		}
 	}
 	else
 	{
