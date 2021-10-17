@@ -85,7 +85,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.12"
+#define VERSION "0.3.13_beta"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -167,6 +167,7 @@ bool clockDayLightSaving = true;
 bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
 bool clockAutoFallbackActive = false;
+uint clockAutoFallbackAnimation = 1;
 uint clockSwitchSec = 7;
 uint clockCounterClock = 0;
 uint clockCounterDate = 0;
@@ -268,6 +269,7 @@ void SaveConfig()
 		json["clockWithSeconds"] = clockWithSeconds;
 		json["clockAutoFallbackActive"] = clockAutoFallbackActive;
 		json["clockAutoFallbackTime"] = clockAutoFallbackTime;
+		json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
 		json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 		json["bootScreenAktiv"] = bootScreenAktiv;
 		json["mqttAktiv"] = mqttAktiv;
@@ -448,6 +450,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("clockAutoFallbackActive"))
 	{
 		clockAutoFallbackActive = json["clockAutoFallbackActive"].as<bool>();
+	}
+
+	if (json.containsKey("clockAutoFallbackAnimation"))
+	{
+		clockAutoFallbackAnimation = json["clockAutoFallbackAnimation"].as<uint>();
 	}
 
 	if (json.containsKey("clockAutoFallbackTime"))
@@ -2132,9 +2139,23 @@ void loop()
 	{
 		scrollTextAktivLoop = false;
 		animateBMPAktivLoop = false;
-		// Might be necessary if the temporary settings of the clock were changed at runtime
-		//LoadConfig();
+
+		if (clockAutoFallbackAnimation == 1)
+		{
+			FadeOut();
+		}
+		else if (clockAutoFallbackAnimation == 2)
+		{
+			ColoredBarWipe();
+		}
+
 		clockAktiv = true;
+		DrawClock(true);
+
+		if (clockAutoFallbackAnimation != 0)
+		{
+			FadeIn();
+		}
 	}
 
 	if (clockAktiv && now() != clockLastUpdate)
