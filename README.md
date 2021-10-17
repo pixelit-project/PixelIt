@@ -28,20 +28,20 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 ### **WORK IN PROGRESS**
 
--   (o0shojo0o) add option for auto fallback animation
+-   (o0shojo0o) added option for auto fallback animation
 
 ### 0.3.12 (2021-10-16)
 
--   (o0shojo0o) add option for DayLightSaving
--   (o0shojo0o) add option for 12H / 24H
+-   (o0shojo0o) added option for DayLightSaving
+-   (o0shojo0o) added option for 12H / 24H
 
 ### 0.3.11 (2021-10-14)
 
--   (o0shojo0o) new webinterface on vue base
+-   (o0shojo0o) added new webinterface on vue base
 
 ### 0.3.10 (2021-09-14)
 
--   (o0shojo0o) bugfix clock draw
+-   (o0shojo0o) fixed clock draw
 
 ### 0.3.9 (2021-09-02)
 
@@ -49,7 +49,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 ### 0.3.8 (2021-08-11)
 
--   (o0shojo0o) bugfix for [bitmapAnimation -> rubberbanding](https://docs.bastelbunker.de/pixelit/api.html#bitmap-animation)
+-   (o0shojo0o) fixed [bitmapAnimation -> rubberbanding](https://docs.bastelbunker.de/pixelit/api.html#bitmap-animation)
 
 ### 0.3.7 (2021-07-05)
 
@@ -69,7 +69,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ### 0.3.5 (2021-05-26)
 
 -   (o0shojo0o) extension of the API with the call setGpio
--   (o0shojo0o) download statistics added to the update page
+-   (o0shojo0o) added download statistics to the update page
 
 ### 0.3.4 (2021-05-20)
 
