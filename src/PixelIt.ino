@@ -2135,7 +2135,7 @@ void loop()
 	}
 
 	// Clock Auto Fallback
-	if (clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000))
+	if (!sleepMode && clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000))
 	{
 		scrollTextAktivLoop = false;
 		animateBMPAktivLoop = false;
@@ -2186,7 +2186,7 @@ void loop()
 
 		SendLDR(false);
 
-		if (matrixBrightnessAutomatic)
+		if (!sleepMode && matrixBrightnessAutomatic)
 		{
 			float newBrightness = map(currentLux, mbaLuxMin, mbaLuxMax, mbaDimMin, mbaDimMax);
 			// Max brightness 255
