@@ -26,7 +26,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.13 (2021-10-31)
 
 -   (o0shojo0o) added option for auto fallback animation
 -   (o0shojo0o) fixed auto brightness overrides sleep mode
