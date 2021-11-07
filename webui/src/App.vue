@@ -35,7 +35,7 @@ export default {
             this.$store.state.pixelItIpAdress = location.host;
         }
         // Get style cookie
-        this.$vuetify.theme.dark = this.$cookies.get("theme_dark") === "true";
+        this.$vuetify.theme.dark = this.$cookies.get("theme_dark") ? this.$cookies.get("theme_dark") === "true" : true;
         getCurrentGitReleaseData(this.$store.state);
         // Check again every 15 minutes
         setInterval(() => {

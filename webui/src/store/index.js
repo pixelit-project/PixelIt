@@ -57,7 +57,8 @@ export default new Vuex.Store({
         { title: "Options", icon: "mdi-tune-vertical", page: "/options" },
         { title: "Test Area", icon: "mdi-cube-outline", page: "/testarea" },
         { title: "Update", icon: "mdi-tray-arrow-up", page: "/update" },
-        { title: "Pixel Gallery", icon: "mdi-image-outline", url: "https://pixelit.bastelbunker.de/PixelGallery", target: "_blank" },
+        //{ title: "Pixel Gallery", icon: "mdi-image-outline", url: "https://pixelit.bastelbunker.de/PixelGallery", target: "_blank" },
+        { title: "Pixel Gallery", icon: "mdi-image-outline", page: "/gallery"  },
         { title: "Pixel Creator", icon: "mdi-pencil-box-outline", url: "https://pixelit.bastelbunker.de/PixelCreator", target: "_blank" },
         { title: "Forum", icon: "mdi-forum-outline", url: "https://github.com/o0shojo0o/PixelIt/discussions", target: "_blank" },
         { title: "Blog", icon: "mdi-post-outline", url: "https://www.bastelbunker.de/pixel-it/", target: "_blank" },
@@ -109,6 +110,7 @@ export default new Vuex.Store({
         { text: "Celsius °C", value: 0 },
         { text: "Fahrenheit °F", value: 1 },
     ],
+    bmpsFromAPI: [],
   },
   mutations: {
     SOCKET_ONOPEN (state, event)  {

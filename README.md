@@ -26,6 +26,10 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) "Pixel Gallery" is now a part of the WebUi
+
 ### 0.3.13 (2021-10-31)
 
 -   (o0shojo0o) added option for auto fallback animation
@@ -39,7 +43,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 ### 0.3.11 (2021-10-14)
 
--   (o0shojo0o) added new webinterface on vue base
+-   (o0shojo0o) added new WebUi on vue base
 
 ### 0.3.10 (2021-09-14)
 

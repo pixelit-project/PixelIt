@@ -4,6 +4,7 @@ import Home from '../views/Home.vue'
 import Options from '../views/Options.vue'
 import TestArea from '../views/TestArea.vue'
 import Update from '../views/Update.vue'
+import Gallery from '../views/Gallery.vue'
 
 Vue.use(VueRouter)
 
@@ -26,6 +27,11 @@ const routes = [{
         path: '/update',
         name: 'Update',
         component: Update
+    },
+    {
+        path: '/gallery',
+        name: 'Gallery',
+        component: Gallery
     },
 ]
 
