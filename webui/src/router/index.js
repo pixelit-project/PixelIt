@@ -5,6 +5,7 @@ import Options from '../views/Options.vue'
 import TestArea from '../views/TestArea.vue'
 import Update from '../views/Update.vue'
 import Gallery from '../views/Gallery.vue'
+import Creator from '../views/Creator.vue'
 
 Vue.use(VueRouter)
 
@@ -32,6 +33,11 @@ const routes = [{
         path: '/gallery',
         name: 'Gallery',
         component: Gallery
+    },
+    {
+        path: '/creator',
+        name: 'Creator',
+        component: Creator
     },
 ]
 
