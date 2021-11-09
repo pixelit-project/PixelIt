@@ -112,6 +112,7 @@ export default new Vuex.Store({
         { text: "Fahrenheit °F", value: 1 },
     ],
     bmpsFromAPI: [],
+    pixelCreatorPixel: {},
   },
   mutations: {
     SOCKET_ONOPEN (state, event)  {

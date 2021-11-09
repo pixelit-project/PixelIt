@@ -8,6 +8,9 @@ export default {
             activeBackground: "#000",
         };
     },
+    created() {
+        this.func(this.id, this.activeBackground);
+    },
     methods: {
         changeColor() {
             if (this.activeBackground == this.coloring) {
@@ -15,11 +18,20 @@ export default {
             } else {
                 this.activeBackground = this.coloring;
             }
+            this.func(this.id, this.activeBackground);
         },
     },
     props: {
         coloring: {
             type: String,
+            required: true,
+        },
+        id: {
+            type: Number,
+            required: true,
+        },
+        func: {
+            type: Function,
             required: true,
         },
     },

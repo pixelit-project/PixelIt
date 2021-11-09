@@ -1,8 +1,6 @@
 <template>
     <div id="art">
-        <div v-for="n in 64" :key="n">
-            <Pixel :coloring="color" />
-        </div>
+        <Pixel :coloring="color" :id="n" :func="func" v-for="n in 64" :key="n" />
     </div>
 </template>
 <script>
@@ -16,6 +14,10 @@ export default {
     props: {
         colors: {
             type: String,
+            required: true,
+        },
+        func: {
+            type: Function,
             required: true,
         },
     },
