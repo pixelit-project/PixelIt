@@ -28,6 +28,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) added delay for AM2320 sesnor
 -   (o0shojo0o) "Pixel Gallery" is now a part of the WebUi
 
 ### 0.3.13 (2021-10-31)
