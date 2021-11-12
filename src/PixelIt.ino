@@ -1961,6 +1961,8 @@ void setup()
 	}
 	else
 	{
+		// AM2320 needs a delay to be reliably initialized
+		delay(600);
 		dht.setup(DHT_PIN, DHTesp::DHT22);
 		if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
 		{
