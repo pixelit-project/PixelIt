@@ -1,5 +1,5 @@
 <template>
-    <div class="pixel" v-bind:style="{ background: activeBackground }" @click="changeColor"></div>
+    <div class="pixel" :style="{ background: activeBackground, height: getPixel(), width: getPixel() }" @click="changeColor"></div>
 </template>
 <script>
 export default {
@@ -10,16 +10,6 @@ export default {
     },
     created() {
         this.func(this.id, this.activeBackground);
-    },
-    methods: {
-        changeColor() {
-            if (this.activeBackground == this.coloring) {
-                this.activeBackground = "#000";
-            } else {
-                this.activeBackground = this.coloring;
-            }
-            this.func(this.id, this.activeBackground);
-        },
     },
     props: {
         coloring: {
@@ -33,6 +23,23 @@ export default {
         func: {
             type: Function,
             required: true,
+        },
+        pixelDimensions: {
+            type: String,
+            required: true,
+        },
+    },
+    methods: {
+        changeColor() {
+            if (this.activeBackground == this.coloring) {
+                this.activeBackground = "#000";
+            } else {
+                this.activeBackground = this.coloring;
+            }
+            this.func(this.id, this.activeBackground);
+        },
+        getPixel() {
+            return this.pixelDimensions + "px";
         },
     },
 };

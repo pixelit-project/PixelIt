@@ -1,9 +1,5 @@
 <template>
-    <v-btn v-if="condition" :color="color" elevation="4" @click="onclick">
-        <v-icon left>{{ icon }}</v-icon>
-        {{ text }}
-    </v-btn>
-    <v-btn v-else :color="color" elevation="4" disabled>
+    <v-btn :color="color" elevation="4" @click="onclick" :disabled="!condition">
         <v-icon left>{{ icon }}</v-icon>
         {{ text }}
     </v-btn>
