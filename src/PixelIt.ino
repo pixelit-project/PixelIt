@@ -16,6 +16,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_BME680.h>
 // WiFi & Web
 #include <WebSocketsServer.h>
 #include <WiFiClient.h>
@@ -85,14 +86,15 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.14"
+#define VERSION "0.3.14bme680"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 #else
 TwoWire twowire;
 #endif
-Adafruit_BME280 bme;
+Adafruit_BME280 bme280;
+Adafruit_BME680* bme680;
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -119,6 +121,7 @@ enum TempSensor
 	TempSensor_None,
 	TempSensor_BME280,
 	TempSensor_DHT,
+	TempSensor_BME680,
 };
 TempSensor tempSensor = TempSensor_None;
 
@@ -1166,10 +1169,11 @@ String GetSensor()
 
 	if (tempSensor == TempSensor_BME280)
 	{
-		const float currentTemp = bme.readTemperature();
+		const float currentTemp = bme280.readTemperature();
 		root["temperature"] = currentTemp + temperatureOffset;
-		root["humidity"] = bme.readHumidity() + humidityOffset;
-		root["pressure"] = (bme.readPressure() / 100.0F) + pressureOffset;
+		root["humidity"] = bme280.readHumidity() + humidityOffset;
+		root["pressure"] = (bme280.readPressure() / 100.0F) + pressureOffset;
+		root["gas"] = "Not installed";
 
 		if (temperatureUnit == TemperatureUnit_Fahrenheit)
 		{
@@ -1182,10 +1186,33 @@ String GetSensor()
 		root["temperature"] = currentTemp + temperatureOffset;
 		root["humidity"] = roundf(dht.getHumidity() + humidityOffset);
 		root["pressure"] = "Not installed";
+		root["gas"] = "Not installed";
 
 		if (temperatureUnit == TemperatureUnit_Fahrenheit)
 		{
 			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+		}
+	}
+	else if (tempSensor == TempSensor_BME680)
+	{
+		if (bme680->performReading())
+		{
+			const float currentTemp = bme680->temperature;
+			root["temperature"] = currentTemp + temperatureOffset;
+			root["humidity"] = bme680->humidity + humidityOffset;
+			root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
+			root["gas"] = bme680->gas_resistance / 1000.0;
+			if (temperatureUnit == TemperatureUnit_Fahrenheit)
+			{
+				root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+			}
+		}
+		else
+		{
+			root["humidity"] = "Error while reading";
+			root["temperature"] = "Error while reading";
+			root["pressure"] = "Error while reading";
+			root["gas"] = "Error while reading";
 		}
 	}
 	else
@@ -1193,11 +1220,14 @@ String GetSensor()
 		root["humidity"] = "Not installed";
 		root["temperature"] = "Not installed";
 		root["pressure"] = "Not installed";
+		root["gas"] = "Not installed";
 	}
 
 	String json;
 	root.printTo(json);
 
+	// Log(F("Sensor readings"), F("Hum/Temp/Press/Gas:"));
+	// Log(F("Sensor readings"), json);
 	return json;
 }
 
@@ -1954,24 +1984,34 @@ void setup()
 
 	// Temp Sensors
 	twowire.begin(I2C_SDA, I2C_SCL);
-	if (bme.begin(BME280_ADDRESS_ALTERNATE, &twowire))
+	if (bme280.begin(BME280_ADDRESS_ALTERNATE, &twowire))
 	{
 		Log(F("Setup"), F("BME280 started"));
 		tempSensor = TempSensor_BME280;
 	}
 	else
 	{
-		// AM2320 needs a delay to be reliably initialized
-		delay(600);
-		dht.setup(DHT_PIN, DHTesp::DHT22);
-		if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+		bme680 = new Adafruit_BME680(&twowire);
+		if (bme680->begin())
 		{
-			Log(F("Setup"), F("DHT started"));
-			tempSensor = TempSensor_DHT;
+			Log(F("Setup"), F("BME680 started"));
+			tempSensor = TempSensor_BME680;
 		}
 		else
 		{
-			Log(F("Setup"), F("No BME or DHT Sensor found"));
+			delete bme680;
+			// AM2320 needs a delay to be reliably initialized
+			delay(600);
+			dht.setup(DHT_PIN, DHTesp::DHT22);
+			if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+			{
+				Log(F("Setup"), F("DHT started"));
+				tempSensor = TempSensor_DHT;
+			}
+			else
+			{
+				Log(F("Setup"), F("No BME280, BME 680 or DHT Sensor found"));
+			}
 		}
 	}
 
