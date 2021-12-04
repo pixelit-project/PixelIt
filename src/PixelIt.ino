@@ -66,7 +66,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 //#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
-#define LDR_RESISTOR 10000 //ohms
+#define LDR_RESISTOR 10000 // ohms
 #define LDR_PIN A0
 #define LDR_PHOTOCELL LightDependentResistor::GL5516
 
@@ -86,7 +86,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.14bme680"
+#define VERSION "0.3.15"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -94,7 +94,7 @@ TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 TwoWire twowire;
 #endif
 Adafruit_BME280 bme280;
-Adafruit_BME680* bme680;
+Adafruit_BME680 *bme680;
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -149,6 +149,7 @@ String matrixTempCorrection = "default";
 bool sleepMode = false;
 bool bootScreenAktiv = true;
 bool shouldSaveConfig = false;
+String optionsVersion = "";
 // Millis timestamp of the last receiving screen
 uint lastScreenMessageMillis = 0;
 
@@ -215,6 +216,7 @@ float luxOffset = 0.0f;
 float temperatureOffset = 0.0f;
 float humidityOffset = 0.0f;
 float pressureOffset = 0.0f;
+float gasOffset = 0.0f;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -240,7 +242,7 @@ void EnteredHotspotCallback(WiFiManager *manager)
 
 void SaveConfig()
 {
-	//save the custom parameters to FS
+	// save the custom parameters to FS
 	if (shouldSaveConfig)
 	{
 		DynamicJsonBuffer jsonBuffer;
@@ -285,6 +287,7 @@ void SaveConfig()
 		json["temperatureOffset"] = temperatureOffset;
 		json["humidityOffset"] = humidityOffset;
 		json["pressureOffset"] = pressureOffset;
+		json["gasOffset"] = gasOffset;
 
 #if defined(ESP8266)
 		File configFile = LittleFS.open("/config.json", "w");
@@ -294,13 +297,13 @@ void SaveConfig()
 		json.printTo(configFile);
 		configFile.close();
 		Log("SaveConfig", "Saved");
-		//end save
+		// end save
 	}
 }
 
 void LoadConfig()
 {
-	//file exists, reading and loading
+	// file exists, reading and loading
 #if defined(ESP8266)
 	if (LittleFS.exists("/config.json"))
 	{
@@ -312,7 +315,7 @@ void LoadConfig()
 #endif
 		if (configFile)
 		{
-			//Serial.println("opened config file");
+			// Serial.println("opened config file");
 
 			DynamicJsonBuffer jsonBuffer;
 			JsonObject &json = jsonBuffer.parseObject(configFile);
@@ -343,16 +346,7 @@ void SetConfigVaribles(JsonObject &json)
 {
 	if (json.containsKey("version"))
 	{
-		if (json["version"] != VERSION)
-		{
-			Log("LoadConfig", "New version, create new variables in config if necessary");
-			SaveConfigCallback();
-		}
-	}
-	else
-	{
-		Log("LoadConfig", "No version found, create new variables in config");
-		SaveConfigCallback();
+		optionsVersion = json["version"].as<String>();
 	}
 
 	if (json.containsKey("temperatureUnit"))
@@ -523,6 +517,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("pressureOffset"))
 	{
 		pressureOffset = json["pressureOffset"].as<float>();
+	}
+
+	if (json.containsKey("gasOffset"))
+	{
+		gasOffset = json["gasOffset"].as<float>();
 	}
 }
 
@@ -1145,7 +1144,7 @@ String GetConfig()
 
 	if (configFile)
 	{
-		//Log(F("GetConfig"), F("Opened config file"));
+		// Log(F("GetConfig"), F("Opened config file"));
 		size_t size = configFile.size();
 		// Allocate a buffer to store contents of the file.
 		std::unique_ptr<char[]> buf(new char[size]);
@@ -1201,7 +1200,7 @@ String GetSensor()
 			root["temperature"] = currentTemp + temperatureOffset;
 			root["humidity"] = bme680->humidity + humidityOffset;
 			root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
-			root["gas"] = bme680->gas_resistance / 1000.0;
+			root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
 			if (temperatureUnit == TemperatureUnit_Fahrenheit)
 			{
 				root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
@@ -1347,7 +1346,7 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 		posY = posY + 5;
 	}
 
-	//matrix->getTextBounds(text, 0, 0, &x1, &y1, &xPixelText, &h);
+	// matrix->getTextBounds(text, 0, 0, &x1, &y1, &xPixelText, &h);
 
 	if (centerText)
 	{
@@ -1900,11 +1899,11 @@ int *GetUserCutomCorrection()
 	// R,G,B / 255,255,255
 	static int rgbArray[3];
 
-	//R
+	// R
 	rgbArray[0] = rgbString.substring(0, 3).toInt();
-	//G
+	// G
 	rgbArray[1] = rgbString.substring(4, 7).toInt();
-	//B
+	// B
 	rgbArray[2] = rgbString.substring(8, 11).toInt();
 
 	return rgbArray;
@@ -1969,6 +1968,14 @@ void setup()
 	{
 		Serial.println(F("Mounted file system."));
 		LoadConfig();
+		// If new version detected, create new variables in config if necessary.
+		if (optionsVersion != VERSION)
+		{
+			Log(F("LoadConfig"), F("New version detected, create new variables in config if necessary"));
+			SaveConfigCallback();
+			SaveConfig();
+			LoadConfig();
+		}
 	}
 	else
 	{
@@ -2095,7 +2102,7 @@ void setup()
 
 	Log(F("Setup"), F("Starting UDP"));
 	udp.begin(2390);
-	//Log(F("Setup"), "Local port: " + String(udp.localPort()));
+	// Log(F("Setup"), "Local port: " + String(udp.localPort()));
 
 	httpUpdater.setup(&server);
 
@@ -2105,7 +2112,7 @@ void setup()
 	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legancy
 	server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
 	server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
-	//server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
+	// server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
 	server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
 	server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
 	server.on(F("/"), HTTP_GET, HandleGetMainPage);
@@ -2260,7 +2267,7 @@ void loop()
 	{
 		sendInfoPrevMillis = millis();
 		SendMatrixInfo(false);
-		//SendMp3PlayerInfo(false);
+		// SendMp3PlayerInfo(false);
 	}
 
 	if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)

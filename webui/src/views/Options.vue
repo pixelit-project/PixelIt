@@ -32,6 +32,7 @@
                         <v-text-field v-model="config.luxOffset" type="number" label="Lux sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.humidityOffset" type="number" label="Humidity sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.pressureOffset" type="number" label="Pressure sensor offset" :rules="[rules.required]"></v-text-field>
+                        <v-text-field v-model="config.gasOffset" type="number" label="Gas sensor offset" :rules="[rules.required]"></v-text-field>
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="3">
