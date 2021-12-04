@@ -215,6 +215,9 @@ function getDisplayName(key) {
       case "humidity":
           key = "Humidity";
           break;
+      case "gas":
+          key = "Gas";
+          break;
       case "pressure":
           key = "Pressure";
           break;
@@ -303,6 +306,11 @@ function getDisplayValue(key, value) {
       case "pressure":
           if (typeof value == "number") {
               value = Math.round(value) + " hPa";
+          }
+          break;
+      case "gas":
+          if (typeof value == "number") {
+              value = Math.round(value) + " kOhm";
           }
           break;
   }
