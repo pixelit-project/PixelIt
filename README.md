@@ -26,7 +26,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.15 (2021-12-04)
 
 -   (o0shojo0o) added offset options for gas sensors
 -   (miccgn) added [BME680](https://docs.bastelbunker.de/pixelit/hardware.html#bme680-sensor-upgrade-temperatur-luftfeuchte-luftdruck-gas) support
