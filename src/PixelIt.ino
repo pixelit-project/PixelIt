@@ -66,27 +66,33 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 //#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
-#define LDR_RESISTOR 10000 // ohms
 #define LDR_PIN A0
-#define LDR_PHOTOCELL LightDependentResistor::GL5516
 
 //// GPIO Config
 #if defined(ESP8266)
 #define MATRIX_PIN D2
-#define I2C_SDA D3
-#define I2C_SCL D1
-#define DHT_PIN D1
 #elif defined(ESP32)
 #define MATRIX_PIN 27
-#define I2C_SDA D3
-#define I2C_SCL D1
-#define DHT_PIN D1
 #endif
+
+String dfpRXPin="Pin_D7";
+String dfpTXPin="Pin_D8";
+String DHTPin="Pin_D1";
+String BMESCLPin="Pin_D1";
+String BMESDAPin="Pin_D3";
+String ldrDevice="GL5516";
+unsigned long ldrPulldown=1000; // 10k pulldown-resistor
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15"
+#define VERSION "0.3.15pinconfig"
+
+#if defined(ESP8266)
+bool isESP8266 = true;
+#else
+bool isESP8266 = false;
+#endif
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -110,10 +116,10 @@ HTTPUpdateServer httpUpdater;
 #endif
 
 WebSocketsServer webSocket = WebSocketsServer(81);
-LightDependentResistor photocell(LDR_PIN, LDR_RESISTOR, LDR_PHOTOCELL, 10);
+LightDependentResistor* photocell;
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
-SoftwareSerial softSerial(D7, D8); // RX | TX
+SoftwareSerial* softSerial;
 
 // TempSensor
 enum TempSensor
@@ -249,6 +255,7 @@ void SaveConfig()
 		JsonObject &json = jsonBuffer.createObject();
 
 		json["version"] = VERSION;
+		json["isESP8266"] = isESP8266;
 		json["temperatureUnit"] = static_cast<int>(temperatureUnit);
 		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
 		json["mbaDimMin"] = mbaDimMin;
@@ -288,6 +295,14 @@ void SaveConfig()
 		json["humidityOffset"] = humidityOffset;
 		json["pressureOffset"] = pressureOffset;
 		json["gasOffset"] = gasOffset;
+
+		json["dfpRXpin"] = dfpRXPin;
+		json["dfpTXpin"] = dfpTXPin;
+		json["DHTPin"] = DHTPin;
+		json["BMESCLPin"] = BMESCLPin;
+		json["BMESDAPin"] = BMESDAPin;
+		json["ldrDevice"] = ldrDevice;
+		json["ldrPulldown"] = ldrPulldown;
 
 #if defined(ESP8266)
 		File configFile = LittleFS.open("/config.json", "w");
@@ -522,6 +537,41 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("gasOffset"))
 	{
 		gasOffset = json["gasOffset"].as<float>();
+	}
+
+	if (json.containsKey("dfpRXpin"))
+	{
+		dfpRXPin = json["dfpRXpin"].as<char *>();
+	}
+
+	if (json.containsKey("dfpTXpin"))
+	{
+		dfpTXPin = json["dfpTXpin"].as<char *>();
+	}
+
+	if (json.containsKey("DHTPin"))
+	{
+		DHTPin = json["DHTPin"].as<char *>();
+	}
+	
+	if (json.containsKey("BMESCLPin"))
+	{
+		BMESCLPin = json["BMESCLPin"].as<char *>();
+	}
+	
+	if (json.containsKey("BMESDAPin"))
+	{
+		BMESDAPin = json["BMESDAPin"].as<char *>();
+	}
+
+	if (json.containsKey("ldrDevice"))
+	{
+		ldrDevice = json["ldrDevice"].as<char *>();
+	}
+
+	if (json.containsKey("ldrPulldown"))
+	{
+		ldrPulldown = json["ldrPulldown"].as<unsigned long>();
 	}
 }
 
@@ -828,6 +878,10 @@ void CreateFrames(JsonObject &json)
 		if (json["sound"]["volume"] != NULL && json["sound"]["volume"].is<int>())
 		{
 			mp3Player.volume(json["sound"]["volume"].as<int>());
+			
+			// Sometimes, mp3Player gets hickups. A brief delay helps - but might hinder scrolling.
+			// So, do it only if there are more commands to come.
+			if (json["sound"]["control"].asString()>"") delay(80);
 		}
 		// Play
 		if (json["sound"]["control"] == "play")
@@ -1909,6 +1963,34 @@ int *GetUserCutomCorrection()
 	return rgbArray;
 }
 
+LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
+{
+	if (photocell=="GL5516") return LightDependentResistor::GL5516;
+	if (photocell=="GL5528") return LightDependentResistor::GL5528;
+	if (photocell=="GL5537_1") return LightDependentResistor::GL5537_1;
+	if (photocell=="GL5537_2") return LightDependentResistor::GL5537_2;
+	if (photocell=="GL5539") return LightDependentResistor::GL5539;
+	if (photocell=="GL5549") return LightDependentResistor::GL5549;
+	Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
+	return LightDependentResistor::GL5528;
+}
+
+uint8_t TranslatePin(String pin)
+{
+	
+	if (pin=="Pin_D1") return D1;
+	if (pin=="Pin_D2") return D2;
+	if (pin=="Pin_D3") return D3;
+	if (pin=="Pin_D4") return D4;
+	if (pin=="Pin_D5") return D5;
+	if (pin=="Pin_D6") return D6;
+	if (pin=="Pin_D7") return D7;
+	if (pin=="Pin_D8") return D8;
+	if (pin=="Pin_27") return 27;
+	Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+	return LED_BUILTIN;
+}
+
 void ClearTextArea()
 {
 	int16_t h = 8;
@@ -1990,7 +2072,7 @@ void setup()
 	}
 
 	// Temp Sensors
-	twowire.begin(I2C_SDA, I2C_SCL);
+	twowire.begin(TranslatePin(BMESDAPin), TranslatePin(BMESCLPin));
 	if (bme280.begin(BME280_ADDRESS_ALTERNATE, &twowire))
 	{
 		Log(F("Setup"), F("BME280 started"));
@@ -2009,7 +2091,7 @@ void setup()
 			delete bme680;
 			// AM2320 needs a delay to be reliably initialized
 			delay(600);
-			dht.setup(DHT_PIN, DHTesp::DHT22);
+			dht.setup(TranslatePin(DHTPin), DHTesp::DHT22);
 			if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
 			{
 				Log(F("Setup"), F("DHT started"));
@@ -2039,7 +2121,8 @@ void setup()
 	}
 
 	// Init LightSensor
-	photocell.setPhotocellPositionOnGround(false);
+	photocell=new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
+	photocell->setPhotocellPositionOnGround(false);
 	ColorTemperature userColorTemp = GetUserColorTemp();
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
@@ -2133,10 +2216,12 @@ void setup()
 		Log(F("Setup"), F("MQTT started"));
 	}
 
-	softSerial.begin(9600);
+	softSerial=new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin)); 
+
+	softSerial->begin(9600);
 	Log(F("Setup"), F("Software Serial started"));
 
-	mp3Player.begin(softSerial);
+	mp3Player.begin(*softSerial);
 	Log(F("Setup"), F("DFPlayer started"));
 }
 
@@ -2231,7 +2316,7 @@ void loop()
 	{
 		sendLuxPrevMillis = millis();
 
-		currentLux = (roundf(photocell.getCurrentLux() * 1000) / 1000) + luxOffset;
+		currentLux = (roundf(photocell->getCurrentLux() * 1000) / 1000) + luxOffset;
 
 		SendLDR(false);
 

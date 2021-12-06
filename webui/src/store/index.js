@@ -51,6 +51,12 @@ export default new Vuex.Store({
           minMinus12: value => value >= -12 || 'Must be greater than or equal to -12',
           max14: value => value <= 14 || 'Must be less than or equal to 14',
           portRange: value => value > 0 && value <= 65535 || 'Must be between 1 and 65535',
+          noPinDuplicates: value => ((   //dirty code, but creating an array and running a loop seems to be over-engineering
+              this.config.DFPRXpin!=this.config.DFPTXpin && this.config.DFPRXpin!=this.config.BMESDAPin && this.config.DFPRXpin!=this.config.BMESCLPin && this.config.DFPRXpin!=this.config.DHTPin
+           && this.config.DFPTXpin!=this.config.BMESDAPin && this.config.DFPTXpin!=this.config.BMESCLPin && this.config.DFPTXpin!=this.config.DHTPin
+           && this.config.BMESDAPin!=this.config.BMESCLPin && this.config.BMESDAPin!=this.config.DHTPin 
+           //DHT pin and BME-SCL-pin may be identical!
+          ) || 'Pin assignment must be unique'),
     },   
     navLinks: [
         { title: "Dashboard", icon: "mdi-memory", page: "/" },
@@ -110,6 +116,23 @@ export default new Vuex.Store({
     temperatureUnits:  [
         { text: "Celsius °C", value: 0 },
         { text: "Fahrenheit °F", value: 1 },
+    ],
+    ldrDevices:  [
+        { text: "GL5516", value: "GL5516" },
+        { text: "GL5528", value: "GL5528" },
+        { text: "GL5537_1", value: "GL5537_1" },
+        { text: "GL5537_2", value: "GL5537_2" },
+        { text: "GL5539", value: "GL5539" },
+        { text: "GL5549", value: "GL5549" },
+    ],
+    pinsESP8266:  [
+        { text: "Pin D1", value: "Pin_D1" },
+        { text: "Pin D3", value: "Pin_D3" },
+        { text: "Pin D4", value: "Pin_D4" },
+        { text: "Pin D5", value: "Pin_D5" },
+        { text: "Pin D6", value: "Pin_D6" },
+        { text: "Pin D7", value: "Pin_D7" },
+        { text: "Pin D8", value: "Pin_D8" },
     ],
     bmpsFromAPI: [],
     pixelCreatorPixel: {},

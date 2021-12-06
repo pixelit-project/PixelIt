@@ -28,11 +28,16 @@
                         <hr />
                         <br />
                         <v-select :items="temperatureUnits" v-model="config.temperatureUnit" label="Temperature unit"></v-select>
-                        <v-text-field v-model="config.temperatureOffset" type="number" label="Temperature sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.luxOffset" type="number" label="Lux sensor offset" :rules="[rules.required]"></v-text-field>
+                        <v-select :items="ldrDevices" v-model="config.ldrDevice" type="number" label="Lux sensor type"></v-select>
+                        <v-text-field v-model="config.ldrPulldown" type="number" label="Value of pulldown resistor for LDR" suffix="Ohm" :rules="[rules.required]"></v-text-field>
+                        <v-text-field v-model="config.temperatureOffset" type="number" label="Temperature sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.humidityOffset" type="number" label="Humidity sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.pressureOffset" type="number" label="Pressure sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.gasOffset" type="number" label="Gas sensor offset" :rules="[rules.required]"></v-text-field>
+                        <v-select :items="pinsESP8266" v-model="config.DHTPin" type="number" label="DHT sensor pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.BMESCLPin" type="number" label="BME sensor SCL pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.BMESDAPin" type="number" label="BME sensor SDA pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="3">
@@ -89,6 +94,16 @@
                             </v-col>
                         </v-row>
                     </v-card>
+                    <br/>
+                    <v-card class="pa-2" elevation="4">
+                        <v-card-title>
+                            <h2>Sound</h2>
+                        </v-card-title>
+                        <hr />
+                        <br />
+                        <v-select :items="pinsESP8266" v-model="config.DFPRXPin" type="number" label="DFPlayer RX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.DFPTXPin" type="number" label="DFPlayer TX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                    </v-card>
                 </v-col>
                 <v-col cols="12" lg="3">
                     <v-card class="pa-1" elevation="4">
@@ -142,6 +157,12 @@ export default {
         },
         temperatureUnits() {
             return this.$store.state.temperatureUnits;
+        },
+        ldrDevices() {
+            return this.$store.state.ldrDevices;
+        },
+        pinsESP8266() {
+            return this.$store.state.pinsESP8266;
         },
     },
     methods: {
