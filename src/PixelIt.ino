@@ -81,7 +81,7 @@ String DHTPin="Pin_D1";
 String BMESCLPin="Pin_D1";
 String BMESDAPin="Pin_D3";
 String ldrDevice="GL5516";
-unsigned long ldrPulldown=1000; // 10k pulldown-resistor
+unsigned long ldrPulldown=10000; // 10k pulldown-resistor
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
