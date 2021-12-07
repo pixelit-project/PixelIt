@@ -120,6 +120,7 @@ LightDependentResistor* photocell;
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
 SoftwareSerial* softSerial;
+uint initialVolume = 10;
 
 // TempSensor
 enum TempSensor
@@ -303,6 +304,8 @@ void SaveConfig()
 		json["BMESDAPin"] = BMESDAPin;
 		json["ldrDevice"] = ldrDevice;
 		json["ldrPulldown"] = ldrPulldown;
+
+		json["initialVolume"] = initialVolume;
 
 #if defined(ESP8266)
 		File configFile = LittleFS.open("/config.json", "w");
@@ -572,6 +575,11 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("ldrPulldown"))
 	{
 		ldrPulldown = json["ldrPulldown"].as<unsigned long>();
+
+	}
+	if (json.containsKey("initialVolume"))
+	{
+		initialVolume = json["initialVolume"].as<uint>();
 	}
 }
 
@@ -879,9 +887,13 @@ void CreateFrames(JsonObject &json)
 		{
 			mp3Player.volume(json["sound"]["volume"].as<int>());
 			
-			// Sometimes, mp3Player gets hickups. A brief delay helps - but might hinder scrolling.
+			// Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
 			// So, do it only if there are more commands to come.
-			if (json["sound"]["control"].asString()>"") delay(80);
+			if (json["sound"]["control"].asString()>"")
+			{
+				Log(F("Sound"),F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
+				delay(200);
+			}
 		}
 		// Play
 		if (json["sound"]["control"] == "play")
@@ -2223,6 +2235,7 @@ void setup()
 
 	mp3Player.begin(*softSerial);
 	Log(F("Setup"), F("DFPlayer started"));
+	mp3Player.volume(initialVolume);
 }
 
 void loop()

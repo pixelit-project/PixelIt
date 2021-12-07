@@ -101,6 +101,7 @@
                         </v-card-title>
                         <hr />
                         <br />
+                        <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
                         <v-select :items="pinsESP8266" v-model="config.DFPRXPin" type="number" label="DFPlayer RX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
                         <v-select :items="pinsESP8266" v-model="config.DFPTXPin" type="number" label="DFPlayer TX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
                     </v-card>
