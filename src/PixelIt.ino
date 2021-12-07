@@ -95,7 +95,7 @@ TwoWire twowire;
 #endif
 Adafruit_BME280 bme280;
 Adafruit_BME680 *bme680;
-uint lastBME680read = 0;
+unsigned long lastBME680read = 0;
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -152,7 +152,7 @@ bool bootScreenAktiv = true;
 bool shouldSaveConfig = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
-uint lastScreenMessageMillis = 0;
+unsigned long lastScreenMessageMillis = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -160,7 +160,7 @@ uint16_t bmpArray[64];
 // Timerserver Vars
 String ntpServer = "de.pool.ntp.org";
 uint ntpRetryCounter = 0;
-uint ntpTimeOut = 0;
+unsigned long ntpTimeOut = 0;
 #define NTP_MAX_RETRYS 3
 #define NTP_TIMEOUT_SEC 60
 
@@ -183,7 +183,7 @@ uint clockAutoFallbackTime = 30;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
-uint scrollTextPrevMillis = 0;
+unsigned long scrollTextPrevMillis = 0;
 uint scrollTextDefaultDelay = 100;
 uint scrollTextDelay;
 int scrollPos;
@@ -195,7 +195,7 @@ String scrollTextString;
 // Animate BMP Vars
 uint16_t animationBmpList[10][64];
 bool animateBMPAktivLoop = false;
-uint animateBMPPrevMillis = 0;
+unsigned long animateBMPPrevMillis = 0;
 int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
@@ -206,9 +206,9 @@ int animateBMPLimitFrames = -1;
 int animateBMPFrameCount = 0;
 
 // Sensors Vars
-uint sendLuxPrevMillis = 0;
-uint sendSensorPrevMillis = 0;
-uint sendInfoPrevMillis = 0;
+unsigned long sendLuxPrevMillis = 0;
+unsigned long sendSensorPrevMillis = 0;
+unsigned long sendInfoPrevMillis = 0;
 String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
