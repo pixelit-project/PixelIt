@@ -887,6 +887,7 @@ void CreateFrames(JsonObject &json)
 		// Ist eine Switch Animation übergeben worden?
 		bool fadeAnimationAktiv = false;
 		bool coloredBarWipeAnimationAktiv = false;
+		bool zigzagWipeAnimationAktiv = false;
 		if (json.containsKey("switchAnimation"))
 		{
 			logMessage += F("SwitchAnimation, ");
@@ -902,6 +903,10 @@ void CreateFrames(JsonObject &json)
 				{
 					coloredBarWipeAnimationAktiv = true;
 				}
+				else if (json["switchAnimation"]["animation"] == "zigzagWipe")
+				{
+					zigzagWipeAnimationAktiv = true;
+				}
 			}
 		}
 
@@ -913,6 +918,23 @@ void CreateFrames(JsonObject &json)
 		else if (coloredBarWipeAnimationAktiv)
 		{
 			ColoredBarWipe();
+		}
+		else if (zigzagWipeAnimationAktiv)
+		{
+			uint8_t r=255;
+			uint8_t g=255;
+			uint8_t b=255;
+			if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
+			{
+				ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+			}
+			else
+			{
+				r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
+				g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
+				b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
+			}
+			ZigZagWipe(r,g,b);
 		}
 
 		// Clock
@@ -1120,7 +1142,7 @@ void CreateFrames(JsonObject &json)
 		}
 
 		// Fade aktiv?
-		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv))
+		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv))
 		{
 			FadeIn();
 		}
@@ -1789,6 +1811,46 @@ void ColoredBarWipe()
 		matrix->show();
 		delay(15);
 	}
+}
+
+void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
+{
+	for (uint16_t row = 0; row <=7; row+=2)
+	{
+		for (uint16_t col = 0; col <= 31; col++)
+		{
+			if (row==0 || row==4)
+			{
+				matrix->fillRect(0, row, col - 1, 2, matrix->Color(0, 0, 0));
+				matrix->drawFastVLine(col-1, row, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(col, row, 2, matrix->Color(r,g,b));
+			}
+			else
+			{
+				matrix->fillRect(32-col, row,col, 2, matrix->Color(0, 0, 0));
+				matrix->drawFastVLine(32-col, row, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(32-col-1, row, 2, matrix->Color(r,g,b));
+			}
+			matrix->show();
+			delay(5);
+		}
+		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+		if (row==0 || row==4)
+		{
+				matrix->drawFastVLine(30, row+1, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(31, row+1, 2, matrix->Color(r,g,b));
+		}
+		else
+		{
+			matrix->drawFastVLine(0, row+1, 2, matrix->Color(r,g,b));
+			matrix->drawFastVLine(1, row+1, 2, matrix->Color(r,g,b));
+		}
+		matrix->show();
+		delay(5);
+		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+	}
+	matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
+	matrix->show();
 }
 
 void ColorFlash(int red, int green, int blue)
