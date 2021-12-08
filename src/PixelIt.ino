@@ -925,9 +925,9 @@ void CreateFrames(JsonObject &json)
 			uint8_t b=255;
 			if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
 			{
-				ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+				ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
 			}
-			else
+			else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
 			{
 				r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
 				g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
