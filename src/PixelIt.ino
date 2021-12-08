@@ -887,6 +887,7 @@ void CreateFrames(JsonObject &json)
 		bool fadeAnimationAktiv = false;
 		bool coloredBarWipeAnimationAktiv = false;
 		bool zigzagWipeAnimationAktiv = false;
+		bool bitmapWipeAnimationAktiv = false;
 		if (json.containsKey("switchAnimation"))
 		{
 			logMessage += F("SwitchAnimation, ");
@@ -906,6 +907,10 @@ void CreateFrames(JsonObject &json)
 				{
 					zigzagWipeAnimationAktiv = true;
 				}
+				else if (json["switchAnimation"]["animation"] == "bitmapWipe")
+				{
+					bitmapWipeAnimationAktiv = true;
+				}		
 			}
 		}
 
@@ -935,7 +940,11 @@ void CreateFrames(JsonObject &json)
 			}
 			ZigZagWipe(r,g,b);
 		}
-
+		else if (bitmapWipeAnimationAktiv)
+		{
+			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(),json["switchAnimation"]["w"].as<uint8_t>());
+		}
+		
 		// Clock
 		if (json.containsKey("clock"))
 		{
@@ -1141,7 +1150,7 @@ void CreateFrames(JsonObject &json)
 		}
 
 		// Fade aktiv?
-		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv))
+		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
 		{
 			FadeIn();
 		}
@@ -1803,6 +1812,24 @@ void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
 	}
 	matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
 	matrix->show();
+}
+
+void BitmapWipe(JsonArray &data, int16_t w)
+{
+	for (int16_t x = -w+1; x <=31; x++)
+	{
+		int16_t y = 0;
+		for (int16_t j = 0; j < 8; j++, y++)
+		{
+			for (int16_t i = 0; i < w; i++)
+			{
+				matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
+			}
+		}
+	matrix->show();
+	delay(18);
+	matrix->fillRect(0,0,x,8, matrix->Color(0, 0, 0));
+	}
 }
 
 void ColorFlash(int red, int green, int blue)
