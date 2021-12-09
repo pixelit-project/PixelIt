@@ -942,7 +942,7 @@ void CreateFrames(JsonObject &json)
 		}
 		else if (bitmapWipeAnimationAktiv)
 		{
-			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(),json["switchAnimation"]["w"].as<uint8_t>());
+			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(),json["switchAnimation"]["width"].as<uint8_t>());
 		}
 		
 		// Clock
