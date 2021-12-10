@@ -911,6 +911,20 @@ void CreateFrames(JsonObject &json)
 				{
 					bitmapWipeAnimationAktiv = true;
 				}		
+				else if (json["switchAnimation"]["animation"] == "random")
+				{
+					switch(millis()%3){
+						case 0:
+							fadeAnimationAktiv = true;
+							break;
+						case 1:
+							coloredBarWipeAnimationAktiv = true;
+							break;
+						case 2:
+							zigzagWipeAnimationAktiv = true;
+							break;
+					}
+				}		
 			}
 		}
 
