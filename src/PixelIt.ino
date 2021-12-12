@@ -95,6 +95,7 @@ TwoWire twowire;
 #endif
 Adafruit_BME280 bme280;
 Adafruit_BME680 *bme680;
+unsigned long lastBME680read = 0;
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -151,7 +152,7 @@ bool bootScreenAktiv = true;
 bool shouldSaveConfig = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
-uint lastScreenMessageMillis = 0;
+unsigned long lastScreenMessageMillis = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -159,7 +160,7 @@ uint16_t bmpArray[64];
 // Timerserver Vars
 String ntpServer = "de.pool.ntp.org";
 uint ntpRetryCounter = 0;
-uint ntpTimeOut = 0;
+unsigned long ntpTimeOut = 0;
 #define NTP_MAX_RETRYS 3
 #define NTP_TIMEOUT_SEC 60
 
@@ -182,7 +183,7 @@ uint clockAutoFallbackTime = 30;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
-uint scrollTextPrevMillis = 0;
+unsigned long scrollTextPrevMillis = 0;
 uint scrollTextDefaultDelay = 100;
 uint scrollTextDelay;
 int scrollPos;
@@ -194,7 +195,7 @@ String scrollTextString;
 // Animate BMP Vars
 uint16_t animationBmpList[10][64];
 bool animateBMPAktivLoop = false;
-uint animateBMPPrevMillis = 0;
+unsigned long animateBMPPrevMillis = 0;
 int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
@@ -205,9 +206,9 @@ int animateBMPLimitFrames = -1;
 int animateBMPFrameCount = 0;
 
 // Sensors Vars
-uint sendLuxPrevMillis = 0;
-uint sendSensorPrevMillis = 0;
-uint sendInfoPrevMillis = 0;
+unsigned long sendLuxPrevMillis = 0;
+unsigned long sendSensorPrevMillis = 0;
+unsigned long sendInfoPrevMillis = 0;
 String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
@@ -1189,9 +1190,36 @@ String GetSensor()
 		}
 	}
 	else if (tempSensor == TempSensor_BME680)
-	{
-		if (bme680->performReading())
+	{	
+		/***************************************************************************************************
+		// BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder     
+		// animations and scrolling. Therefore, we will use asynchronous reading in most cases.           
+		// 
+		// First call: starts measuring sequence, returns previous values.
+		// Second call: performs read, returns current values.
+		// 
+		// As long as there are more than ~200ms between the calls, there won't be blocking.
+		// PixelIt usually uses a 3000ms loop.
+		//
+		// When there's no loop (no Websock connection, no MQTT) but only HTTP API calls, this would result
+		// in only EVERY OTHER call return new values (which have been taken shortly after the previous call).
+		// This is okay when you are polling very frequently, but might be undesirable when polling every
+		// couple of minutes or so. Therefore: if previous reading is more than 20000ms old, perform
+		// read in any case, even if it might become blocking.
+		//
+		// Please note: the gas value not only depends on gas, but also on the time since last read.
+		// Frequent reads will yield higher values than infrequent reads. There will be a difference
+		// even if we switch from 6secs to 3secs! So, do not attempt to compare values of readings
+		// with an interval of 3 secs to values of readings with an interval of 60 secs!
+		*/
+
+		const int elapsedSinceLastRead=millis()-lastBME680read;
+		const int remain=bme680->remainingReadingMillis();
+
+		if (remain==-1)  //no current values available
 		{
+			bme680->beginReading(); //start measurement process
+			//return previous values
 			const float currentTemp = bme680->temperature;
 			root["temperature"] = currentTemp + temperatureOffset;
 			root["humidity"] = bme680->humidity + humidityOffset;
@@ -1202,12 +1230,32 @@ String GetSensor()
 				root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
 			}
 		}
-		else
+
+		if (remain>=0 ||elapsedSinceLastRead>20000)  
+		//remain==0: measurement completed, not read yet
+		//remain>0: measurement still running, but as we already are in the next loop call, block and read
+		//elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
 		{
-			root["humidity"] = "Error while reading";
-			root["temperature"] = "Error while reading";
-			root["pressure"] = "Error while reading";
-			root["gas"] = "Error while reading";
+			if (bme680->endReading())  //will become blocking if measurement not complete yet
+			{
+				lastBME680read=millis();
+				const float currentTemp = bme680->temperature;
+				root["temperature"] = currentTemp + temperatureOffset;
+				root["humidity"] = bme680->humidity + humidityOffset;
+				root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
+				root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
+				if (temperatureUnit == TemperatureUnit_Fahrenheit)
+				{
+					root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+				}
+			}
+			else
+			{
+				root["humidity"] = "Error while reading";
+				root["temperature"] = "Error while reading";
+				root["pressure"] = "Error while reading";
+				root["gas"] = "Error while reading";
+			}
 		}
 	}
 	else
