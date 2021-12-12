@@ -86,7 +86,7 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15"
+#define VERSION "0.3.15multiple_bitmaps"
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
@@ -875,7 +875,7 @@ void CreateFrames(JsonObject &json)
 		matrix->setBrightness(currentMatrixBrightness);
 
 		// Prüfung für die Unterbrechnung der lokalen Schleifen
-		if (json.containsKey("bitmap") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
+		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
 		{
 			lastScreenMessageMillis = millis();
 			clockAktiv = false;
@@ -950,7 +950,7 @@ void CreateFrames(JsonObject &json)
 			}
 		}
 
-		if (json.containsKey("bitmap") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
+		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
 		{
 			// Alle Pixel löschen
 			matrix->clear();
@@ -999,24 +999,20 @@ void CreateFrames(JsonObject &json)
 		if (json.containsKey("bitmap"))
 		{
 			logMessage += F("Bitmap, ");
+			DrawSingleBitmap(json["bitmap"]);
+		}
 
-			int16_t h = json["bitmap"]["size"]["height"].as<int16_t>();
-			int16_t w = json["bitmap"]["size"]["width"].as<int16_t>();
-			int16_t x = json["bitmap"]["position"]["x"].as<int16_t>();
-			int16_t y = json["bitmap"]["position"]["y"].as<int16_t>();
-
-			// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
-			for (int16_t j = 0; j < h; j++, y++)
+		// Sind mehrere Bitmaps übergeben worden?
+		if (json.containsKey("bitmaps"))
+		{
+			logMessage += F("Bitmaps (");
+			for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
 			{
-				for (int16_t i = 0; i < w; i++)
-				{
-					matrix->drawPixel(x + i, y, json["bitmap"]["data"][j * w + i].as<uint16_t>());
-				}
+				DrawSingleBitmap(singleBitmap);
+				logMessage += F("Bitmap,");
 			}
 
-			// JsonArray in IntArray konvertieren
-			// dies ist nötik für diverse kleine Logiken z.B. Scrolltext
-			json["bitmap"]["data"].as<JsonArray>().copyTo(bmpArray);
+			logMessage += F("), ");
 		}
 
 		// Ist eine BitmapAnimation übergeben worden?
@@ -1529,6 +1525,28 @@ void AnimateBMP(bool isShowRequired)
 	{
 		matrix->show();
 	}
+}
+
+void DrawSingleBitmap(JsonObject &json)
+{
+	int16_t h = json["size"]["height"].as<int16_t>();
+	int16_t w = json["size"]["width"].as<int16_t>();
+	int16_t x = json["position"]["x"].as<int16_t>();
+	int16_t y = json["position"]["y"].as<int16_t>();
+
+	// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
+	for (int16_t j = 0; j < h; j++, y++)
+	{
+		for (int16_t i = 0; i < w; i++)
+		{
+			matrix->drawPixel(x + i, y, json["data"][j * w + i].as<uint16_t>());
+		}
+	}
+
+	// JsonArray in IntArray konvertieren
+	// dies ist nötig für diverse kleine Logiken z.B. Scrolltext
+	// bei Multibitmaps landet hier nur eine der Bitmaps - das ist aber egal, da dann eh nicht gescrollt wird
+	json["data"].as<JsonArray>().copyTo(bmpArray);
 }
 
 void DrawClock(bool fromJSON)
