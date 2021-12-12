@@ -101,6 +101,7 @@ TwoWire twowire;
 #endif
 Adafruit_BME280 bme280;
 Adafruit_BME680 *bme680;
+unsigned long lastBME680read = 0;
 
 FastLED_NeoMatrix *matrix;
 WiFiClient espClient;
@@ -158,7 +159,7 @@ bool bootScreenAktiv = true;
 bool shouldSaveConfig = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
-uint lastScreenMessageMillis = 0;
+unsigned long lastScreenMessageMillis = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -166,7 +167,7 @@ uint16_t bmpArray[64];
 // Timerserver Vars
 String ntpServer = "de.pool.ntp.org";
 uint ntpRetryCounter = 0;
-uint ntpTimeOut = 0;
+unsigned long ntpTimeOut = 0;
 #define NTP_MAX_RETRYS 3
 #define NTP_TIMEOUT_SEC 60
 
@@ -189,7 +190,7 @@ uint clockAutoFallbackTime = 30;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
-uint scrollTextPrevMillis = 0;
+unsigned long scrollTextPrevMillis = 0;
 uint scrollTextDefaultDelay = 100;
 uint scrollTextDelay;
 int scrollPos;
@@ -201,7 +202,7 @@ String scrollTextString;
 // Animate BMP Vars
 uint16_t animationBmpList[10][64];
 bool animateBMPAktivLoop = false;
-uint animateBMPPrevMillis = 0;
+unsigned long animateBMPPrevMillis = 0;
 int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
@@ -212,9 +213,9 @@ int animateBMPLimitFrames = -1;
 int animateBMPFrameCount = 0;
 
 // Sensors Vars
-uint sendLuxPrevMillis = 0;
-uint sendSensorPrevMillis = 0;
-uint sendInfoPrevMillis = 0;
+unsigned long sendLuxPrevMillis = 0;
+unsigned long sendSensorPrevMillis = 0;
+unsigned long sendInfoPrevMillis = 0;
 String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
@@ -941,7 +942,7 @@ void CreateFrames(JsonObject &json)
 		matrix->setBrightness(currentMatrixBrightness);
 
 		// Prüfung für die Unterbrechnung der lokalen Schleifen
-		if (json.containsKey("bitmap") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
+		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
 		{
 			lastScreenMessageMillis = millis();
 			clockAktiv = false;
@@ -1016,7 +1017,7 @@ void CreateFrames(JsonObject &json)
 			}
 		}
 
-		if (json.containsKey("bitmap") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
+		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
 		{
 			// Alle Pixel löschen
 			matrix->clear();
@@ -1065,24 +1066,20 @@ void CreateFrames(JsonObject &json)
 		if (json.containsKey("bitmap"))
 		{
 			logMessage += F("Bitmap, ");
+			DrawSingleBitmap(json["bitmap"]);
+		}
 
-			int16_t h = json["bitmap"]["size"]["height"].as<int16_t>();
-			int16_t w = json["bitmap"]["size"]["width"].as<int16_t>();
-			int16_t x = json["bitmap"]["position"]["x"].as<int16_t>();
-			int16_t y = json["bitmap"]["position"]["y"].as<int16_t>();
-
-			// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
-			for (int16_t j = 0; j < h; j++, y++)
+		// Sind mehrere Bitmaps übergeben worden?
+		if (json.containsKey("bitmaps"))
+		{
+			logMessage += F("Bitmaps (");
+			for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
 			{
-				for (int16_t i = 0; i < w; i++)
-				{
-					matrix->drawPixel(x + i, y, json["bitmap"]["data"][j * w + i].as<uint16_t>());
-				}
+				DrawSingleBitmap(singleBitmap);
+				logMessage += F("Bitmap,");
 			}
 
-			// JsonArray in IntArray konvertieren
-			// dies ist nötik für diverse kleine Logiken z.B. Scrolltext
-			json["bitmap"]["data"].as<JsonArray>().copyTo(bmpArray);
+			logMessage += F("), ");
 		}
 
 		// Ist eine BitmapAnimation übergeben worden?
@@ -1259,9 +1256,36 @@ String GetSensor()
 		}
 	}
 	else if (tempSensor == TempSensor_BME680)
-	{
-		if (bme680->performReading())
+	{	
+		/***************************************************************************************************
+		// BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder     
+		// animations and scrolling. Therefore, we will use asynchronous reading in most cases.           
+		// 
+		// First call: starts measuring sequence, returns previous values.
+		// Second call: performs read, returns current values.
+		// 
+		// As long as there are more than ~200ms between the calls, there won't be blocking.
+		// PixelIt usually uses a 3000ms loop.
+		//
+		// When there's no loop (no Websock connection, no MQTT) but only HTTP API calls, this would result
+		// in only EVERY OTHER call return new values (which have been taken shortly after the previous call).
+		// This is okay when you are polling very frequently, but might be undesirable when polling every
+		// couple of minutes or so. Therefore: if previous reading is more than 20000ms old, perform
+		// read in any case, even if it might become blocking.
+		//
+		// Please note: the gas value not only depends on gas, but also on the time since last read.
+		// Frequent reads will yield higher values than infrequent reads. There will be a difference
+		// even if we switch from 6secs to 3secs! So, do not attempt to compare values of readings
+		// with an interval of 3 secs to values of readings with an interval of 60 secs!
+		*/
+
+		const int elapsedSinceLastRead=millis()-lastBME680read;
+		const int remain=bme680->remainingReadingMillis();
+
+		if (remain==-1)  //no current values available
 		{
+			bme680->beginReading(); //start measurement process
+			//return previous values
 			const float currentTemp = bme680->temperature;
 			root["temperature"] = currentTemp + temperatureOffset;
 			root["humidity"] = bme680->humidity + humidityOffset;
@@ -1272,12 +1296,32 @@ String GetSensor()
 				root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
 			}
 		}
-		else
+
+		if (remain>=0 ||elapsedSinceLastRead>20000)  
+		//remain==0: measurement completed, not read yet
+		//remain>0: measurement still running, but as we already are in the next loop call, block and read
+		//elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
 		{
-			root["humidity"] = "Error while reading";
-			root["temperature"] = "Error while reading";
-			root["pressure"] = "Error while reading";
-			root["gas"] = "Error while reading";
+			if (bme680->endReading())  //will become blocking if measurement not complete yet
+			{
+				lastBME680read=millis();
+				const float currentTemp = bme680->temperature;
+				root["temperature"] = currentTemp + temperatureOffset;
+				root["humidity"] = bme680->humidity + humidityOffset;
+				root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
+				root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
+				if (temperatureUnit == TemperatureUnit_Fahrenheit)
+				{
+					root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+				}
+			}
+			else
+			{
+				root["humidity"] = "Error while reading";
+				root["temperature"] = "Error while reading";
+				root["pressure"] = "Error while reading";
+				root["gas"] = "Error while reading";
+			}
 		}
 	}
 	else
@@ -1595,6 +1639,28 @@ void AnimateBMP(bool isShowRequired)
 	{
 		matrix->show();
 	}
+}
+
+void DrawSingleBitmap(JsonObject &json)
+{
+	int16_t h = json["size"]["height"].as<int16_t>();
+	int16_t w = json["size"]["width"].as<int16_t>();
+	int16_t x = json["position"]["x"].as<int16_t>();
+	int16_t y = json["position"]["y"].as<int16_t>();
+
+	// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
+	for (int16_t j = 0; j < h; j++, y++)
+	{
+		for (int16_t i = 0; i < w; i++)
+		{
+			matrix->drawPixel(x + i, y, json["data"][j * w + i].as<uint16_t>());
+		}
+	}
+
+	// JsonArray in IntArray konvertieren
+	// dies ist nötig für diverse kleine Logiken z.B. Scrolltext
+	// bei Multibitmaps landet hier nur eine der Bitmaps - das ist aber egal, da dann eh nicht gescrollt wird
+	json["data"].as<JsonArray>().copyTo(bmpArray);
 }
 
 void DrawClock(bool fromJSON)
