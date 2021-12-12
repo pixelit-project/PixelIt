@@ -953,6 +953,8 @@ void CreateFrames(JsonObject &json)
 		// Ist eine Switch Animation übergeben worden?
 		bool fadeAnimationAktiv = false;
 		bool coloredBarWipeAnimationAktiv = false;
+		bool zigzagWipeAnimationAktiv = false;
+		bool bitmapWipeAnimationAktiv = false;
 		if (json.containsKey("switchAnimation"))
 		{
 			logMessage += F("SwitchAnimation, ");
@@ -968,6 +970,28 @@ void CreateFrames(JsonObject &json)
 				{
 					coloredBarWipeAnimationAktiv = true;
 				}
+				else if (json["switchAnimation"]["animation"] == "zigzagWipe")
+				{
+					zigzagWipeAnimationAktiv = true;
+				}
+				else if (json["switchAnimation"]["animation"] == "bitmapWipe")
+				{
+					bitmapWipeAnimationAktiv = true;
+				}		
+				else if (json["switchAnimation"]["animation"] == "random")
+				{
+					switch(millis()%3){
+						case 0:
+							fadeAnimationAktiv = true;
+							break;
+						case 1:
+							coloredBarWipeAnimationAktiv = true;
+							break;
+						case 2:
+							zigzagWipeAnimationAktiv = true;
+							break;
+					}
+				}		
 			}
 		}
 
@@ -980,7 +1004,28 @@ void CreateFrames(JsonObject &json)
 		{
 			ColoredBarWipe();
 		}
-
+		else if (zigzagWipeAnimationAktiv)
+		{
+			uint8_t r=255;
+			uint8_t g=255;
+			uint8_t b=255;
+			if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
+			{
+				ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
+			}
+			else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
+			{
+				r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
+				g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
+				b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
+			}
+			ZigZagWipe(r,g,b);
+		}
+		else if (bitmapWipeAnimationAktiv)
+		{
+			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(),json["switchAnimation"]["width"].as<uint8_t>());
+		}
+		
 		// Clock
 		if (json.containsKey("clock"))
 		{
@@ -1182,7 +1227,7 @@ void CreateFrames(JsonObject &json)
 		}
 
 		// Fade aktiv?
-		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv))
+		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
 		{
 			FadeIn();
 		}
@@ -1872,6 +1917,64 @@ void ColoredBarWipe()
 		matrix->drawFastVLine(i - 2, 0, 8, 0);
 		matrix->show();
 		delay(15);
+	}
+}
+
+void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
+{
+	for (uint16_t row = 0; row <=7; row+=2)
+	{
+		for (uint16_t col = 0; col <= 31; col++)
+		{
+			if (row==0 || row==4)
+			{
+				matrix->fillRect(0, row, col - 1, 2, matrix->Color(0, 0, 0));
+				matrix->drawFastVLine(col-1, row, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(col, row, 2, matrix->Color(r,g,b));
+			}
+			else
+			{
+				matrix->fillRect(32-col, row,col, 2, matrix->Color(0, 0, 0));
+				matrix->drawFastVLine(32-col, row, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(32-col-1, row, 2, matrix->Color(r,g,b));
+			}
+			matrix->show();
+			delay(5);
+		}
+		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+		if (row==0 || row==4)
+		{
+				matrix->drawFastVLine(30, row+1, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(31, row+1, 2, matrix->Color(r,g,b));
+		}
+		else
+		{
+			matrix->drawFastVLine(0, row+1, 2, matrix->Color(r,g,b));
+			matrix->drawFastVLine(1, row+1, 2, matrix->Color(r,g,b));
+		}
+		matrix->show();
+		delay(5);
+		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+	}
+	matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
+	matrix->show();
+}
+
+void BitmapWipe(JsonArray &data, int16_t w)
+{
+	for (int16_t x = -w+1; x <=31; x++)
+	{
+		int16_t y = 0;
+		for (int16_t j = 0; j < 8; j++, y++)
+		{
+			for (int16_t i = 0; i < w; i++)
+			{
+				matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
+			}
+		}
+	matrix->show();
+	delay(18);
+	matrix->fillRect(0,0,x,8, matrix->Color(0, 0, 0));
 	}
 }
 
