@@ -35,9 +35,9 @@
                         <v-text-field v-model="config.humidityOffset" type="number" label="Humidity sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.pressureOffset" type="number" label="Pressure sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.gasOffset" type="number" label="Gas sensor offset" :rules="[rules.required]"></v-text-field>
-                        <v-select :items="pinsESP8266" v-model="config.DHTPin" type="number" label="DHT sensor pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
-                        <v-select :items="pinsESP8266" v-model="config.BMESCLPin" type="number" label="BME sensor SCL pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
-                        <v-select :items="pinsESP8266" v-model="config.BMESDAPin" type="number" label="BME sensor SDA pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.DHTPin" type="number" label="DHT sensor pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.BMESCLPin" type="number" label="BME sensor SCL pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.BMESDAPin" type="number" label="BME sensor SDA pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="3">
@@ -94,7 +94,7 @@
                             </v-col>
                         </v-row>
                     </v-card>
-                    <br/>
+                    <br />
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>Sound</h2>
@@ -102,8 +102,8 @@
                         <hr />
                         <br />
                         <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
-                        <v-select :items="pinsESP8266" v-model="config.DFPRXPin" type="number" label="DFPlayer RX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
-                        <v-select :items="pinsESP8266" v-model="config.DFPTXPin" type="number" label="DFPlayer TX pin (ESP8266 only)" :rules="[rules.noPinDuplicates]" :visible="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="3">

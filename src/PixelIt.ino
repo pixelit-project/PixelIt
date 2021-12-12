@@ -75,13 +75,13 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 #define MATRIX_PIN 27
 #endif
 
-String dfpRXPin="Pin_D7";
-String dfpTXPin="Pin_D8";
-String DHTPin="Pin_D1";
-String BMESCLPin="Pin_D1";
-String BMESDAPin="Pin_D3";
-String ldrDevice="GL5516";
-unsigned long ldrPulldown=10000; // 10k pulldown-resistor
+String dfpRXPin = "Pin_D7";
+String dfpTXPin = "Pin_D8";
+String DHTPin = "Pin_D1";
+String BMESCLPin = "Pin_D1";
+String BMESDAPin = "Pin_D3";
+String ldrDevice = "GL5516";
+unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
@@ -117,10 +117,10 @@ HTTPUpdateServer httpUpdater;
 #endif
 
 WebSocketsServer webSocket = WebSocketsServer(81);
-LightDependentResistor* photocell;
+LightDependentResistor *photocell;
 DHTesp dht;
 DFPlayerMini_Fast mp3Player;
-SoftwareSerial* softSerial;
+SoftwareSerial *softSerial;
 uint initialVolume = 10;
 
 // TempSensor
@@ -557,12 +557,12 @@ void SetConfigVaribles(JsonObject &json)
 	{
 		DHTPin = json["DHTPin"].as<char *>();
 	}
-	
+
 	if (json.containsKey("BMESCLPin"))
 	{
 		BMESCLPin = json["BMESCLPin"].as<char *>();
 	}
-	
+
 	if (json.containsKey("BMESDAPin"))
 	{
 		BMESDAPin = json["BMESDAPin"].as<char *>();
@@ -576,7 +576,6 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("ldrPulldown"))
 	{
 		ldrPulldown = json["ldrPulldown"].as<unsigned long>();
-
 	}
 	if (json.containsKey("initialVolume"))
 	{
@@ -887,12 +886,12 @@ void CreateFrames(JsonObject &json)
 		if (json["sound"]["volume"] != NULL && json["sound"]["volume"].is<int>())
 		{
 			mp3Player.volume(json["sound"]["volume"].as<int>());
-			
+
 			// Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
 			// So, do it only if there are more commands to come.
-			if (json["sound"]["control"].asString()>"")
+			if (json["sound"]["control"].asString() > "")
 			{
-				Log(F("Sound"),F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
+				Log(F("Sound"), F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
 				delay(200);
 			}
 		}
@@ -977,21 +976,22 @@ void CreateFrames(JsonObject &json)
 				else if (json["switchAnimation"]["animation"] == "bitmapWipe")
 				{
 					bitmapWipeAnimationAktiv = true;
-				}		
+				}
 				else if (json["switchAnimation"]["animation"] == "random")
 				{
-					switch(millis()%3){
-						case 0:
-							fadeAnimationAktiv = true;
-							break;
-						case 1:
-							coloredBarWipeAnimationAktiv = true;
-							break;
-						case 2:
-							zigzagWipeAnimationAktiv = true;
-							break;
+					switch (millis() % 3)
+					{
+					case 0:
+						fadeAnimationAktiv = true;
+						break;
+					case 1:
+						coloredBarWipeAnimationAktiv = true;
+						break;
+					case 2:
+						zigzagWipeAnimationAktiv = true;
+						break;
 					}
-				}		
+				}
 			}
 		}
 
@@ -1006,9 +1006,9 @@ void CreateFrames(JsonObject &json)
 		}
 		else if (zigzagWipeAnimationAktiv)
 		{
-			uint8_t r=255;
-			uint8_t g=255;
-			uint8_t b=255;
+			uint8_t r = 255;
+			uint8_t g = 255;
+			uint8_t b = 255;
 			if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
 			{
 				ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
@@ -1019,13 +1019,13 @@ void CreateFrames(JsonObject &json)
 				g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
 				b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
 			}
-			ZigZagWipe(r,g,b);
+			ZigZagWipe(r, g, b);
 		}
 		else if (bitmapWipeAnimationAktiv)
 		{
-			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(),json["switchAnimation"]["width"].as<uint8_t>());
+			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(), json["switchAnimation"]["width"].as<uint8_t>());
 		}
-		
+
 		// Clock
 		if (json.containsKey("clock"))
 		{
@@ -1301,14 +1301,14 @@ String GetSensor()
 		}
 	}
 	else if (tempSensor == TempSensor_BME680)
-	{	
+	{
 		/***************************************************************************************************
-		// BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder     
-		// animations and scrolling. Therefore, we will use asynchronous reading in most cases.           
-		// 
+		// BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder
+		// animations and scrolling. Therefore, we will use asynchronous reading in most cases.
+		//
 		// First call: starts measuring sequence, returns previous values.
 		// Second call: performs read, returns current values.
-		// 
+		//
 		// As long as there are more than ~200ms between the calls, there won't be blocking.
 		// PixelIt usually uses a 3000ms loop.
 		//
@@ -1324,13 +1324,13 @@ String GetSensor()
 		// with an interval of 3 secs to values of readings with an interval of 60 secs!
 		*/
 
-		const int elapsedSinceLastRead=millis()-lastBME680read;
-		const int remain=bme680->remainingReadingMillis();
+		const int elapsedSinceLastRead = millis() - lastBME680read;
+		const int remain = bme680->remainingReadingMillis();
 
-		if (remain==-1)  //no current values available
+		if (remain == -1) // no current values available
 		{
-			bme680->beginReading(); //start measurement process
-			//return previous values
+			bme680->beginReading(); // start measurement process
+			// return previous values
 			const float currentTemp = bme680->temperature;
 			root["temperature"] = currentTemp + temperatureOffset;
 			root["humidity"] = bme680->humidity + humidityOffset;
@@ -1342,14 +1342,14 @@ String GetSensor()
 			}
 		}
 
-		if (remain>=0 ||elapsedSinceLastRead>20000)  
-		//remain==0: measurement completed, not read yet
-		//remain>0: measurement still running, but as we already are in the next loop call, block and read
-		//elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
+		if (remain >= 0 || elapsedSinceLastRead > 20000)
+		// remain==0: measurement completed, not read yet
+		// remain>0: measurement still running, but as we already are in the next loop call, block and read
+		// elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
 		{
-			if (bme680->endReading())  //will become blocking if measurement not complete yet
+			if (bme680->endReading()) // will become blocking if measurement not complete yet
 			{
-				lastBME680read=millis();
+				lastBME680read = millis();
 				const float currentTemp = bme680->temperature;
 				root["temperature"] = currentTemp + temperatureOffset;
 				root["humidity"] = bme680->humidity + humidityOffset;
@@ -1922,35 +1922,35 @@ void ColoredBarWipe()
 
 void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
 {
-	for (uint16_t row = 0; row <=7; row+=2)
+	for (uint16_t row = 0; row <= 7; row += 2)
 	{
 		for (uint16_t col = 0; col <= 31; col++)
 		{
-			if (row==0 || row==4)
+			if (row == 0 || row == 4)
 			{
 				matrix->fillRect(0, row, col - 1, 2, matrix->Color(0, 0, 0));
-				matrix->drawFastVLine(col-1, row, 2, matrix->Color(r,g,b));
-				matrix->drawFastVLine(col, row, 2, matrix->Color(r,g,b));
+				matrix->drawFastVLine(col - 1, row, 2, matrix->Color(r, g, b));
+				matrix->drawFastVLine(col, row, 2, matrix->Color(r, g, b));
 			}
 			else
 			{
-				matrix->fillRect(32-col, row,col, 2, matrix->Color(0, 0, 0));
-				matrix->drawFastVLine(32-col, row, 2, matrix->Color(r,g,b));
-				matrix->drawFastVLine(32-col-1, row, 2, matrix->Color(r,g,b));
+				matrix->fillRect(32 - col, row, col, 2, matrix->Color(0, 0, 0));
+				matrix->drawFastVLine(32 - col, row, 2, matrix->Color(r, g, b));
+				matrix->drawFastVLine(32 - col - 1, row, 2, matrix->Color(r, g, b));
 			}
 			matrix->show();
 			delay(5);
 		}
 		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
-		if (row==0 || row==4)
+		if (row == 0 || row == 4)
 		{
-				matrix->drawFastVLine(30, row+1, 2, matrix->Color(r,g,b));
-				matrix->drawFastVLine(31, row+1, 2, matrix->Color(r,g,b));
+			matrix->drawFastVLine(30, row + 1, 2, matrix->Color(r, g, b));
+			matrix->drawFastVLine(31, row + 1, 2, matrix->Color(r, g, b));
 		}
 		else
 		{
-			matrix->drawFastVLine(0, row+1, 2, matrix->Color(r,g,b));
-			matrix->drawFastVLine(1, row+1, 2, matrix->Color(r,g,b));
+			matrix->drawFastVLine(0, row + 1, 2, matrix->Color(r, g, b));
+			matrix->drawFastVLine(1, row + 1, 2, matrix->Color(r, g, b));
 		}
 		matrix->show();
 		delay(5);
@@ -1962,7 +1962,7 @@ void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
 
 void BitmapWipe(JsonArray &data, int16_t w)
 {
-	for (int16_t x = -w+1; x <=31; x++)
+	for (int16_t x = -w + 1; x <= 31; x++)
 	{
 		int16_t y = 0;
 		for (int16_t j = 0; j < 8; j++, y++)
@@ -1972,9 +1972,9 @@ void BitmapWipe(JsonArray &data, int16_t w)
 				matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
 			}
 		}
-	matrix->show();
-	delay(18);
-	matrix->fillRect(0,0,x,8, matrix->Color(0, 0, 0));
+		matrix->show();
+		delay(18);
+		matrix->fillRect(0, 0, x, 8, matrix->Color(0, 0, 0));
 	}
 }
 
@@ -2146,28 +2146,43 @@ int *GetUserCutomCorrection()
 
 LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 {
-	if (photocell=="GL5516") return LightDependentResistor::GL5516;
-	if (photocell=="GL5528") return LightDependentResistor::GL5528;
-	if (photocell=="GL5537_1") return LightDependentResistor::GL5537_1;
-	if (photocell=="GL5537_2") return LightDependentResistor::GL5537_2;
-	if (photocell=="GL5539") return LightDependentResistor::GL5539;
-	if (photocell=="GL5549") return LightDependentResistor::GL5549;
+	if (photocell == "GL5516")
+		return LightDependentResistor::GL5516;
+	if (photocell == "GL5528")
+		return LightDependentResistor::GL5528;
+	if (photocell == "GL5537_1")
+		return LightDependentResistor::GL5537_1;
+	if (photocell == "GL5537_2")
+		return LightDependentResistor::GL5537_2;
+	if (photocell == "GL5539")
+		return LightDependentResistor::GL5539;
+	if (photocell == "GL5549")
+		return LightDependentResistor::GL5549;
 	Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
 	return LightDependentResistor::GL5528;
 }
 
 uint8_t TranslatePin(String pin)
 {
-	
-	if (pin=="Pin_D1") return D1;
-	if (pin=="Pin_D2") return D2;
-	if (pin=="Pin_D3") return D3;
-	if (pin=="Pin_D4") return D4;
-	if (pin=="Pin_D5") return D5;
-	if (pin=="Pin_D6") return D6;
-	if (pin=="Pin_D7") return D7;
-	if (pin=="Pin_D8") return D8;
-	if (pin=="Pin_27") return 27;
+
+	if (pin == "Pin_D1")
+		return D1;
+	if (pin == "Pin_D2")
+		return D2;
+	if (pin == "Pin_D3")
+		return D3;
+	if (pin == "Pin_D4")
+		return D4;
+	if (pin == "Pin_D5")
+		return D5;
+	if (pin == "Pin_D6")
+		return D6;
+	if (pin == "Pin_D7")
+		return D7;
+	if (pin == "Pin_D8")
+		return D8;
+	if (pin == "Pin_27")
+		return 27;
 	Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
 	return LED_BUILTIN;
 }
@@ -2302,7 +2317,7 @@ void setup()
 	}
 
 	// Init LightSensor
-	photocell=new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
+	photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
 	photocell->setPhotocellPositionOnGround(false);
 	ColorTemperature userColorTemp = GetUserColorTemp();
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
@@ -2397,7 +2412,7 @@ void setup()
 		Log(F("Setup"), F("MQTT started"));
 	}
 
-	softSerial=new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin)); 
+	softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
 
 	softSerial->begin(9600);
 	Log(F("Setup"), F("Software Serial started"));
