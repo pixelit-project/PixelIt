@@ -26,6 +26,15 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (miccgn) added ZigZagWipe, bitmapWipe and randomization for wipes
+-   (miccgn) fixed MP3Player
+-   (miccgn) added possibility to set GL55xx type and resistor value in settings
+-   (miccgn) added selectable pins for MP3Player and Sensors (ESP8266 only)
+-   (miccgn) optimization of read BME680
+-   (miccgn) added multiple Bitmaps
+
 ### 0.3.15 (2021-12-04)
 
 -   (o0shojo0o) added offset options for gas sensor
