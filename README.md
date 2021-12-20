@@ -21,8 +21,9 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 [![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
 
 ## Contributors 
+Thanks to these great people for supporting this project.
+  
 ![](https://contrib.rocks/image?repo=o0shojo0o/PixelIt)
-
 
 ## Changelog
 
