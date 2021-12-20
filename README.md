@@ -20,7 +20,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 [![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay) |
 [![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
 
-### Contributors 
+## Contributors 
 ![](https://contrib.rocks/image?repo=o0shojo0o/PixelIt)
 
 
