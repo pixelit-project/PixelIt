@@ -23,7 +23,9 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ## Contributors 
 Thanks to these great people for supporting this project.
   
-![](https://contrib.rocks/image?repo=o0shojo0o/PixelIt)
+<a href="https://github.com/o0shojo0o/PixelIt/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=o0shojo0o/PixelIt" />
+</a>
 
 ## Changelog
 
