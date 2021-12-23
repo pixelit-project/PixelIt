@@ -245,7 +245,10 @@ void SetCurrentMatrixBrightness(float newBrightness)
 
 void EnteredHotspotCallback(WiFiManager *manager)
 {
+	Log(F("Hotspot"),"Waiting for WiFi configuration");
+	matrix->clear();
 	DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+	FadeIn();
 }
 
 void SaveConfig()
