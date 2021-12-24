@@ -41,6 +41,7 @@
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
+#include <BH1750.h>
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -77,16 +78,16 @@ const int MQTT_RECONNECT_INTERVAL = 5000;
 
 String dfpRXPin = "Pin_D7";
 String dfpTXPin = "Pin_D8";
-String DHTPin = "Pin_D1";
-String BMESCLPin = "Pin_D1";
-String BMESDAPin = "Pin_D3";
+String onewirePin = "Pin_D1";
+String SCLPin = "Pin_D1";
+String SDAPin = "Pin_D3";
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15pinconfig"
+#define VERSION "0.3.15pinconfig_BH1750"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -102,26 +103,7 @@ TwoWire twowire;
 Adafruit_BME280 bme280;
 Adafruit_BME680 *bme680;
 unsigned long lastBME680read = 0;
-
-FastLED_NeoMatrix *matrix;
-WiFiClient espClient;
-WiFiUDP udp;
-PubSubClient client(espClient);
-WiFiManager wifiManager;
-#if defined(ESP8266)
-ESP8266WebServer server(80);
-ESP8266HTTPUpdateServer httpUpdater;
-#elif defined(ESP32)
-WebServer server(80);
-HTTPUpdateServer httpUpdater;
-#endif
-
-WebSocketsServer webSocket = WebSocketsServer(81);
-LightDependentResistor *photocell;
 DHTesp dht;
-DFPlayerMini_Fast mp3Player;
-SoftwareSerial *softSerial;
-uint initialVolume = 10;
 
 // TempSensor
 enum TempSensor
@@ -140,6 +122,35 @@ enum TemperatureUnit
 	TemperatureUnit_Fahrenheit
 };
 TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
+
+
+LightDependentResistor *photocell;
+BH1750 *bh1750;
+
+enum LuxSensor
+{
+	LuxSensor_LDR,
+	LuxSensor_BH1750,
+};
+LuxSensor luxSensor = LuxSensor_LDR;
+
+FastLED_NeoMatrix *matrix;
+WiFiClient espClient;
+WiFiUDP udp;
+PubSubClient client(espClient);
+WiFiManager wifiManager;
+#if defined(ESP8266)
+ESP8266WebServer server(80);
+ESP8266HTTPUpdateServer httpUpdater;
+#elif defined(ESP32)
+WebServer server(80);
+HTTPUpdateServer httpUpdater;
+#endif
+
+WebSocketsServer webSocket = WebSocketsServer(81);
+DFPlayerMini_Fast mp3Player;
+SoftwareSerial *softSerial;
+uint initialVolume = 10;
 
 // Matrix Vars
 int currentMatrixBrightness = 127;
@@ -303,9 +314,9 @@ void SaveConfig()
 
 		json["dfpRXpin"] = dfpRXPin;
 		json["dfpTXpin"] = dfpTXPin;
-		json["DHTPin"] = DHTPin;
-		json["BMESCLPin"] = BMESCLPin;
-		json["BMESDAPin"] = BMESDAPin;
+		json["onewirePin"] = onewirePin;
+		json["SCLPin"] = SCLPin;
+		json["SDAPin"] = SDAPin;
 		json["ldrDevice"] = ldrDevice;
 		json["ldrPulldown"] = ldrPulldown;
 
@@ -556,19 +567,19 @@ void SetConfigVaribles(JsonObject &json)
 		dfpTXPin = json["dfpTXpin"].as<char *>();
 	}
 
-	if (json.containsKey("DHTPin"))
+	if (json.containsKey("onewirePin"))
 	{
-		DHTPin = json["DHTPin"].as<char *>();
+		onewirePin = json["onewirePin"].as<char *>();
 	}
 
-	if (json.containsKey("BMESCLPin"))
+	if (json.containsKey("SCLPin"))
 	{
-		BMESCLPin = json["BMESCLPin"].as<char *>();
+		SCLPin = json["SCLPin"].as<char *>();
 	}
 
-	if (json.containsKey("BMESDAPin"))
+	if (json.containsKey("SDAPin"))
 	{
-		BMESDAPin = json["BMESDAPin"].as<char *>();
+		SDAPin = json["SDAPin"].as<char *>();
 	}
 
 	if (json.containsKey("ldrDevice"))
@@ -2270,8 +2281,24 @@ void setup()
 		setGPIOReset[i].resetMillis = -1;
 	}
 
-	// Temp Sensors
-	twowire.begin(TranslatePin(BMESDAPin), TranslatePin(BMESCLPin));
+	// I2C Sensors
+	twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin));
+
+	// Init LightSensor
+	bh1750 = new BH1750();
+	if (bh1750->begin(BH1750::CONTINUOUS_HIGH_RES_MODE,0x23,&twowire))
+	{
+		Log(F("Setup"), F("BH1750 started"));
+		luxSensor = LuxSensor_BH1750;
+	}
+	else
+	{
+		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
+		photocell->setPhotocellPositionOnGround(false);
+		luxSensor = LuxSensor_LDR;
+	}
+
+	// Init Temp Sensors
 	if (bme280.begin(BME280_ADDRESS_ALTERNATE, &twowire))
 	{
 		Log(F("Setup"), F("BME280 started"));
@@ -2290,7 +2317,7 @@ void setup()
 			delete bme680;
 			// AM2320 needs a delay to be reliably initialized
 			delay(600);
-			dht.setup(TranslatePin(DHTPin), DHTesp::DHT22);
+			dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
 			if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
 			{
 				Log(F("Setup"), F("DHT started"));
@@ -2319,9 +2346,6 @@ void setup()
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_PROGRESSIVE);
 	}
 
-	// Init LightSensor
-	photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
-	photocell->setPhotocellPositionOnGround(false);
 	ColorTemperature userColorTemp = GetUserColorTemp();
 	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
@@ -2516,7 +2540,14 @@ void loop()
 	{
 		sendLuxPrevMillis = millis();
 
-		currentLux = (roundf(photocell->getCurrentLux() * 1000) / 1000) + luxOffset;
+		if (luxSensor==LuxSensor_BH1750)
+		{
+			currentLux = bh1750->readLightLevel() + luxOffset;
+		}
+		else
+		{
+			currentLux = (roundf(photocell->getCurrentLux() * 1000) / 1000) + luxOffset;
+		}
 
 		SendLDR(false);
 
