@@ -35,6 +35,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (miccgn) added support for BH1750 light sensor
 -   (miccgn) added ZigZagWipe, bitmapWipe and randomization for wipes
 -   (miccgn) fixed MP3Player
 -   (miccgn) added possibility to set GL55xx type and resistor value in settings
