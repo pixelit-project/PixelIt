@@ -83,11 +83,12 @@ String SCLPin = "Pin_D1";
 String SDAPin = "Pin_D3";
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
+unsigned int ldrSmoothing = 0;
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15pinconfig_BH1750"
+#define VERSION "0.3.15pinconfig_ldrSmooth"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -319,6 +320,7 @@ void SaveConfig()
 		json["SDAPin"] = SDAPin;
 		json["ldrDevice"] = ldrDevice;
 		json["ldrPulldown"] = ldrPulldown;
+		json["ldrSmoothing"] = ldrSmoothing;
 
 		json["initialVolume"] = initialVolume;
 
@@ -591,6 +593,12 @@ void SetConfigVaribles(JsonObject &json)
 	{
 		ldrPulldown = json["ldrPulldown"].as<unsigned long>();
 	}
+
+	if (json.containsKey("ldrSmoothing"))
+	{
+		ldrSmoothing = json["ldrSmoothing"].as<uint>();
+	}
+
 	if (json.containsKey("initialVolume"))
 	{
 		initialVolume = json["initialVolume"].as<uint>();
@@ -2293,7 +2301,7 @@ void setup()
 	}
 	else
 	{
-		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
+		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
 		photocell->setPhotocellPositionOnGround(false);
 		luxSensor = LuxSensor_LDR;
 	}
@@ -2546,7 +2554,7 @@ void loop()
 		}
 		else
 		{
-			currentLux = (roundf(photocell->getCurrentLux() * 1000) / 1000) + luxOffset;
+			currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
 		}
 
 		SendLDR(false);

@@ -31,6 +31,7 @@
                         <v-text-field v-model="config.luxOffset" type="number" label="Lux sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-select :items="ldrDevices" v-model="config.ldrDevice" type="number" label="Lux sensor type" hint="Pick any value when using BH1750"></v-select>
                         <v-text-field v-model="config.ldrPulldown" type="number" label="Value of pulldown resistor for LDR" suffix="Ohm" hint="Enter any value when using BH1750" :rules="[rules.required]"></v-text-field>
+                        <v-text-field v-model="config.ldrSmoothing" type="number" label="Number of historic LDR readings to be used for linear smoothing (LDR only)" hint="Enter any value when using BH1750" :rules="[rules.required, rules.min0]"></v-text-field>
                         <v-text-field v-model="config.temperatureOffset" type="number" label="Temperature sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.humidityOffset" type="number" label="Humidity sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.pressureOffset" type="number" label="Pressure sensor offset" :rules="[rules.required]"></v-text-field>
