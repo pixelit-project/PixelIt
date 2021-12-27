@@ -2293,6 +2293,7 @@ void setup()
 	}
 	else
 	{
+		delete bh1750;
 		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10);
 		photocell->setPhotocellPositionOnGround(false);
 		luxSensor = LuxSensor_LDR;
