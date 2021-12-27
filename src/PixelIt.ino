@@ -1997,6 +1997,7 @@ void BitmapWipe(JsonArray &data, int16_t w)
 		matrix->show();
 		delay(18);
 		matrix->fillRect(0, 0, x, 8, matrix->Color(0, 0, 0));
+		matrix->show();
 	}
 }
 
@@ -2301,6 +2302,7 @@ void setup()
 	}
 	else
 	{
+    delete bh1750;
 		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
 		photocell->setPhotocellPositionOnGround(false);
 		luxSensor = LuxSensor_LDR;
