@@ -84,28 +84,33 @@ String SDAPin = "Pin_D3";
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
-String btn1Pin = "Pin_D0";
-String btn2Pin = "Pin_D4";
-String btn3Pin = "Pin_D8";
-int btn1PressedLevel = LOW;
-int btn2PressedLevel = LOW;
-int btn3PressedLevel = LOW;
 
-enum btnState
+String btnPin[] = { "Pin_D0", "Pin_D4", "Pin_D5" };
+bool btnEnabled[] = { true, true, false };
+int btnPressedLevel[] = { LOW, LOW, LOW };
+
+enum btnStates
 {
-	btnState_NotConnected,
 	btnState_Released,
 	btnState_PressedNew,
 	btnState_PressedBefore,
 };
-btnState btn1State = btnState_Released;
-btnState btn2State = btnState_Released;
-btnState btn3State = btnState_Released;
+btnStates btnState[] = { btnState_Released, btnState_Released, btnState_Released };
+unsigned long btnLastPressedMillis[] = { 0, 0, 0 };
+
+enum btnActions
+{
+	btnAction_DoNothing='N',
+	btnAction_GotoClock='C',
+	btnAction_ToggleSleepMode='S',
+};
+
+btnActions btnAction[] = { btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing };
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15pinconfig_btn3"
+#define VERSION "0.3.15pinconfig_btn1"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -216,6 +221,7 @@ float clockTimeZone = 1;
 time_t clockLastUpdate;
 uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
+bool forceClock = false;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
@@ -335,12 +341,13 @@ void SaveConfig()
 		json["onewirePin"] = onewirePin;
 		json["SCLPin"] = SCLPin;
 		json["SDAPin"] = SDAPin;
-		json["btn1Pin"] = btn1Pin;
-		json["btn2Pin"] = btn2Pin;
-		json["btn3Pin"] = btn3Pin;
-		json["btn1PressedLevel"] = btn1PressedLevel;
-		json["btn2PressedLevel"] = btn2PressedLevel;
-		json["btn3PressedLevel"] = btn3PressedLevel;
+		for (uint b=0 ; b < 3 ; b++)
+		{
+			json["btn"+String(b)+"Pin"] = btnPin[b];
+			json["btn"+String(b)+"PressedLevel"] = btnPressedLevel[b];
+			json["btn"+String(b)+"Enabled"] = btnEnabled[b];
+			json["btn"+String(b)+"Action"] = static_cast<int>(btnAction[b]);
+		}
 		json["ldrDevice"] = ldrDevice;
 		json["ldrPulldown"] = ldrPulldown;
 		json["ldrSmoothing"] = ldrSmoothing;
@@ -607,34 +614,24 @@ void SetConfigVaribles(JsonObject &json)
 		SDAPin = json["SDAPin"].as<char *>();
 	}
 
-	if (json.containsKey("btn1Pin"))
+	for (uint b=0 ; b < 3 ; b++)
 	{
-		btn1Pin = json["btn1Pin"].as<char *>();
-	}
-
-	if (json.containsKey("btn2Pin"))
-	{
-		btn2Pin = json["btn2Pin"].as<char *>();
-	}
-
-	if (json.containsKey("btn3Pin"))
-	{
-		btn3Pin = json["btn3Pin"].as<char *>();
-	}
-
-	if (json.containsKey("btn1PressedLevel"))
-	{
-		btn1PressedLevel = json["btn1PressedLevel"].as<int>();
-	}
-
-	if (json.containsKey("btn2PressedLevel"))
-	{
-		btn2PressedLevel = json["btn2PressedLevel"].as<int>();
-	}
-
-	if (json.containsKey("btn3PressedLevel"))
-	{
-		btn3PressedLevel = json["btn3PressedLevel"].as<int>();
+		if (json.containsKey("btn"+String(b)+"Pin"))
+		{
+			btnPin[b] = json["btn"+String(b)+"Pin"].as<char *>();
+		}
+		if (json.containsKey("btn"+String(b)+"PressedLevel"))
+		{
+			btnPressedLevel[b] = json["btn"+String(b)+"PressedLevel"].as<int>();
+		}
+		if (json.containsKey("btn"+String(b)+"Enabled"))
+		{
+			btnEnabled[b] = json["btn"+String(b)+"Enabled"].as<bool>();
+		}
+		if (json.containsKey("btn"+String(b)+"Action"))
+		{
+			btnAction[b] = static_cast<btnActions>(json["btn"+String(b)+"Action"].as<int>());
+		}
 	}
 
 	if (json.containsKey("ldrDevice"))
@@ -757,6 +754,12 @@ void HandleGetSensor()
 	server.send(200, "application/json", GetSensor());
 }
 
+void HandleGetButtons()
+{
+	server.sendHeader("Connection", "close");
+	server.send(200, "application/json", GetButtons());
+}
+
 void HandleGetMatrixInfo()
 {
 	server.sendHeader("Connection", "close");
@@ -778,6 +781,50 @@ void Handle_factoryreset()
 	configFile.close();
 	WifiSetup();
 	ESP.restart();
+}
+
+void HandleAndSendButtonPress(uint button)
+{
+	btnLastPressedMillis[button]=millis();
+	Log(F("Buttons"),"Btn"+String(button)+" pressed");
+
+	// Prüfen ob über MQTT versendet werden muss
+	if (mqttAktiv == true && client.connected())
+	{
+		client.publish((mqttMasterTopic + "button"+String(button)).c_str(), String(btnLastPressedMillis[button]).c_str(), true);
+	}
+	// Prüfen ob über Websocket versendet werden muss
+	if (webSocket.connectedClients() > 0)
+	{
+		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+		{
+			webSocket.sendTXT(i, "{\"buttons\":" + GetButtons() + "}");
+		}
+	}
+
+	if (btnAction[button]==btnAction_ToggleSleepMode)
+	{
+		sleepMode=!sleepMode;
+		if (sleepMode)
+		{
+			matrix->clear();				
+			DrawTextHelper("Zzz", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 1);
+			FadeOut(30, 0);
+			matrix->setBrightness(0);
+			matrix->show();
+		}
+		else
+		{
+			matrix->clear();
+			DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
+			FadeIn(30, 0);
+			delay(150);
+			forceClock=true;
+		}
+	}
+	if (btnAction[button]==btnAction_GotoClock) {
+		forceClock=true;
+	}
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -1512,6 +1559,21 @@ String GetMatrixInfo()
 
 	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
 	root["sleepMode"] = sleepMode;
+
+	String json;
+	root.printTo(json);
+
+	return json;
+}
+
+String GetButtons()
+{
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject &root = jsonBuffer.createObject();
+
+	for (uint b=0; b < 3; b++) {
+		root["button"+String(b)] = btnLastPressedMillis[b];
+	}
 
 	String json;
 	root.printTo(json);
@@ -2345,23 +2407,6 @@ void setup()
 		setGPIOReset[i].resetMillis = -1;
 	}
 
-	//check buttons. If a button is pressed right now, it probably is not connected at all
-	if (digitalRead(TranslatePin(btn1Pin))==btn1PressedLevel)
-	{
-		btn1State=btnState_NotConnected;
-		Log(F("Buttons"),F("Button 1 considered not connected"));
-	}
-	if (digitalRead(TranslatePin(btn2Pin))==btn2PressedLevel)
-	{
-		btn2State=btnState_NotConnected;
-		Log(F("Buttons"),F("Button 2 considered not connected"));
-	}
-	if (digitalRead(TranslatePin(btn3Pin))==btn3PressedLevel)
-	{
-		btn3State=btnState_NotConnected;
-		Log(F("Buttons"),F("Button 3 considered not connected"));
-	}
-
 	// I2C Sensors
 	twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin));
 
@@ -2497,8 +2542,9 @@ void setup()
 	server.on(F("/api/screen"), HTTP_POST, HandleScreen);
 	server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
 	server.on(F("/api/brightness"), HTTP_GET, HandelGetBrightness);
-	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legancy
+	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legacy
 	server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
+	server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
 	server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
 	// server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
 	server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
@@ -2574,49 +2620,23 @@ void loop()
 		}
 	}
 
-	if ((btn1State==btnState_Released) && (digitalRead(TranslatePin(btn1Pin))==btn1PressedLevel)) btn1State=btnState_PressedNew;
-	if ((btn2State==btnState_Released) && (digitalRead(TranslatePin(btn2Pin))==btn2PressedLevel)) btn2State=btnState_PressedNew;
-	if ((btn3State==btnState_Released) && (digitalRead(TranslatePin(btn3Pin))==btn3PressedLevel)) btn3State=btnState_PressedNew;
-	if ((btn1State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn1Pin))!=btn1PressedLevel)) btn1State=btnState_Released;
-	if ((btn2State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn2Pin))!=btn2PressedLevel)) btn2State=btnState_Released;
-	if ((btn3State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn3Pin))!=btn3PressedLevel)) btn3State=btnState_Released;
-
-	bool forceClock=false;
-	if (btn1State==btnState_PressedNew) {
-			Log(F("Buttons"),F("Btn1 pressed"));
-			btn1State=btnState_PressedBefore;
-			sleepMode=!sleepMode;
-			if (sleepMode)
-			{
-				matrix->clear();				
-				DrawTextHelper("Sleep", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 01);
-				FadeOut(30, 0);
-				matrix->setBrightness(0);
-				matrix->show();
+	// Check buttons
+	for (uint b=0; b < 3; b++)
+	{
+		if (btnEnabled[b]){
+			if ((btnState[b]==btnState_Released) && (digitalRead(TranslatePin(btnPin[b]))==btnPressedLevel[b])) btnState[b]=btnState_PressedNew;
+			if ((btnState[b]==btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[b]))!=btnPressedLevel[b])) btnState[b]=btnState_Released;
+			if (btnState[b]==btnState_PressedNew) {
+					btnState[b]=btnState_PressedBefore;
+					HandleAndSendButtonPress(b);
 			}
-			else
-			{
-				matrix->clear();				
-				forceClock=true;
-			}
-	}
-	if (btn2State==btnState_PressedNew) {
-			Log(F("Buttons"),F("Btn2 pressed"));
-			btn2State=btnState_PressedBefore;
-
-			//Force Clock to be shown
-			forceClock=true;
-	}
-	if (btn3State==btnState_PressedNew) {
-			Log(F("Buttons"),F("Btn3 pressed"));
-			btn3State=btnState_PressedBefore;
-
-			//no action yet
+		}
 	}
 
 	// Clock Auto Fallback
 	if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
 	{
+		forceClock=false;
 		scrollTextAktivLoop = false;
 		animateBMPAktivLoop = false;
 
