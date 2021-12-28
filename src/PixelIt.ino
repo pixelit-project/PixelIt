@@ -84,11 +84,28 @@ String SDAPin = "Pin_D3";
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
+String btn1Pin = "Pin_D0";
+String btn2Pin = "Pin_D4";
+String btn3Pin = "Pin_D8";
+int btn1PressedLevel = LOW;
+int btn2PressedLevel = LOW;
+int btn3PressedLevel = LOW;
+
+enum btnState
+{
+	btnState_NotConnected,
+	btnState_Released,
+	btnState_PressedNew,
+	btnState_PressedBefore,
+};
+btnState btn1State = btnState_Released;
+btnState btn2State = btnState_Released;
+btnState btn3State = btnState_Released;
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15pinconfig_ldrSmooth"
+#define VERSION "0.3.15pinconfig_btn3"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -318,6 +335,12 @@ void SaveConfig()
 		json["onewirePin"] = onewirePin;
 		json["SCLPin"] = SCLPin;
 		json["SDAPin"] = SDAPin;
+		json["btn1Pin"] = btn1Pin;
+		json["btn2Pin"] = btn2Pin;
+		json["btn3Pin"] = btn3Pin;
+		json["btn1PressedLevel"] = btn1PressedLevel;
+		json["btn2PressedLevel"] = btn2PressedLevel;
+		json["btn3PressedLevel"] = btn3PressedLevel;
 		json["ldrDevice"] = ldrDevice;
 		json["ldrPulldown"] = ldrPulldown;
 		json["ldrSmoothing"] = ldrSmoothing;
@@ -582,6 +605,36 @@ void SetConfigVaribles(JsonObject &json)
 	if (json.containsKey("SDAPin"))
 	{
 		SDAPin = json["SDAPin"].as<char *>();
+	}
+
+	if (json.containsKey("btn1Pin"))
+	{
+		btn1Pin = json["btn1Pin"].as<char *>();
+	}
+
+	if (json.containsKey("btn2Pin"))
+	{
+		btn2Pin = json["btn2Pin"].as<char *>();
+	}
+
+	if (json.containsKey("btn3Pin"))
+	{
+		btn3Pin = json["btn3Pin"].as<char *>();
+	}
+
+	if (json.containsKey("btn1PressedLevel"))
+	{
+		btn1PressedLevel = json["btn1PressedLevel"].as<int>();
+	}
+
+	if (json.containsKey("btn2PressedLevel"))
+	{
+		btn2PressedLevel = json["btn2PressedLevel"].as<int>();
+	}
+
+	if (json.containsKey("btn3PressedLevel"))
+	{
+		btn3PressedLevel = json["btn3PressedLevel"].as<int>();
 	}
 
 	if (json.containsKey("ldrDevice"))
@@ -2188,6 +2241,8 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 uint8_t TranslatePin(String pin)
 {
 
+	if (pin == "Pin_D0")
+		return D0;
 	if (pin == "Pin_D1")
 		return D1;
 	if (pin == "Pin_D2")
@@ -2288,6 +2343,23 @@ void setup()
 	{
 		setGPIOReset[i].gpio = -1;
 		setGPIOReset[i].resetMillis = -1;
+	}
+
+	//check buttons. If a button is pressed right now, it probably is not connected at all
+	if (digitalRead(TranslatePin(btn1Pin))==btn1PressedLevel)
+	{
+		btn1State=btnState_NotConnected;
+		Log(F("Buttons"),F("Button 1 considered not connected"));
+	}
+	if (digitalRead(TranslatePin(btn2Pin))==btn2PressedLevel)
+	{
+		btn2State=btnState_NotConnected;
+		Log(F("Buttons"),F("Button 2 considered not connected"));
+	}
+	if (digitalRead(TranslatePin(btn3Pin))==btn3PressedLevel)
+	{
+		btn3State=btnState_NotConnected;
+		Log(F("Buttons"),F("Button 3 considered not connected"));
 	}
 
 	// I2C Sensors
@@ -2502,8 +2574,48 @@ void loop()
 		}
 	}
 
+	if ((btn1State==btnState_Released) && (digitalRead(TranslatePin(btn1Pin))==btn1PressedLevel)) btn1State=btnState_PressedNew;
+	if ((btn2State==btnState_Released) && (digitalRead(TranslatePin(btn2Pin))==btn2PressedLevel)) btn2State=btnState_PressedNew;
+	if ((btn3State==btnState_Released) && (digitalRead(TranslatePin(btn3Pin))==btn3PressedLevel)) btn3State=btnState_PressedNew;
+	if ((btn1State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn1Pin))!=btn1PressedLevel)) btn1State=btnState_Released;
+	if ((btn2State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn2Pin))!=btn2PressedLevel)) btn2State=btnState_Released;
+	if ((btn3State==btnState_PressedBefore) && (digitalRead(TranslatePin(btn3Pin))!=btn3PressedLevel)) btn3State=btnState_Released;
+
+	bool forceClock=false;
+	if (btn1State==btnState_PressedNew) {
+			Log(F("Buttons"),F("Btn1 pressed"));
+			btn1State=btnState_PressedBefore;
+			sleepMode=!sleepMode;
+			if (sleepMode)
+			{
+				matrix->clear();				
+				DrawTextHelper("Sleep", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 01);
+				FadeOut(30, 0);
+				matrix->setBrightness(0);
+				matrix->show();
+			}
+			else
+			{
+				matrix->clear();				
+				forceClock=true;
+			}
+	}
+	if (btn2State==btnState_PressedNew) {
+			Log(F("Buttons"),F("Btn2 pressed"));
+			btn2State=btnState_PressedBefore;
+
+			//Force Clock to be shown
+			forceClock=true;
+	}
+	if (btn3State==btnState_PressedNew) {
+			Log(F("Buttons"),F("Btn3 pressed"));
+			btn3State=btnState_PressedBefore;
+
+			//no action yet
+	}
+
 	// Clock Auto Fallback
-	if (!sleepMode && clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000))
+	if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
 	{
 		scrollTextAktivLoop = false;
 		animateBMPAktivLoop = false;
@@ -2518,6 +2630,8 @@ void loop()
 		}
 
 		clockAktiv = true;
+		clockCounterClock = 0;
+		clockCounterDate = 0;
 		DrawClock(true);
 
 		if (clockAutoFallbackAnimation != 0)
