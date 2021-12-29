@@ -2,6 +2,7 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Home from '../views/Home.vue'
 import Options from '../views/Options.vue'
+import SensorsButtons from '../views/SensorsButtons.vue'
 import TestArea from '../views/TestArea.vue'
 import Update from '../views/Update.vue'
 import Gallery from '../views/Gallery.vue'
@@ -18,6 +19,11 @@ const routes = [{
         path: '/options',
         name: 'Options',
         component: Options
+    },
+    {
+        path: '/sensorsbuttons',
+        name: 'Sensors & Buttons',
+        component: SensorsButtons
     },
     {
         path: '/testarea',
