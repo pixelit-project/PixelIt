@@ -7,7 +7,7 @@
         </v-row>
         <v-form v-model="isValid">
             <v-row>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>Sensor offset and units</h2>
@@ -23,7 +23,7 @@
                         <v-text-field v-model="config.ldrSmoothing" type="number" label="Number of historic LDR readings to be used for linear smoothing (LDR only)" hint="Enter any value when using BH1750" :rules="[rules.required, rules.min0]"></v-text-field>
                     </v-card>
                 </v-col>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>Sensor hardware</h2>
@@ -31,57 +31,45 @@
                         <hr />
                         <br />
                         <h3>I²C sensors</h3>
-                        If you use BH1750, BME280 or BME680 sensors, these need two pins to communicate. You can use both Lux and Temperature sensors at the same time: just connect them in parallel.
+                        <small>If you use BH1750, BME280 or BME680 sensors, these need two pins to communicate. You can use both Lux and Temperature sensors at the same time: just connect them in parallel.</small>
                         <br />
                         <v-select :items="pinsESP8266" v-model="config.SCLPin" type="number" label="SCL pin (ESP8266 only)" hint="Pick any value when using no I²C sensors" :disabled="!config.isESP8266"></v-select>
                         <v-select :items="pinsESP8266" v-model="config.SDAPin" type="number" label="SDA pin (ESP8266 only)" hint="Pick any value when using no I²C sensors" :disabled="!config.isESP8266"></v-select>
                         <hr />
                         <br />
                         <h3>OneWire sensors</h3>
-                        If you use OneWire sensors like DHT22, they need one pin to communicate. If there are no I²C sensors (see above), you can re-use one of the pins above.
+                        <small> If you use OneWire sensors like DHT22, they need one pin to communicate. If there are no I²C sensors (see above), you can re-use one of the pins above.</small>
                         <br />
                         <v-select :items="pinsESP8266" v-model="config.onewirePin" type="number" label="DHT sensor pin (ESP8266 only)" hint="Pick any value when using no OneWire sensors" :disabled="!config.isESP8266"></v-select>
                         <hr />
                         <br />
                         <h3>LDR</h3>
-                        If you use no BH1750, but a LDR (light dependend resistor) connected to the A0 pin, you can define its type and the pulldown resistor here.
+                        <small> If you use no BH1750, but a LDR (light dependend resistor) connected to the A0 pin, you can define its type and the pulldown resistor here.</small>
                         <br />
                         <v-select :items="ldrDevices" v-model="config.ldrDevice" type="number" label="Lux sensor type" hint="Pick any value when using BH1750 or no lux sensor at all"></v-select>
                         <v-text-field v-model="config.ldrPulldown" type="number" label="Value of pulldown resistor for LDR" suffix="Ohm" hint="Enter any value when using BH1750 or no lux sensor at all" :rules="[rules.required]"></v-text-field>
                     </v-card>
                 </v-col>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>Button hardware</h2>
                         </v-card-title>
                         <hr />
                         <br />
-                        <v-switch v-model="config.btn0Enabled" label="Left button enabled"dense hide-details></v-switch>
-                        <v-select :items="pinsESP8266" v-model="config.btn0Pin" type="number" label="Pin for left button (ESP8266 only)" :disabled="!config.isESP8266, !config.btn0Enabled"></v-select>
+                        <v-switch v-model="config.btn0Enabled" label="Left button enabled" dense hide-details></v-switch>
+                        <v-select :items="pinsESP8266" v-model="config.btn0Pin" type="number" label="Pin for left button (ESP8266 only)" :disabled="(!config.isESP8266, !config.btn0Enabled)"></v-select>
                         <v-select :items="btnLowHigh" v-model="config.btn0PressedLevel" type="number" label="Left button signal type" :disabled="!config.btn0Enabled"></v-select>
                         <v-select :items="btnActions" v-model="config.btn0Action" type="number" label="Left button action" :disabled="!config.btn0Enabled"></v-select>
                         <hr />
-                        <v-switch v-model="config.btn1Enabled" label="Left button enabled"dense hide-details></v-switch>
-                        <v-select :items="pinsESP8266" v-model="config.btn1Pin" type="number" label="Pin for middle button (ESP8266 only)" :disabled="!config.isESP8266, !config.btn1Enabled"></v-select>
+                        <v-switch v-model="config.btn1Enabled" label="Left button enabled" dense hide-details></v-switch>
+                        <v-select :items="pinsESP8266" v-model="config.btn1Pin" type="number" label="Pin for middle button (ESP8266 only)" :disabled="(!config.isESP8266, !config.btn1Enabled)"></v-select>
                         <v-select :items="btnLowHigh" v-model="config.btn1PressedLevel" type="number" label="Middle button signal type" :disabled="!config.btn1Enabled"></v-select>
                         <v-select :items="btnActions" v-model="config.btn1Action" type="number" label="Middle button action" :disabled="!config.btn1Enabled"></v-select>
                         <hr />
-                        <v-switch v-model="config.btn2Enabled" label="Right button enabled"dense hide-details></v-switch>
-                        <v-select :items="pinsESP8266" v-model="config.btn2Pin" type="number" label="Pin for right button (ESP8266 only)" :disabled="!config.isESP8266, !config.btn2Enabled"></v-select>
+                        <v-switch v-model="config.btn2Enabled" label="Right button enabled" dense hide-details></v-switch>
+                        <v-select :items="pinsESP8266" v-model="config.btn2Pin" type="number" label="Pin for right button (ESP8266 only)" :disabled="(!config.isESP8266, !config.btn2Enabled)"></v-select>
                         <v-select :items="btnLowHigh" v-model="config.btn2PressedLevel" type="number" label="Right button signal type" :disabled="!config.btn2Enabled"></v-select>
-                        <v-select :items="btnActions" v-model="config.btn2Action" type="number" label="Right button action" :disabled="!config.btn2Enabled"></v-select>
-                    </v-card>
-                </v-col>
-                <v-col cols="12" lg="3">
-                    <v-card class="pa-2" elevation="4">
-                        <v-card-title>
-                            <h2>Button actions</h2>
-                        </v-card-title>
-                        <hr />
-                        <br />
-                        <v-select :items="btnActions" v-model="config.btn0Action" type="number" label="Left button action" :disabled="!config.btn0Enabled"></v-select>
-                        <v-select :items="btnActions" v-model="config.btn1Action" type="number" label="Middle button action" :disabled="!config.btn1Enabled"></v-select>
                         <v-select :items="btnActions" v-model="config.btn2Action" type="number" label="Right button action" :disabled="!config.btn2Enabled"></v-select>
                     </v-card>
                 </v-col>

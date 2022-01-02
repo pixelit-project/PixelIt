@@ -5,27 +5,27 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import vuetify from './plugins/vuetify'
-import VueCookies  from 'vue-cookies'
+import VueCookies from 'vue-cookies'
 import VueNativeSock from 'vue-native-websocket'
 import VueSpinners from 'vue-spinners'
 
 
 let url;
 if (location.host.includes(":")) {
-  url = "192.168.0.137";
+  url = "192.168.1.108";
 } else {
   url = location.host;
 }
 
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
-Vue.use(VueNativeSock, `ws://${url}:81`, {  store: store,  reconnection: true,  format: 'json' });
+Vue.use(VueNativeSock, `ws://${url}:81`, { store: store, reconnection: true, format: 'json' });
 Vue.$cookies.config('10y');
 Vue.config.productionTip = false;
-new Vue({  
+new Vue({
   router,
   store,
   vuetify,
-  render: h => h(App)  
+  render: h => h(App)
 }).$mount('#app')
 

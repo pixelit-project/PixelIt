@@ -69,6 +69,7 @@ export default new Vuex.Store({
         navLinks: [
             { title: "Dashboard", icon: "mdi-memory", page: "/" },
             { title: "Options", icon: "mdi-tune-vertical", page: "/options" },
+            { title: "Sensors & Buttons", icon: "mdi-gesture-tap-button", page: "/sensorsbuttons" },
             { title: "Test Area", icon: "mdi-cube-outline", page: "/testarea" },
             { title: "Update", icon: "mdi-tray-arrow-up", page: "/update" },
             //{ title: "Pixel Gallery", icon: "mdi-image-outline", url: "https://pixelit.bastelbunker.de/PixelGallery", target: "_blank" },
@@ -148,9 +149,9 @@ export default new Vuex.Store({
             { text: "Active high", value: 1 },
         ],
         btnActions: [
-            { text: "None (only send to MQTT and API)", value: "N" },
-            { text: "Go to Clock", value: "C" },
-            { text: "Toggle Sleep Mode", value: "S" },
+            { text: "None (only send to MQTT and API)", value: 0 },
+            { text: "Go to Clock", value: 1 },
+            { text: "Toggle Sleep Mode", value: 2 },
         ],
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
@@ -317,16 +318,13 @@ function getDisplayName(key) {
         case "button0":
             key = "Left button";
             break;
-        case "button0":
-            key = "Left button";
-            break;
         case "button1":
             key = "Middle button";
             break;
         case "button2":
             key = "Right button";
             break;
-        }
+    }
     return key;
 }
 
