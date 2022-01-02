@@ -42,6 +42,7 @@ export default new Vuex.Store({
         pixelItIpAdress: null,
         logData: [],
         sensorData: [],
+        buttonData: [],
         sysInfoData: [],
         configData: {},
         rules: {
@@ -133,6 +134,7 @@ export default new Vuex.Store({
             { text: "GL5549", value: "GL5549" },
         ],
         pinsESP8266: [
+            { text: "Pin D0", value: "Pin_D0" },
             { text: "Pin D1", value: "Pin_D1" },
             { text: "Pin D3", value: "Pin_D3" },
             { text: "Pin D4", value: "Pin_D4" },
@@ -140,6 +142,15 @@ export default new Vuex.Store({
             { text: "Pin D6", value: "Pin_D6" },
             { text: "Pin D7", value: "Pin_D7" },
             { text: "Pin D8", value: "Pin_D8" },
+        ],
+        btnLowHigh: [
+            { text: "Active low", value: 0 },
+            { text: "Active high", value: 1 },
+        ],
+        btnActions: [
+            { text: "None (only send to MQTT and API)", value: "N" },
+            { text: "Go to Clock", value: "C" },
+            { text: "Toggle Sleep Mode", value: "S" },
         ],
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
@@ -170,6 +181,10 @@ export default new Vuex.Store({
             // Sensor
             else if (message.sensor) {
                 addToSensorData(message.sensor, state);
+            }
+            // Buttons
+            else if (message.buttons) {
+                addToButtonData(message.buttons, state);
             }
             // Config
             else if (message.config) {
@@ -209,6 +224,17 @@ function addToSensorData(obj, state) {
             oldEntry.value = getDisplayValue(key, obj[key]);
         } else {
             state.sensorData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
+        }
+    }
+}
+
+function addToButtonData(obj, state) {
+    for (const key in obj) {
+        const oldEntry = state.ButtonData.find((x) => x.name == getDisplayName(key));
+        if (oldEntry) {
+            oldEntry.value = getDisplayValue(key, obj[key]);
+        } else {
+            state.ButtonData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
         }
     }
 }
@@ -288,7 +314,19 @@ function getDisplayName(key) {
         case "sleepMode":
             key = "Sleep mode";
             break;
-    }
+        case "button0":
+            key = "Left button";
+            break;
+        case "button0":
+            key = "Left button";
+            break;
+        case "button1":
+            key = "Middle button";
+            break;
+        case "button2":
+            key = "Right button";
+            break;
+        }
     return key;
 }
 

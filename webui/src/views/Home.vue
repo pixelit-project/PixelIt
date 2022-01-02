@@ -23,6 +23,15 @@
                     <br />
                     <ListInfo :items="sensorItems" />
                 </v-card>
+                <br />
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
+                        <h2>Buttons</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <ListInfo :items="buttonItems" />
+                </v-card>
             </v-col>
             <v-col cols="12" lg="6">
                 <v-card class="pa-2" elevation="4">
@@ -53,6 +62,9 @@ export default {
         },
         sensorItems() {
             return this.$store.state.sensorData;
+        },
+        buttonItems() {
+            return this.$store.state.buttonData;
         },
         log() {
             return this.$store.state.logData.join("\n");
