@@ -889,6 +889,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 		SendLDR(true);
 		SendSensor(true);
 		SendConfig();
+		webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
 		break;
 	}
 	case WStype_TEXT:

@@ -231,11 +231,11 @@ function addToSensorData(obj, state) {
 
 function addToButtonData(obj, state) {
     for (const key in obj) {
-        const oldEntry = state.ButtonData.find((x) => x.name == getDisplayName(key));
+        const oldEntry = state.buttonData.find((x) => x.name == getDisplayName(key));
         if (oldEntry) {
             oldEntry.value = getDisplayValue(key, obj[key]);
         } else {
-            state.ButtonData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
+            state.buttonData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
         }
     }
 }
