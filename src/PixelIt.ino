@@ -110,7 +110,7 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.15pinconfig_btn1"
+#define VERSION "0.3.16_beta"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
