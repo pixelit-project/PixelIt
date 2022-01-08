@@ -103,6 +103,9 @@ enum btnActions
 	btnAction_DoNothing = 0,
 	btnAction_GotoClock = 1,
 	btnAction_ToggleSleepMode = 2,
+	btnAction_MP3PlayPause = 3,
+	btnAction_MP3PlayPrevious = 4,
+	btnAction_MP3PlayNext = 5,
 };
 
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
@@ -824,6 +827,26 @@ void HandleAndSendButtonPress(uint button)
 	if (btnAction[button] == btnAction_GotoClock)
 	{
 		forceClock = true;
+	}
+	if (btnAction[button] == btnAction_MP3PlayPrevious)
+	{
+		mp3Player.playPrevious();
+	}
+	if (btnAction[button] == btnAction_MP3PlayNext)
+	{
+		mp3Player.playNext();
+	}
+	if (btnAction[button] == btnAction_MP3PlayPause)
+	{
+		if (mp3Player.isPlaying())
+		{
+			mp3Player.pause();
+		}
+		else
+		{
+			delay(200);
+			mp3Player.resume();
+		}
 	}
 }
 
