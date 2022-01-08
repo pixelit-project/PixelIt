@@ -110,7 +110,7 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.16_beta"
+#define VERSION "0.3.16_beta_mp3delay"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -1022,11 +1022,40 @@ void CreateFrames(JsonObject &json)
 		{
 			if (json["sound"]["folder"])
 			{
-				mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
+				if (json["sound"]["quick"])
+				{
+					mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
+				}
+				else
+				{
+					uint attempt=0;
+					do
+					{
+						attempt++;
+						Log(F("Sound"), "Attempt: "+String(attempt)+" "+String(millis()));
+						mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
+						delay(100+attempt*100);
+					}
+					while (attempt <5 && !mp3Player.isPlaying());
+				}
 			}
 			else
 			{
-				mp3Player.play(json["sound"]["file"].as<int>());
+				if (json["sound"]["quick"])
+				{
+					mp3Player.play(json["sound"]["file"].as<int>());
+				}
+				else
+				{
+					uint attempt=0;
+					do
+					{
+						attempt++;
+						Log(F("Sound"), "Attempt: "+String(attempt)+" "+String(millis()));
+						mp3Player.play(json["sound"]["file"].as<int>());
+						delay(100+attempt*100);
+					} while (attempt <5 && !mp3Player.isPlaying());
+				}
 			}
 		}
 		// Stop
