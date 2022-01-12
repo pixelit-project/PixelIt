@@ -121,6 +121,8 @@ export default new Vuex.Store({
             { text: "None", value: 0 },
             { text: "Fade", value: 1 },
             { text: "Colored Bar Wipe", value: 2 },
+            { text: "ZigZag Wipe", value: 3 },
+            { text: "Random Wipe", value: 4 },
         ],
         temperatureUnits: [
             { text: "Celsius °C", value: 0 },
