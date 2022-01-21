@@ -113,7 +113,7 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.16_beta_clockfallback"
+#define VERSION "0.3.16"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -2674,18 +2674,18 @@ void loop()
 		animateBMPAktivLoop = false;
 
 		int performWipe = 0;
-		
+
 		switch (clockAutoFallbackAnimation)
 		{
-			case 1:
-			case 2:
-			case 3:
-				performWipe=clockAutoFallbackAnimation;
-				break;
-			case 4:
-				performWipe=(millis() % 3)+1;
-				break;
-			default:;
+		case 1:
+		case 2:
+		case 3:
+			performWipe = clockAutoFallbackAnimation;
+			break;
+		case 4:
+			performWipe = (millis() % 3) + 1;
+			break;
+		default:;
 		}
 
 		if (performWipe == 1)

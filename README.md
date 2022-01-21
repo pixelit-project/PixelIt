@@ -34,7 +34,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.16 (2022-01-21)
 
 -   (miccgn) offer Zigzag animation and random animation for Clock Auto Fallback
 -   (miccgn) added button actions for MP3 control
