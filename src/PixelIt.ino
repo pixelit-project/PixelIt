@@ -103,6 +103,9 @@ enum btnActions
 	btnAction_DoNothing = 0,
 	btnAction_GotoClock = 1,
 	btnAction_ToggleSleepMode = 2,
+	btnAction_MP3PlayPause = 3,
+	btnAction_MP3PlayPrevious = 4,
+	btnAction_MP3PlayNext = 5,
 };
 
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
@@ -110,7 +113,7 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.16_beta"
+#define VERSION "0.3.16_beta_clockfallback"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -825,6 +828,26 @@ void HandleAndSendButtonPress(uint button)
 	{
 		forceClock = true;
 	}
+	if (btnAction[button] == btnAction_MP3PlayPrevious)
+	{
+		mp3Player.playPrevious();
+	}
+	if (btnAction[button] == btnAction_MP3PlayNext)
+	{
+		mp3Player.playNext();
+	}
+	if (btnAction[button] == btnAction_MP3PlayPause)
+	{
+		if (mp3Player.isPlaying())
+		{
+			mp3Player.pause();
+		}
+		else
+		{
+			delay(200);
+			mp3Player.resume();
+		}
+	}
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -889,6 +912,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 		SendLDR(true);
 		SendSensor(true);
 		SendConfig();
+		webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
 		break;
 	}
 	case WStype_TEXT:
@@ -2649,21 +2673,39 @@ void loop()
 		scrollTextAktivLoop = false;
 		animateBMPAktivLoop = false;
 
-		if (clockAutoFallbackAnimation == 1)
+		int performWipe = 0;
+		
+		switch (clockAutoFallbackAnimation)
+		{
+			case 1:
+			case 2:
+			case 3:
+				performWipe=clockAutoFallbackAnimation;
+				break;
+			case 4:
+				performWipe=(millis() % 3)+1;
+				break;
+			default:;
+		}
+
+		if (performWipe == 1)
 		{
 			FadeOut();
 		}
-		else if (clockAutoFallbackAnimation == 2)
+		else if (performWipe == 2)
 		{
 			ColoredBarWipe();
 		}
-
+		else if (performWipe == 3)
+		{
+			ZigZagWipe(clockColorR, clockColorG, clockColorB);
+		}
 		clockAktiv = true;
 		clockCounterClock = 0;
 		clockCounterDate = 0;
 		DrawClock(true);
 
-		if (clockAutoFallbackAnimation != 0)
+		if (performWipe != 0)
 		{
 			FadeIn();
 		}

@@ -121,6 +121,8 @@ export default new Vuex.Store({
             { text: "None", value: 0 },
             { text: "Fade", value: 1 },
             { text: "Colored Bar Wipe", value: 2 },
+            { text: "ZigZag Wipe", value: 3 },
+            { text: "Random Wipe", value: 4 },
         ],
         temperatureUnits: [
             { text: "Celsius °C", value: 0 },
@@ -152,6 +154,9 @@ export default new Vuex.Store({
             { text: "None (only send to MQTT and API)", value: 0 },
             { text: "Go to Clock", value: 1 },
             { text: "Toggle Sleep Mode", value: 2 },
+            { text: "MP3: Toggle Play/Pause", value: 3 },
+            { text: "MP3: Previous track", value: 4 },
+            { text: "MP3: Next track", value: 5 },
         ],
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
@@ -231,11 +236,11 @@ function addToSensorData(obj, state) {
 
 function addToButtonData(obj, state) {
     for (const key in obj) {
-        const oldEntry = state.ButtonData.find((x) => x.name == getDisplayName(key));
+        const oldEntry = state.buttonData.find((x) => x.name == getDisplayName(key));
         if (oldEntry) {
             oldEntry.value = getDisplayValue(key, obj[key]);
         } else {
-            state.ButtonData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
+            state.buttonData.push({ name: getDisplayName(key), value: getDisplayValue(key, obj[key]) });
         }
     }
 }
