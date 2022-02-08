@@ -34,6 +34,12 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (miccgn) fix mqtt LWT
+-   (miccgn) increase interval between reconnect attempts
+-   (miccgn) added support for Max44009 lux sensor
+
 ### 0.3.16 (2022-01-21)
 
 -   (miccgn) offer Zigzag animation and random animation for Clock Auto Fallback
