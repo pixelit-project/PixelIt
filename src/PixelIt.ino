@@ -63,7 +63,7 @@ String mqttServer = "";
 String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
-const int MQTT_RECONNECT_INTERVAL = 5000;
+const int MQTT_RECONNECT_INTERVAL = 15000;
 //#define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
@@ -2005,12 +2005,12 @@ boolean MQTTreconnect()
 	if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
 	{
 		Log(F("MQTTreconnect"), F("MQTT connecting to broker with user and password"));
-		connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), "state", 0, true, "diconnected");
+		connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
 	}
 	else
 	{
 		Log(F("MQTTreconnect"), F("MQTT connecting to broker without user and password"));
-		connected = client.connect(hostname.c_str(), "state", 0, true, "diconnected");
+		connected = client.connect(hostname.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
 	}
 
 	// Attempt to connect
