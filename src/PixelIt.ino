@@ -30,6 +30,8 @@
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
 // Misc
+#include <BH1750.h>
+#include <Max44009.h>
 #include <LightDependentResistor.h>
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
@@ -41,7 +43,6 @@
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
-#include <BH1750.h>
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -151,11 +152,13 @@ TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
 
 LightDependentResistor *photocell;
 BH1750 *bh1750;
+Max44009 *max44009;
 
 enum LuxSensor
 {
 	LuxSensor_LDR,
 	LuxSensor_BH1750,
+	LuxSensor_Max44009,
 };
 LuxSensor luxSensor = LuxSensor_LDR;
 
@@ -2445,9 +2448,20 @@ void setup()
 	else
 	{
 		delete bh1750;
-		photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
-		photocell->setPhotocellPositionOnGround(false);
-		luxSensor = LuxSensor_LDR;
+		max44009 = new Max44009(Max44009::Boolean::False);
+		max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
+		if (max44009->isConnected())
+		{
+			Log(F("Setup"), F("Max44009/GY-049 started"));
+			luxSensor = LuxSensor_Max44009;
+		}
+		else
+		{
+			delete max44009;
+			photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
+			photocell->setPhotocellPositionOnGround(false);
+			luxSensor = LuxSensor_LDR;
+		}
 	}
 
 	// Init Temp Sensors
@@ -2738,6 +2752,10 @@ void loop()
 		if (luxSensor == LuxSensor_BH1750)
 		{
 			currentLux = bh1750->readLightLevel() + luxOffset;
+		}
+		else if (luxSensor == LuxSensor_Max44009)
+		{
+			currentLux = max44009->getLux()+ luxOffset;
 		}
 		else
 		{
