@@ -466,7 +466,16 @@ void SetConfigVaribles(JsonObject &json)
 
 	if (json.containsKey("hostname"))
 	{
-		hostname = json["hostname"].as<char *>();
+		String hostname_raw = json["hostname"].as<char *>();
+		hostname="";
+		for (uint8_t n=0;n<hostname_raw.length();n++)
+		{
+			if ((hostname_raw.charAt(n)>='0' && hostname_raw.charAt(n)<='9')||(hostname_raw.charAt(n)>='A' && hostname_raw.charAt(n)<='Z')||(hostname_raw.charAt(n)>='a' && hostname_raw.charAt(n)<='z')||(hostname_raw.charAt(n)=='_')||(hostname_raw.charAt(n)=='-')) hostname+=hostname_raw.charAt(n);
+		}
+		if (hostname.isEmpty())
+		{
+			hostname = "PixelIt";
+		}
 	}
 
 	if (json.containsKey("matrixTempCorrection"))
@@ -2016,18 +2025,150 @@ boolean MQTTreconnect()
 		connected = client.connect(hostname.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
 	}
 
-	// Attempt to connect
 	if (connected)
 	{
 		Log(F("MQTTreconnect"), F("MQTT connected!"));
-		// ... and resubscribe
+		// Subscribe to topics ...
 		client.subscribe((mqttMasterTopic + "setScreen").c_str());
 		client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
 		client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
 		client.subscribe((mqttMasterTopic + "getConfig").c_str());
 		client.subscribe((mqttMasterTopic + "setConfig").c_str());
-		// ... and publish
-		client.publish((mqttMasterTopic + "state").c_str(), "connected");
+		// ... and publish state ....
+		client.publish((mqttMasterTopic + "state").c_str(), "connected",true);
+
+		// ... and provide discovery information
+		// Create discovery information for Homeassistant
+		// Can also be processed by ioBroker, OpenHAB etc.
+		String deviceID=hostname;
+		if (deviceID.isEmpty()) deviceID="pixelit";
+		#if defined(ESP8266)
+		deviceID+=ESP.getChipId();
+		#elif defined(ESP32)
+		deviceID+=uint64ToString(ESP.getEfuseMac());
+		#endif
+		
+		String configTopicTemplate=String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
+		configTopicTemplate.replace(F("#DEVICEID#"),deviceID);
+		String configPayloadTemplate=String(F(
+		"{ \
+    		\"device\":{ \
+        		\"identifiers\":\"#DEVICEID#\", \
+        		\"name\":\"#HOSTNAME#\", \
+        		\"model\":\"PixelIt\", \
+        		\"sw_version\":\"#VERSION#\" \
+        	}, \
+			\"availability_topic\":\"#MASTERTOPIC#state\", \
+			\"payload_available\":\"connected\", \
+			\"payload_not_available\":\"disconnected\", \
+			\"unique_id\":\"#DEVICEID##SENSORNAME#\", \
+			\"device_class\":\"#CLASS#\", \
+			\"name\":\"#SENSORNAME#\", \
+			\"state_topic\":\"#MASTERTOPIC#sensor\", \
+			\"unit_of_measurement\":\"#UNIT#\", \
+			\"value_template\":\"{{value_json.#VALUENAME#}}\" \
+		}"  ));
+		configPayloadTemplate.replace(" ","");
+		configPayloadTemplate.replace(F("#DEVICEID#"),deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"),hostname);
+		configPayloadTemplate.replace(F("#VERSION#"),VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"),mqttMasterTopic);
+
+		String topic;
+		String payload;
+		
+		if (tempSensor!=TempSensor_None) {
+			topic=configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"),F("Temperature"));
+
+			payload=configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"),F("Temperature"));
+			payload.replace(F("#CLASS#"),F("temperature"));
+			payload.replace(F("#UNIT#"),"°C");
+			payload.replace(F("#VALUENAME#"),F("temperature"));
+			client.publish(topic.c_str(),payload.c_str(),true);
+
+			topic=configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"),F("Humidity"));
+
+			payload=configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"),F("Humidity"));
+			payload.replace(F("#CLASS#"),F("humidity"));
+			payload.replace(F("#UNIT#"),"%");
+			payload.replace(F("#VALUENAME#"),F("humidity"));
+			client.publish(topic.c_str(),payload.c_str(),true);
+		}
+
+		if (tempSensor==TempSensor_BME280 || tempSensor==TempSensor_BME680) {
+			topic=configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"),F("Pressure"));
+
+			payload=configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"),F("Pressure"));
+			payload.replace(F("#CLASS#"),F("pressure"));
+			payload.replace(F("#UNIT#"),"hPa");
+			payload.replace(F("#VALUENAME#"),F("pressure"));
+			client.publish(topic.c_str(),payload.c_str(),true);
+		}
+
+		if (tempSensor==TempSensor_BME680) {
+			topic=configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"),F("VOC"));
+
+			payload=configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"),F("VOC"));
+			payload.replace(F("#CLASS#"),F("volatile_organic_compounds"));
+			payload.replace(F("#UNIT#"),"kOhm");
+			payload.replace(F("#VALUENAME#"),F("gas"));
+			client.publish(topic.c_str(),payload.c_str(),true);
+		}
+		topic=configTopicTemplate;
+		topic.replace(F("#SENSORNAME#"),F("Illuminance"));
+
+		payload=configPayloadTemplate;
+		payload.replace(F("#SENSORNAME#"),F("Illuminance"));
+		payload.replace(F("#CLASS#"),F("illuminance"));
+		payload.replace(F("#UNIT#"),"lx");
+		payload.replace(F("#VALUENAME#"),F("lux"));
+		client.publish(topic.c_str(),payload.c_str(),true);
+
+		
+		configPayloadTemplate=String(F(
+		"{ \
+    		\"device\":{ \
+        		\"identifiers\":\"#DEVICEID#\", \
+        		\"name\":\"#HOSTNAME#\", \
+        		\"model\":\"PixelIt\", \
+        		\"sw_version\":\"#VERSION#\" \
+        	}, \
+			\"availability_topic\":\"#MASTERTOPIC#state\", \
+			\"payload_available\":\"connected\", \
+			\"payload_not_available\":\"disconnected\", \
+			\"unique_id\":\"#DEVICEID##SENSORNAME#\", \
+			\"device_class\":\"timestamp\", \
+			\"name\":\"#SENSORNAME#\", \
+			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\" \
+		}"  ));
+		
+		configPayloadTemplate.replace(" ","");
+		configPayloadTemplate.replace(F("#DEVICEID#"),deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"),hostname);
+		configPayloadTemplate.replace(F("#VERSION#"),VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"),mqttMasterTopic);
+
+		for (uint8_t n=0; n <sizeof(btnEnabled)/sizeof(btnEnabled[0]); n++)
+		{
+			if (btnEnabled[n]) {
+				topic=configTopicTemplate;
+				topic.replace(F("#SENSORNAME#"),String(F("Button"))+String(n));
+
+				payload=configPayloadTemplate;
+				payload.replace(F("#SENSORNAME#"),String(F("Button"))+String(n));
+				payload.replace(F("#STATETOPIC#"),String(F("button"))+String(n));
+				client.publish(topic.c_str(),payload.c_str(),true);
+			}
+		}
+		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
 	}
 	else
 	{
