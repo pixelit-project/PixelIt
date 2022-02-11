@@ -36,6 +36,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (miccgn) added MQTT discovery information in HomeAssistant style
 -   (miccgn) fix mqtt LWT
 -   (miccgn) increase interval between reconnect attempts
 -   (miccgn) added support for Max44009 lux sensor
