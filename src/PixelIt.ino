@@ -114,7 +114,7 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#define VERSION "0.3.16"
+#define VERSION "0.3.16mqtt"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -2064,7 +2064,7 @@ boolean MQTTreconnect()
 			\"unique_id\":\"#DEVICEID##SENSORNAME#\", \
 			\"device_class\":\"#CLASS#\", \
 			\"name\":\"#SENSORNAME#\", \
-			\"state_topic\":\"#MASTERTOPIC#sensor\", \
+			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\", \
 			\"unit_of_measurement\":\"#UNIT#\", \
 			\"value_template\":\"{{value_json.#VALUENAME#}}\" \
 		}"  ));
@@ -2084,6 +2084,7 @@ boolean MQTTreconnect()
 			payload=configPayloadTemplate;
 			payload.replace(F("#SENSORNAME#"),F("Temperature"));
 			payload.replace(F("#CLASS#"),F("temperature"));
+			payload.replace(F("#STATETOPIC#"),F("sensor"));
 			payload.replace(F("#UNIT#"),"°C");
 			payload.replace(F("#VALUENAME#"),F("temperature"));
 			client.publish(topic.c_str(),payload.c_str(),true);
@@ -2094,6 +2095,7 @@ boolean MQTTreconnect()
 			payload=configPayloadTemplate;
 			payload.replace(F("#SENSORNAME#"),F("Humidity"));
 			payload.replace(F("#CLASS#"),F("humidity"));
+			payload.replace(F("#STATETOPIC#"),F("sensor"));
 			payload.replace(F("#UNIT#"),"%");
 			payload.replace(F("#VALUENAME#"),F("humidity"));
 			client.publish(topic.c_str(),payload.c_str(),true);
@@ -2106,6 +2108,7 @@ boolean MQTTreconnect()
 			payload=configPayloadTemplate;
 			payload.replace(F("#SENSORNAME#"),F("Pressure"));
 			payload.replace(F("#CLASS#"),F("pressure"));
+			payload.replace(F("#STATETOPIC#"),F("sensor"));
 			payload.replace(F("#UNIT#"),"hPa");
 			payload.replace(F("#VALUENAME#"),F("pressure"));
 			client.publish(topic.c_str(),payload.c_str(),true);
@@ -2118,6 +2121,7 @@ boolean MQTTreconnect()
 			payload=configPayloadTemplate;
 			payload.replace(F("#SENSORNAME#"),F("VOC"));
 			payload.replace(F("#CLASS#"),F("volatile_organic_compounds"));
+			payload.replace(F("#STATETOPIC#"),F("sensor"));
 			payload.replace(F("#UNIT#"),"kOhm");
 			payload.replace(F("#VALUENAME#"),F("gas"));
 			client.publish(topic.c_str(),payload.c_str(),true);
@@ -2128,6 +2132,7 @@ boolean MQTTreconnect()
 		payload=configPayloadTemplate;
 		payload.replace(F("#SENSORNAME#"),F("Illuminance"));
 		payload.replace(F("#CLASS#"),F("illuminance"));
+		payload.replace(F("#STATETOPIC#"),F("luxsensor"));
 		payload.replace(F("#UNIT#"),"lx");
 		payload.replace(F("#VALUENAME#"),F("lux"));
 		client.publish(topic.c_str(),payload.c_str(),true);
