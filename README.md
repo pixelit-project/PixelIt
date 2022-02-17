@@ -36,6 +36,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (miccgn) memory optimization
 -   (miccgn) added MQTT discovery information in HomeAssistant style
 -   (miccgn) fix mqtt LWT
 -   (miccgn) increase interval between reconnect attempts
