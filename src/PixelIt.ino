@@ -127,7 +127,7 @@ TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 #else
 TwoWire twowire;
 #endif
-Adafruit_BME280 bme280;
+Adafruit_BME280* bme280;
 Adafruit_BME680 *bme680;
 unsigned long lastBME680read = 0;
 DHTesp dht;
@@ -195,7 +195,6 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
-bool shouldSaveConfig = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
 unsigned long lastScreenMessageMillis = 0;
@@ -272,11 +271,6 @@ String OldGetMP3PlayerInfo;
 // Websoket Vars
 String websocketConnection[10];
 
-void SaveConfigCallback()
-{
-	shouldSaveConfig = true;
-}
-
 void SetCurrentMatrixBrightness(float newBrightness)
 {
 	currentMatrixBrightness = newBrightness;
@@ -294,81 +288,78 @@ void EnteredHotspotCallback(WiFiManager *manager)
 void SaveConfig()
 {
 	// save the custom parameters to FS
-	if (shouldSaveConfig)
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject &json = jsonBuffer.createObject();
+
+	json["version"] = VERSION;
+	json["isESP8266"] = isESP8266;
+	json["temperatureUnit"] = static_cast<int>(temperatureUnit);
+	json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
+	json["mbaDimMin"] = mbaDimMin;
+	json["mbaDimMax"] = mbaDimMax;
+	json["mbaLuxMin"] = mbaLuxMin;
+	json["mbaLuxMax"] = mbaLuxMax;
+	json["matrixBrightness"] = currentMatrixBrightness;
+	json["matrixType"] = matrixType;
+	json["note"] = note;
+	json["hostname"] = hostname;
+	json["matrixTempCorrection"] = matrixTempCorrection;
+	json["ntpServer"] = ntpServer;
+	json["clockTimeZone"] = clockTimeZone;
+
+	String clockColorHex;
+	ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
+	json["clockColor"] = "#" + clockColorHex;
+
+	json["clockSwitchAktiv"] = clockSwitchAktiv;
+	json["clockSwitchSec"] = clockSwitchSec;
+	json["clock24Hours"] = clock24Hours;
+	json["clockDayLightSaving"] = clockDayLightSaving;
+	json["clockWithSeconds"] = clockWithSeconds;
+	json["clockAutoFallbackActive"] = clockAutoFallbackActive;
+	json["clockAutoFallbackTime"] = clockAutoFallbackTime;
+	json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
+	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
+	json["bootScreenAktiv"] = bootScreenAktiv;
+	json["mqttAktiv"] = mqttAktiv;
+	json["mqttUser"] = mqttUser;
+	json["mqttPassword"] = mqttPassword;
+	json["mqttServer"] = mqttServer;
+	json["mqttMasterTopic"] = mqttMasterTopic;
+	json["mqttPort"] = mqttPort;
+	json["luxOffset"] = luxOffset;
+	json["temperatureOffset"] = temperatureOffset;
+	json["humidityOffset"] = humidityOffset;
+	json["pressureOffset"] = pressureOffset;
+	json["gasOffset"] = gasOffset;
+
+	json["dfpRXpin"] = dfpRXPin;
+	json["dfpTXpin"] = dfpTXPin;
+	json["onewirePin"] = onewirePin;
+	json["SCLPin"] = SCLPin;
+	json["SDAPin"] = SDAPin;
+	for (uint b = 0; b < 3; b++)
 	{
-		DynamicJsonBuffer jsonBuffer;
-		JsonObject &json = jsonBuffer.createObject();
+		json["btn" + String(b) + "Pin"] = btnPin[b];
+		json["btn" + String(b) + "PressedLevel"] = btnPressedLevel[b];
+		json["btn" + String(b) + "Enabled"] = btnEnabled[b];
+		json["btn" + String(b) + "Action"] = static_cast<int>(btnAction[b]);
+	}
+	json["ldrDevice"] = ldrDevice;
+	json["ldrPulldown"] = ldrPulldown;
+	json["ldrSmoothing"] = ldrSmoothing;
 
-		json["version"] = VERSION;
-		json["isESP8266"] = isESP8266;
-		json["temperatureUnit"] = static_cast<int>(temperatureUnit);
-		json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
-		json["mbaDimMin"] = mbaDimMin;
-		json["mbaDimMax"] = mbaDimMax;
-		json["mbaLuxMin"] = mbaLuxMin;
-		json["mbaLuxMax"] = mbaLuxMax;
-		json["matrixBrightness"] = currentMatrixBrightness;
-		json["matrixType"] = matrixType;
-		json["note"] = note;
-		json["hostname"] = hostname;
-		json["matrixTempCorrection"] = matrixTempCorrection;
-		json["ntpServer"] = ntpServer;
-		json["clockTimeZone"] = clockTimeZone;
-
-		String clockColorHex;
-		ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
-		json["clockColor"] = "#" + clockColorHex;
-
-		json["clockSwitchAktiv"] = clockSwitchAktiv;
-		json["clockSwitchSec"] = clockSwitchSec;
-		json["clock24Hours"] = clock24Hours;
-		json["clockDayLightSaving"] = clockDayLightSaving;
-		json["clockWithSeconds"] = clockWithSeconds;
-		json["clockAutoFallbackActive"] = clockAutoFallbackActive;
-		json["clockAutoFallbackTime"] = clockAutoFallbackTime;
-		json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
-		json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
-		json["bootScreenAktiv"] = bootScreenAktiv;
-		json["mqttAktiv"] = mqttAktiv;
-		json["mqttUser"] = mqttUser;
-		json["mqttPassword"] = mqttPassword;
-		json["mqttServer"] = mqttServer;
-		json["mqttMasterTopic"] = mqttMasterTopic;
-		json["mqttPort"] = mqttPort;
-		json["luxOffset"] = luxOffset;
-		json["temperatureOffset"] = temperatureOffset;
-		json["humidityOffset"] = humidityOffset;
-		json["pressureOffset"] = pressureOffset;
-		json["gasOffset"] = gasOffset;
-
-		json["dfpRXpin"] = dfpRXPin;
-		json["dfpTXpin"] = dfpTXPin;
-		json["onewirePin"] = onewirePin;
-		json["SCLPin"] = SCLPin;
-		json["SDAPin"] = SDAPin;
-		for (uint b = 0; b < 3; b++)
-		{
-			json["btn" + String(b) + "Pin"] = btnPin[b];
-			json["btn" + String(b) + "PressedLevel"] = btnPressedLevel[b];
-			json["btn" + String(b) + "Enabled"] = btnEnabled[b];
-			json["btn" + String(b) + "Action"] = static_cast<int>(btnAction[b]);
-		}
-		json["ldrDevice"] = ldrDevice;
-		json["ldrPulldown"] = ldrPulldown;
-		json["ldrSmoothing"] = ldrSmoothing;
-
-		json["initialVolume"] = initialVolume;
+	json["initialVolume"] = initialVolume;
 
 #if defined(ESP8266)
-		File configFile = LittleFS.open("/config.json", "w");
+	File configFile = LittleFS.open("/config.json", "w");
 #elif defined(ESP32)
-		File configFile = SPIFFS.open("/config.json", "w");
+	File configFile = SPIFFS.open("/config.json", "w");
 #endif
-		json.printTo(configFile);
-		configFile.close();
-		Log("SaveConfig", "Saved");
-		// end save
-	}
+	json.printTo(configFile);
+	configFile.close();
+	Log("SaveConfig", "Saved");
+	// end save
 }
 
 void LoadConfig()
@@ -392,7 +383,7 @@ void LoadConfig()
 
 			if (json.success())
 			{
-				SetConfigVaribles(json);
+				SetConfigVariables(json);
 				Log("LoadConfig", "Loaded");
 			}
 		}
@@ -400,19 +391,17 @@ void LoadConfig()
 	else
 	{
 		Log("LoadConfig", "No Configfile, init new file");
-		SaveConfigCallback();
 		SaveConfig();
 	}
 }
 
 void SetConfig(JsonObject &json)
 {
-	SetConfigVaribles(json);
-	SaveConfigCallback();
+	SetConfigVariables(json);
 	SaveConfig();
 }
 
-void SetConfigVaribles(JsonObject &json)
+void SetConfigVariables(JsonObject &json)
 {
 	if (json.containsKey("version"))
 	{
@@ -669,133 +658,134 @@ void SetConfigVaribles(JsonObject &json)
 	}
 }
 
-void WifiSetup()
-{
-	wifiManager.resetSettings();
-	ESP.restart();
-	delay(300);
-}
+// void WifiSetup()
+// {
+// 	wifiManager.resetSettings();
+// 	ESP.restart();
+// 	delay(300);
+// }
 
 void HandleGetMainPage()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "text/html", mainPage);
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("text/html"), mainPage);
 }
 
 void HandleNotFound()
 {
 	if (server.method() == HTTP_OPTIONS)
 	{
-		server.sendHeader("Access-Control-Allow-Origin", "*");
+		server.sendHeader(F("Access-Control-Allow-Origin"), "*");
 		server.send(204);
 	}
 
 	server.sendHeader("Location", "/update", true);
-	server.send(302, "text/plain", "");
+	server.send(302, F("text/plain"), "");
 }
 
 void HandleScreen()
 {
 	DynamicJsonBuffer jsonBuffer;
-	JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
-	server.sendHeader("Connection", "close");
-	server.sendHeader("Access-Control-Allow-Origin", "*");
+	String args=String(server.arg("plain").c_str());
+	JsonObject &json = jsonBuffer.parseObject(args.begin());
+	server.sendHeader(F("Connection"), F("close"));
+	server.sendHeader(F("Access-Control-Allow-Origin"), "*");
 
 	if (json.success())
 	{
-		server.send(200, "application/json", "{\"response\":\"OK\"}");
-		Log("HandleScreen", "Incomming Json length: " + String(json.measureLength()));
+		server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+		Log(F("HandleScreen"), "Incoming Json length: " + String(json.measureLength()));
 		CreateFrames(json);
 	}
 	else
 	{
-		server.send(406, "application/json", "{\"response\":\"Not Acceptable\"}");
+		server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
 	}
 }
 
-void Handle_wifisetup()
-{
-	WifiSetup();
-}
+// void Handle_wifisetup()
+// {
+// 	WifiSetup();
+// }
 
 void HandleSetConfig()
 {
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
-	server.sendHeader("Connection", "close");
+	server.sendHeader(F("Connection"), F("close"));
 
 	if (json.success())
 	{
-		Log("SetConfig", "Incomming Json length: " + String(json.measureLength()));
+		Log(F("SetConfig"), "Incoming Json length: " + String(json.measureLength()));
 		SetConfig(json);
-		server.send(200, "application/json", "{\"response\":\"OK\"}");
+		server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
 		delay(500);
 		ESP.restart();
 	}
 	else
 	{
-		server.send(406, "application/json", "{\"response\":\"Not Acceptable\"}");
+		server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
 	}
 }
 
 void HandleGetConfig()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetConfig());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetConfig());
 }
 
 void HandleGetLuxSensor()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetLuxSensor());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetLuxSensor());
 }
 
 void HandelGetBrightness()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetBrightness());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetBrightness());
 }
 
 void HandleGetDHTSensor() // Legancy
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetSensor());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetSensor());
 }
 
 void HandleGetSensor()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetSensor());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetSensor());
 }
 
 void HandleGetButtons()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetButtons());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetButtons());
 }
 
 void HandleGetMatrixInfo()
 {
-	server.sendHeader("Connection", "close");
-	server.send(200, "application/json", GetMatrixInfo());
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), GetMatrixInfo());
 }
 
-void Handle_factoryreset()
-{
-#if defined(ESP8266)
-	File configFile = LittleFS.open("/config.json", "w");
-#elif defined(ESP32)
-	File configFile = SPIFFS.open("/config.json", "w");
-#endif
-	if (!configFile)
-	{
-		Log("Handle_factoryreset", "Failed to open config file for reset");
-	}
-	configFile.println("");
-	configFile.close();
-	WifiSetup();
-	ESP.restart();
-}
+// void Handle_factoryreset()
+// {
+// #if defined(ESP8266)
+// 	File configFile = LittleFS.open("/config.json", "w");
+// #elif defined(ESP32)
+// 	File configFile = SPIFFS.open("/config.json", "w");
+// #endif
+// 	if (!configFile)
+// 	{
+// 		Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
+// 	}
+// 	configFile.println("");
+// 	configFile.close();
+// 	WifiSetup();
+// 	ESP.restart();
+// }
 
 void HandleAndSendButtonPress(uint button)
 {
@@ -917,7 +907,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 		IPAddress ip = webSocket.remoteIP(num);
 
 		// Logausgabe
-		Log("WebSocketEvent", "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
+		Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
 		// send message to client
 		SendMatrixInfo(true);
@@ -935,7 +925,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 			JsonObject &json = jsonBuffer.parseObject(payload);
 
 			// Logausgabe
-			Log("WebSocketEvent", "Incomming Json length: " + String(json.measureLength()));
+			Log(F("WebSocketEvent"), "Incoming Json length: " + String(json.measureLength()));
 
 			if (json.containsKey("setScreen"))
 			{
@@ -1434,10 +1424,10 @@ String GetSensor()
 
 	if (tempSensor == TempSensor_BME280)
 	{
-		const float currentTemp = bme280.readTemperature();
+		const float currentTemp = bme280->readTemperature();
 		root["temperature"] = currentTemp + temperatureOffset;
-		root["humidity"] = bme280.readHumidity() + humidityOffset;
-		root["pressure"] = (bme280.readPressure() / 100.0F) + pressureOffset;
+		root["humidity"] = bme280->readHumidity() + humidityOffset;
+		root["pressure"] = (bme280->readPressure() / 100.0F) + pressureOffset;
 		root["gas"] = "Not installed";
 
 		if (temperatureUnit == TemperatureUnit_Fahrenheit)
@@ -2564,7 +2554,6 @@ void setup()
 		if (optionsVersion != VERSION)
 		{
 			Log(F("LoadConfig"), F("New version detected, create new variables in config if necessary"));
-			SaveConfigCallback();
 			SaveConfig();
 			LoadConfig();
 		}
@@ -2611,13 +2600,15 @@ void setup()
 	}
 
 	// Init Temp Sensors
-	if (bme280.begin(BME280_ADDRESS_ALTERNATE, &twowire))
+	bme280 = new Adafruit_BME280();
+	if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
 	{
 		Log(F("Setup"), F("BME280 started"));
 		tempSensor = TempSensor_BME280;
 	}
 	else
 	{
+		delete bme280;
 		bme680 = new Adafruit_BME680(&twowire);
 		if (bme680->begin())
 		{
@@ -2694,8 +2685,6 @@ void setup()
 	}
 	WiFi.hostname(hostname);
 
-	// Set config save notify callback
-	wifiManager.setSaveConfigCallback(SaveConfigCallback);
 	wifiManager.setAPCallback(EnteredHotspotCallback);
 	wifiManager.setMinimumSignalQuality();
 	// Config menue timeout 180 seconds.
@@ -2711,7 +2700,6 @@ void setup()
 	}
 
 	Log(F("Setup"), F("Wifi connected...yeey :)"));
-	SaveConfig();
 
 	Log(F("Setup"), F("Local IP"));
 	Log(F("Setup"), WiFi.localIP().toString());
