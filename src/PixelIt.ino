@@ -16,6 +16,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
 #include <Adafruit_BME680.h>
 // WiFi & Web
 #include <WebSocketsServer.h>
@@ -128,6 +129,7 @@ TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 TwoWire twowire;
 #endif
 Adafruit_BME280* bme280;
+Adafruit_BMP280* bmp280;
 Adafruit_BME680 *bme680;
 unsigned long lastBME680read = 0;
 DHTesp dht;
@@ -139,6 +141,7 @@ enum TempSensor
 	TempSensor_BME280,
 	TempSensor_DHT,
 	TempSensor_BME680,
+	TempSensor_BMP280,
 };
 TempSensor tempSensor = TempSensor_None;
 
@@ -1421,7 +1424,6 @@ String GetSensor()
 {
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &root = jsonBuffer.createObject();
-
 	if (tempSensor == TempSensor_BME280)
 	{
 		const float currentTemp = bme280->readTemperature();
@@ -1517,6 +1519,21 @@ String GetSensor()
 			}
 		}
 	}
+		else if (tempSensor == TempSensor_BMP280)
+	{
+		const float currentTemp = bmp280->readTemperature();
+		root["temperature"] = currentTemp + temperatureOffset;
+		//root["humidity"] = bmp280->readHumidity() + humidityOffset;
+		root["humidity"] = "Not installed";
+		root["pressure"] = (bmp280->readPressure() / 100.0F) + pressureOffset;
+		root["gas"] = "Not installed";
+
+		if (temperatureUnit == TemperatureUnit_Fahrenheit)
+		{
+			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+		}
+	}
+
 	else
 	{
 		root["humidity"] = "Not installed";
@@ -2090,8 +2107,7 @@ boolean MQTTreconnect()
 			payload.replace(F("#VALUENAME#"),F("humidity"));
 			client.publish(topic.c_str(),payload.c_str(),true);
 		}
-
-		if (tempSensor==TempSensor_BME280 || tempSensor==TempSensor_BME680) {
+		if (tempSensor==TempSensor_BME280 || tempSensor==TempSensor_BMP280  || tempSensor==TempSensor_BME680) {
 			topic=configTopicTemplate;
 			topic.replace(F("#SENSORNAME#"),F("Pressure"));
 
@@ -2609,30 +2625,41 @@ void setup()
 	else
 	{
 		delete bme280;
-		bme680 = new Adafruit_BME680(&twowire);
-		if (bme680->begin())
+		bmp280 = new Adafruit_BMP280(&twowire);
+    	Log(F("Setup"), F("BMP280 Trying"));
+		if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
 		{
-			Log(F("Setup"), F("BME680 started"));
-			tempSensor = TempSensor_BME680;
+			Log(F("Setup"), F("BMP280 started"));
+			tempSensor = TempSensor_BMP280;
 		}
 		else
 		{
-			delete bme680;
-			// AM2320 needs a delay to be reliably initialized
-			delay(600);
-			dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-			if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+			delete bmp280;
+			bme680 = new Adafruit_BME680(&twowire);
+			if (bme680->begin())
 			{
-				Log(F("Setup"), F("DHT started"));
-				tempSensor = TempSensor_DHT;
+				Log(F("Setup"), F("BME680 started"));
+				tempSensor = TempSensor_BME680;
 			}
 			else
-			{
-				Log(F("Setup"), F("No BME280, BME 680 or DHT Sensor found"));
+				{
+					delete bme680;
+					// AM2320 needs a delay to be reliably initialized
+					delay(600);
+					dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
+					if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+					{
+						Log(F("Setup"), F("DHT started"));
+						tempSensor = TempSensor_DHT;
+					}
+					else
+					{
+						Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
+					}
+				}
 			}
 		}
-	}
-
+	
 	// Matix Type 1 (Colum major)
 	if (matrixType == 1)
 	{
