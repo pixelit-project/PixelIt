@@ -36,6 +36,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (hermannbach) added support for BMP280 (only tested on D1 mini.)
 -   (miccgn) memory optimization
 -   (miccgn) added MQTT discovery information in HomeAssistant style
 -   (miccgn) fix mqtt LWT
