@@ -34,8 +34,9 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.17 (2022-03-02)
 
+-   (o0shojo0o) fixed wrong DST handling
 -   (hermannbach) added support for BMP280 (only tested on D1 mini.)
 -   (miccgn) memory optimization
 -   (miccgn) added MQTT discovery information in HomeAssistant style

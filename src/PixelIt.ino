@@ -45,6 +45,8 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
+#define VERSION "0.3.17"
+
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
@@ -114,8 +116,6 @@ btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAct
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
-
-#define VERSION "0.3.16mqtt"
 
 #if defined(ESP8266)
 bool isESP8266 = true;
