@@ -128,8 +128,8 @@ TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 #else
 TwoWire twowire;
 #endif
-Adafruit_BME280* bme280;
-Adafruit_BMP280* bmp280;
+Adafruit_BME280 *bme280;
+Adafruit_BMP280 *bmp280;
 Adafruit_BME680 *bme680;
 unsigned long lastBME680read = 0;
 DHTesp dht;
@@ -459,10 +459,11 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("hostname"))
 	{
 		String hostname_raw = json["hostname"].as<char *>();
-		hostname="";
-		for (uint8_t n=0;n<hostname_raw.length();n++)
+		hostname = "";
+		for (uint8_t n = 0; n < hostname_raw.length(); n++)
 		{
-			if ((hostname_raw.charAt(n)>='0' && hostname_raw.charAt(n)<='9')||(hostname_raw.charAt(n)>='A' && hostname_raw.charAt(n)<='Z')||(hostname_raw.charAt(n)>='a' && hostname_raw.charAt(n)<='z')||(hostname_raw.charAt(n)=='_')||(hostname_raw.charAt(n)=='-')) hostname+=hostname_raw.charAt(n);
+			if ((hostname_raw.charAt(n) >= '0' && hostname_raw.charAt(n) <= '9') || (hostname_raw.charAt(n) >= 'A' && hostname_raw.charAt(n) <= 'Z') || (hostname_raw.charAt(n) >= 'a' && hostname_raw.charAt(n) <= 'z') || (hostname_raw.charAt(n) == '_') || (hostname_raw.charAt(n) == '-'))
+				hostname += hostname_raw.charAt(n);
 		}
 		if (hostname.isEmpty())
 		{
@@ -689,7 +690,7 @@ void HandleNotFound()
 void HandleScreen()
 {
 	DynamicJsonBuffer jsonBuffer;
-	String args=String(server.arg("plain").c_str());
+	String args = String(server.arg("plain").c_str());
 	JsonObject &json = jsonBuffer.parseObject(args.begin());
 	server.sendHeader(F("Connection"), F("close"));
 	server.sendHeader(F("Access-Control-Allow-Origin"), "*");
@@ -1519,11 +1520,11 @@ String GetSensor()
 			}
 		}
 	}
-		else if (tempSensor == TempSensor_BMP280)
+	else if (tempSensor == TempSensor_BMP280)
 	{
 		const float currentTemp = bmp280->readTemperature();
 		root["temperature"] = currentTemp + temperatureOffset;
-		//root["humidity"] = bmp280->readHumidity() + humidityOffset;
+		// root["humidity"] = bmp280->readHumidity() + humidityOffset;
 		root["humidity"] = "Not installed";
 		root["pressure"] = (bmp280->readPressure() / 100.0F) + pressureOffset;
 		root["gas"] = "Not installed";
@@ -2042,23 +2043,24 @@ boolean MQTTreconnect()
 		client.subscribe((mqttMasterTopic + "getConfig").c_str());
 		client.subscribe((mqttMasterTopic + "setConfig").c_str());
 		// ... and publish state ....
-		client.publish((mqttMasterTopic + "state").c_str(), "connected",true);
+		client.publish((mqttMasterTopic + "state").c_str(), "connected", true);
 
 		// ... and provide discovery information
 		// Create discovery information for Homeassistant
 		// Can also be processed by ioBroker, OpenHAB etc.
-		String deviceID=hostname;
-		if (deviceID.isEmpty()) deviceID="pixelit";
-		#if defined(ESP8266)
-		deviceID+=ESP.getChipId();
-		#elif defined(ESP32)
-		deviceID+=uint64ToString(ESP.getEfuseMac());
-		#endif
-		
-		String configTopicTemplate=String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
-		configTopicTemplate.replace(F("#DEVICEID#"),deviceID);
-		String configPayloadTemplate=String(F(
-		"{ \
+		String deviceID = hostname;
+		if (deviceID.isEmpty())
+			deviceID = "pixelit";
+#if defined(ESP8266)
+		deviceID += ESP.getChipId();
+#elif defined(ESP32)
+		deviceID += uint64ToString(ESP.getEfuseMac());
+#endif
+
+		String configTopicTemplate = String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
+		configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
+		String configPayloadTemplate = String(F(
+			"{ \
     		\"device\":{ \
         		\"identifiers\":\"#DEVICEID#\", \
         		\"name\":\"#HOSTNAME#\", \
@@ -2074,78 +2076,80 @@ boolean MQTTreconnect()
 			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\", \
 			\"unit_of_measurement\":\"#UNIT#\", \
 			\"value_template\":\"{{value_json.#VALUENAME#}}\" \
-		}"  ));
-		configPayloadTemplate.replace(" ","");
-		configPayloadTemplate.replace(F("#DEVICEID#"),deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"),hostname);
-		configPayloadTemplate.replace(F("#VERSION#"),VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"),mqttMasterTopic);
+		}"));
+		configPayloadTemplate.replace(" ", "");
+		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
 
 		String topic;
 		String payload;
-		
-		if (tempSensor!=TempSensor_None) {
-			topic=configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"),F("Temperature"));
 
-			payload=configPayloadTemplate;
-			payload.replace(F("#SENSORNAME#"),F("Temperature"));
-			payload.replace(F("#CLASS#"),F("temperature"));
-			payload.replace(F("#STATETOPIC#"),F("sensor"));
-			payload.replace(F("#UNIT#"),"°C");
-			payload.replace(F("#VALUENAME#"),F("temperature"));
-			client.publish(topic.c_str(),payload.c_str(),true);
+		if (tempSensor != TempSensor_None)
+		{
+			topic = configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"), F("Temperature"));
 
-			topic=configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"),F("Humidity"));
+			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"), F("Temperature"));
+			payload.replace(F("#CLASS#"), F("temperature"));
+			payload.replace(F("#STATETOPIC#"), F("sensor"));
+			payload.replace(F("#UNIT#"), "°C");
+			payload.replace(F("#VALUENAME#"), F("temperature"));
+			client.publish(topic.c_str(), payload.c_str(), true);
 
-			payload=configPayloadTemplate;
-			payload.replace(F("#SENSORNAME#"),F("Humidity"));
-			payload.replace(F("#CLASS#"),F("humidity"));
-			payload.replace(F("#STATETOPIC#"),F("sensor"));
-			payload.replace(F("#UNIT#"),"%");
-			payload.replace(F("#VALUENAME#"),F("humidity"));
-			client.publish(topic.c_str(),payload.c_str(),true);
+			topic = configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"), F("Humidity"));
+
+			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"), F("Humidity"));
+			payload.replace(F("#CLASS#"), F("humidity"));
+			payload.replace(F("#STATETOPIC#"), F("sensor"));
+			payload.replace(F("#UNIT#"), "%");
+			payload.replace(F("#VALUENAME#"), F("humidity"));
+			client.publish(topic.c_str(), payload.c_str(), true);
 		}
-		if (tempSensor==TempSensor_BME280 || tempSensor==TempSensor_BMP280  || tempSensor==TempSensor_BME680) {
-			topic=configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"),F("Pressure"));
+		if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
+		{
+			topic = configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"), F("Pressure"));
 
-			payload=configPayloadTemplate;
-			payload.replace(F("#SENSORNAME#"),F("Pressure"));
-			payload.replace(F("#CLASS#"),F("pressure"));
-			payload.replace(F("#STATETOPIC#"),F("sensor"));
-			payload.replace(F("#UNIT#"),"hPa");
-			payload.replace(F("#VALUENAME#"),F("pressure"));
-			client.publish(topic.c_str(),payload.c_str(),true);
+			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"), F("Pressure"));
+			payload.replace(F("#CLASS#"), F("pressure"));
+			payload.replace(F("#STATETOPIC#"), F("sensor"));
+			payload.replace(F("#UNIT#"), "hPa");
+			payload.replace(F("#VALUENAME#"), F("pressure"));
+			client.publish(topic.c_str(), payload.c_str(), true);
 		}
 
-		if (tempSensor==TempSensor_BME680) {
-			topic=configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"),F("VOC"));
+		if (tempSensor == TempSensor_BME680)
+		{
+			topic = configTopicTemplate;
+			topic.replace(F("#SENSORNAME#"), F("VOC"));
 
-			payload=configPayloadTemplate;
-			payload.replace(F("#SENSORNAME#"),F("VOC"));
-			payload.replace(F("#CLASS#"),F("volatile_organic_compounds"));
-			payload.replace(F("#STATETOPIC#"),F("sensor"));
-			payload.replace(F("#UNIT#"),"kOhm");
-			payload.replace(F("#VALUENAME#"),F("gas"));
-			client.publish(topic.c_str(),payload.c_str(),true);
+			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORNAME#"), F("VOC"));
+			payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
+			payload.replace(F("#STATETOPIC#"), F("sensor"));
+			payload.replace(F("#UNIT#"), "kOhm");
+			payload.replace(F("#VALUENAME#"), F("gas"));
+			client.publish(topic.c_str(), payload.c_str(), true);
 		}
-		topic=configTopicTemplate;
-		topic.replace(F("#SENSORNAME#"),F("Illuminance"));
+		topic = configTopicTemplate;
+		topic.replace(F("#SENSORNAME#"), F("Illuminance"));
 
-		payload=configPayloadTemplate;
-		payload.replace(F("#SENSORNAME#"),F("Illuminance"));
-		payload.replace(F("#CLASS#"),F("illuminance"));
-		payload.replace(F("#STATETOPIC#"),F("luxsensor"));
-		payload.replace(F("#UNIT#"),"lx");
-		payload.replace(F("#VALUENAME#"),F("lux"));
-		client.publish(topic.c_str(),payload.c_str(),true);
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORNAME#"), F("Illuminance"));
+		payload.replace(F("#CLASS#"), F("illuminance"));
+		payload.replace(F("#STATETOPIC#"), F("luxsensor"));
+		payload.replace(F("#UNIT#"), "lx");
+		payload.replace(F("#VALUENAME#"), F("lux"));
+		client.publish(topic.c_str(), payload.c_str(), true);
 
-		
-		configPayloadTemplate=String(F(
-		"{ \
+		configPayloadTemplate = String(F(
+			"{ \
     		\"device\":{ \
         		\"identifiers\":\"#DEVICEID#\", \
         		\"name\":\"#HOSTNAME#\", \
@@ -2159,24 +2163,25 @@ boolean MQTTreconnect()
 			\"device_class\":\"timestamp\", \
 			\"name\":\"#SENSORNAME#\", \
 			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\" \
-		}"  ));
-		
-		configPayloadTemplate.replace(" ","");
-		configPayloadTemplate.replace(F("#DEVICEID#"),deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"),hostname);
-		configPayloadTemplate.replace(F("#VERSION#"),VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"),mqttMasterTopic);
+		}"));
 
-		for (uint8_t n=0; n <sizeof(btnEnabled)/sizeof(btnEnabled[0]); n++)
+		configPayloadTemplate.replace(" ", "");
+		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+
+		for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
 		{
-			if (btnEnabled[n]) {
-				topic=configTopicTemplate;
-				topic.replace(F("#SENSORNAME#"),String(F("Button"))+String(n));
+			if (btnEnabled[n])
+			{
+				topic = configTopicTemplate;
+				topic.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
 
-				payload=configPayloadTemplate;
-				payload.replace(F("#SENSORNAME#"),String(F("Button"))+String(n));
-				payload.replace(F("#STATETOPIC#"),String(F("button"))+String(n));
-				client.publish(topic.c_str(),payload.c_str(),true);
+				payload = configPayloadTemplate;
+				payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
+				payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
+				client.publish(topic.c_str(), payload.c_str(), true);
 			}
 		}
 		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
@@ -2626,7 +2631,7 @@ void setup()
 	{
 		delete bme280;
 		bmp280 = new Adafruit_BMP280(&twowire);
-    	Log(F("Setup"), F("BMP280 Trying"));
+		Log(F("Setup"), F("BMP280 Trying"));
 		if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
 		{
 			Log(F("Setup"), F("BMP280 started"));
@@ -2642,24 +2647,24 @@ void setup()
 				tempSensor = TempSensor_BME680;
 			}
 			else
+			{
+				delete bme680;
+				// AM2320 needs a delay to be reliably initialized
+				delay(600);
+				dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
+				if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
 				{
-					delete bme680;
-					// AM2320 needs a delay to be reliably initialized
-					delay(600);
-					dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-					if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
-					{
-						Log(F("Setup"), F("DHT started"));
-						tempSensor = TempSensor_DHT;
-					}
-					else
-					{
-						Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
-					}
+					Log(F("Setup"), F("DHT started"));
+					tempSensor = TempSensor_DHT;
+				}
+				else
+				{
+					Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
 				}
 			}
 		}
-	
+	}
+
 	// Matix Type 1 (Colum major)
 	if (matrixType == 1)
 	{
@@ -2916,7 +2921,7 @@ void loop()
 		}
 		else if (luxSensor == LuxSensor_Max44009)
 		{
-			currentLux = max44009->getLux()+ luxOffset;
+			currentLux = max44009->getLux() + luxOffset;
 		}
 		else
 		{

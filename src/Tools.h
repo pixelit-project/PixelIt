@@ -13,30 +13,32 @@ String IntFormat(int inputInt)
 	return String(inputInt);
 }
 
+boolean IsSummertime(int year, byte month, byte day, byte hour, byte clockTimeZone)
+{
+	if (month < 3 || month > 10)
+	{
+		return false; // keine Sommerzeit in Jan, Feb, Nov, Dez
+	}
+	if (month > 3 && month < 10)
+	{
+		return true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
+	}
+	if (month == 3 && (hour + 24 * day) >= (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 4) % 7)) || month == 10 && (hour + 24 * day) < (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 1) % 7)))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 /// <summary>
 /// Returns 1 hour in daylight saving time and outside 0
 /// </summary>
 int DSToffset(time_t date, float clockTimeZone)
 {
-	bool _summerTime;
-
-	if (month(date) < 3 || month(date) > 10)
-	{
-		_summerTime = false; // no summertime in Jan, Feb, Nov, Dec
-	}
-	else if (month(date) > 3 && month(date) < 10)
-	{
-		_summerTime = true; // Summertime in Apr, May, Jun, Jul, Aug, Sep
-	}
-	else if ((month(date) == 3 && (hour(date) + 24 * day(date)) >= (1 + clockTimeZone + 24 * (31 - (5 * year(date) / 4 + 4) % 7))) || (month(date) == 10 && (hour(date) + 24 * day(date))) < (1 + clockTimeZone + 24 * (31 - (5 * year(date) / 4 + 1) % 7)))
-	{
-		_summerTime = true;
-	}
-	else
-	{
-		_summerTime = false;
-	}
-	return _summerTime ? 1 : 0;
+	return IsSummertime(year(date), month(date), day(date), hour(date), clockTimeZone) ? 1 : 0;
 }
 
 /// <summary>
@@ -98,7 +100,7 @@ byte Utf8ToAscii(byte ascii)
 	case 0xC380 ... 0xC3BF:
 		result = (bytes[1] | 0xC0) - 34;
 		break;
-	case 0xE282AC:  // Euro €
+	case 0xE282AC: // Euro €
 		result = 0xDE;
 		break;
 	case 0xE28690: // Arrow left ←
