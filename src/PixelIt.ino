@@ -2650,7 +2650,7 @@ void setup()
 			{
 				delete bme680;
 				// AM2320 needs a delay to be reliably initialized
-				delay(600);
+				delay(800);
 				dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
 				if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
 				{
