@@ -34,6 +34,11 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) added option to change the start of the week (internal clock)
+-   (o0shojo0o) added option to change date format (internal clock)
+
 ### 0.3.17 (2022-03-02)
 
 -   (o0shojo0o) fixed wrong DST handling

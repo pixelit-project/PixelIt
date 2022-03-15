@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.3.17"
+#define VERSION "0.3.17_format"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -216,6 +216,8 @@ unsigned long ntpTimeOut = 0;
 bool clockBlink = false;
 bool clockAktiv = true;
 bool clock24Hours = true;
+bool clockDateDayMonth = true;
+bool clockDayOfWeekFirstMonday = true;
 bool clockDayLightSaving = true;
 bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
@@ -322,6 +324,8 @@ void SaveConfig()
 	json["clockAutoFallbackActive"] = clockAutoFallbackActive;
 	json["clockAutoFallbackTime"] = clockAutoFallbackTime;
 	json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
+	json["clockDateDayMonth"] = clockDateDayMonth;
+	json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
 	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 	json["bootScreenAktiv"] = bootScreenAktiv;
 	json["mqttAktiv"] = mqttAktiv;
@@ -529,6 +533,16 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("clockAutoFallbackTime"))
 	{
 		clockAutoFallbackTime = json["clockAutoFallbackTime"].as<uint>();
+	}
+
+	if (json.containsKey("clockDateDayMonth"))
+	{
+		clockDateDayMonth = json["clockDateDayMonth"].as<bool>();
+	}
+
+	if (json.containsKey("clockDayOfWeekFirstMonday"))
+	{
+		clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
@@ -1899,7 +1913,14 @@ void DrawClock(bool fromJSON)
 
 	int xPosTime = 0;
 
-	sprintf_P(date, PSTR("%02d.%02d."), day(), month());
+	if (clockDateDayMonth)
+	{
+		sprintf_P(date, PSTR("%02d.%02d."), day(), month());
+	}
+	else
+	{
+		sprintf_P(date, PSTR("%02d/%02d"), month(), day());
+	}
 
 	if (clock24Hours && clockWithSeconds)
 	{
@@ -2007,7 +2028,18 @@ void DrawWeekDay()
 {
 	for (int i = 0; i <= 6; i++)
 	{
-		if (i == DayOfWeekFirstMonday(dayOfWeek(now()) - 1))
+		int weekDayNumber = 0;
+
+		if (clockDayOfWeekFirstMonday)
+		{
+			weekDayNumber = DayOfWeekFirstMonday(dayOfWeek(now()));
+		}
+		else
+		{
+			weekDayNumber = dayOfWeek(now());
+		}
+
+		if (i == weekDayNumber - 1)
 		{
 			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, matrix->Color(clockColorR, clockColorG, clockColorB));
 		}

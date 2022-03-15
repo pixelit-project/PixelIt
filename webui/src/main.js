@@ -12,7 +12,7 @@ import VueSpinners from 'vue-spinners'
 
 let url;
 if (location.host.includes(":")) {
-  url = "192.168.1.108";
+  url = "192.168.3.5";
 } else {
   url = location.host;
 }

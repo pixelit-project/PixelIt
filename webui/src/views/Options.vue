@@ -7,7 +7,7 @@
         </v-row>
         <v-form v-model="isValid">
             <v-row>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-1" elevation="4">
                         <v-card-title>
                             <h2>Defaults</h2>
@@ -55,7 +55,7 @@
                         </v-row>
                     </v-card>
                 </v-col>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>Clock</h2>
@@ -68,26 +68,17 @@
                         <v-switch v-model="config.clockDayLightSaving" label="Daylight saving" dense hide-details></v-switch>
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
                         <v-switch v-model="config.clockWithSeconds" label="Clock with sek" :disabled="!config.clock24Hours" dense hide-details></v-switch>
-                        <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense></v-switch>
+                        <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockDayOfWeekFirstMonday" label="Monday as start of the week" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockDateDayMonth" label="Date format DD.MM." dense></v-switch>
+
                         <v-text-field v-model="config.clockSwitchSec" type="number" label="Switch clock/date time" hint="the unit is seconds (s)" suffix="seconds" :disabled="!config.clockSwitchAktiv" :rules="config.clockSwitchAktiv ? [rules.required, rules.min0] : []"></v-text-field>
                         <v-switch v-model="config.clockAutoFallbackActive" label="Clock auto fallback" dense></v-switch>
                         <v-select :items="autoFallbackAnimation" v-model="config.clockAutoFallbackAnimation" label="Fallback Animation" :disabled="!config.clockAutoFallbackActive"></v-select>
                         <v-text-field v-model="config.clockAutoFallbackTime" type="number" label="Fallback time" hint="the unit is seconds (s)" suffix="seconds" :disabled="!config.clockAutoFallbackActive" :rules="config.clockSwitchAktiv ? [rules.required, rules.min0] : []"></v-text-field>
                     </v-card>
                 </v-col>
-                <v-col cols="12" lg="3">
-                    <v-card class="pa-2" elevation="4">
-                        <v-card-title>
-                            <h2>Sound</h2>
-                        </v-card-title>
-                        <hr />
-                        <br />
-                        <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
-                        <v-select :items="pinsESP8266" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
-                        <v-select :items="pinsESP8266" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
-                    </v-card>
-                </v-col>
-                <v-col cols="12" lg="3">
+                <v-col cols="12" lg="4">
                     <v-card class="pa-1" elevation="4">
                         <v-card-title>
                             <h2>MQTT</h2>
@@ -99,6 +90,17 @@
                         <v-text-field v-model="config.mqttUser" label="User" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
                         <v-text-field v-model="config.mqttPassword" label="Passsword" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
                         <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
+                    </v-card>
+                    <br />
+                    <v-card class="pa-2" elevation="4">
+                        <v-card-title>
+                            <h2>Sound</h2>
+                        </v-card-title>
+                        <hr />
+                        <br />
+                        <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
+                        <v-select :items="pinsESP8266" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
+                        <v-select :items="pinsESP8266" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
                     </v-card>
                 </v-col>
             </v-row>
