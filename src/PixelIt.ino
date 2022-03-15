@@ -2060,23 +2060,23 @@ boolean MQTTreconnect()
 		String configTopicTemplate = String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
 		configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
 		String configPayloadTemplate = String(F(
-			"{ \
-    		\"device\":{ \
-        		\"identifiers\":\"#DEVICEID#\", \
-        		\"name\":\"#HOSTNAME#\", \
-        		\"model\":\"PixelIt\", \
-        		\"sw_version\":\"#VERSION#\" \
-        	}, \
-			\"availability_topic\":\"#MASTERTOPIC#state\", \
-			\"payload_available\":\"connected\", \
-			\"payload_not_available\":\"disconnected\", \
-			\"unique_id\":\"#DEVICEID##SENSORNAME#\", \
-			\"device_class\":\"#CLASS#\", \
-			\"name\":\"#SENSORNAME#\", \
-			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\", \
-			\"unit_of_measurement\":\"#UNIT#\", \
-			\"value_template\":\"{{value_json.#VALUENAME#}}\" \
-		}"));
+			"{"
+			"\"device\":{"
+			"\"identifiers\":\"#DEVICEID#\","
+			"\"name\":\"#HOSTNAME#\","
+			"\"model\":\"PixelIt\","
+			"\"sw_version\":\"#VERSION#\""
+			"},"
+			"\"availability_topic\":\"#MASTERTOPIC#state\","
+			"\"payload_available\":\"connected\","
+			"\"payload_not_available\":\"disconnected\","
+			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+			"\"device_class\":\"#CLASS#\","
+			"\"name\":\"#SENSORNAME#\","
+			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"unit_of_measurement\":\"#UNIT#\","
+			"\"value_template\":\"{{value_json.#VALUENAME#}}\""
+			"}"));
 		configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
 		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
@@ -2149,22 +2149,21 @@ boolean MQTTreconnect()
 		client.publish(topic.c_str(), payload.c_str(), true);
 
 		configPayloadTemplate = String(F(
-			"{ \
-    		\"device\":{ \
-        		\"identifiers\":\"#DEVICEID#\", \
-        		\"name\":\"#HOSTNAME#\", \
-        		\"model\":\"PixelIt\", \
-        		\"sw_version\":\"#VERSION#\" \
-        	}, \
-			\"availability_topic\":\"#MASTERTOPIC#state\", \
-			\"payload_available\":\"connected\", \
-			\"payload_not_available\":\"disconnected\", \
-			\"unique_id\":\"#DEVICEID##SENSORNAME#\", \
-			\"device_class\":\"timestamp\", \
-			\"name\":\"#SENSORNAME#\", \
-			\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\" \
-		}"));
-
+			"{"
+			"\"device\":{"
+			"\"identifiers\":\"#DEVICEID#\","
+			"\"name\":\"#HOSTNAME#\","
+			"\"model\":\"PixelIt\","
+			"\"sw_version\":\"#VERSION#\""
+			","
+			"\"availability_topic\":\"#MASTERTOPIC#state\","
+			"\"payload_available\":\"connected\","
+			"\"payload_not_available\":\"disconnected\","
+			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+			"\"device_class\":\"timestamp\","
+			"\"name\":\"#SENSORNAME#\","
+			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\""
+			"}"));
 		configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
 		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
