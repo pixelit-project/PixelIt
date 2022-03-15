@@ -38,6 +38,7 @@ Thanks to these great people for supporting this project.
 
 -   (o0shojo0o) added option to change the start of the week (internal clock)
 -   (o0shojo0o) added option to change date format (internal clock)
+-   (hamster65) increase AM2320 sensor delay from 600 to 800ms
 
 ### 0.3.17 (2022-03-02)
 
