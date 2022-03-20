@@ -93,16 +93,31 @@ async function getCurrentGitReleaseData(state) {
                 releaseNoteArray: gitData[i].body.replaceAll("-", "").split("\r\n"),
                 readmeLink: `https://github.com/o0shojo0o/PixelIt#${gitData[i].name.replaceAll(".", "")}-${gitData[i].published_at.split("T")[0]}`,
             };
+
             for (const asset of gitData[i].assets) {
-                data.fwdownloads.push({
-                    name: asset.name
-                        .replace("firmware_", "")
-                        .replace(".bin", "")
-                        .replace("_", " ")
-                        .toUpperCase(),
-                    downloads: asset.download_count,
-                });
+                let fwdownload;
+                // New filename format https://github.com/o0shojo0o/PixelIt/pull/153
+                // firmware_v3.3.3_wemos_d1_mini32.bin
+                if (asset.name.includes("firmware_v")) {
+                    fwdownload = {
+                        name: asset.name.substring(asset.name.indexOf(asset.name.split("_")[2])),
+                        downloads: asset.download_count,
+                    };
+                    // Old filename format
+                    // firmware_wemos_d1_mini32.bin
+                } else {
+                    fwdownload = {
+                        name: asset.name.substring(asset.name.indexOf(asset.name.split("_")[1])),
+                        downloads: asset.download_count,
+                    };
+                }
+                fwdownload.name = fwdownload.name
+                    .replace(".bin", "")
+                    .replaceAll("_", " ")
+                    .toUpperCase();
+                data.fwdownloads.push(fwdownload);
             }
+
             state.gitReleases.push(data);
         }
         state.gitVersion = state.gitReleases[0].version;
