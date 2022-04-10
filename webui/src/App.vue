@@ -30,7 +30,7 @@ export default {
     created: function() {
         // For develop
         if (location.host.includes(":")) {
-            this.$store.state.pixelItIpAdress = "192.168.0.137";
+            this.$store.state.pixelItIpAdress = "192.168.3.5";
         } else {
             this.$store.state.pixelItIpAdress = location.host;
         }

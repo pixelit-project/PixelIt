@@ -36,6 +36,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) extended WebUi for non-flashing time separator option
 -   (rozza-m) remove leading zero from hours when in 12h mode (internal clock)
 -   (rozza-m) provide option for non-flashing time separator (internal clock)
 
