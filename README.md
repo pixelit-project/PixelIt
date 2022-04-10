@@ -34,6 +34,11 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (rozza-m) remove leading zero from hours when in 12h mode (internal clock)
+-   (rozza-m) provide option for non-flashing time separator (internal clock)
+
 ### 0.3.18 (2022-04-04)
 
 -   (o0shojo0o) added option to change the start of the week (internal clock)
