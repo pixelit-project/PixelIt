@@ -24,6 +24,51 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 Thanks to these great people for supporting this project.
 <!-- readme: contributors -start -->
+<table>
+<tr>
+    <td align="center">
+        <a href="https://github.com/o0shojo0o">
+            <img src="https://avatars.githubusercontent.com/u/19333515?v=4" width="100;" alt="o0shojo0o"/>
+            <br />
+            <sub><b>Dennis Rathjen</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/miccgn">
+            <img src="https://avatars.githubusercontent.com/u/71180164?v=4" width="100;" alt="miccgn"/>
+            <br />
+            <sub><b>miccgn</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/foorschtbar">
+            <img src="https://avatars.githubusercontent.com/u/10727275?v=4" width="100;" alt="foorschtbar"/>
+            <br />
+            <sub><b>Fab!an</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/hermannbach">
+            <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
+            <br />
+            <sub><b>HBach</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/hamster65">
+            <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
+            <br />
+            <sub><b>hamster65</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/rozza-m">
+            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
+            <br />
+            <sub><b>rozza-m</b></sub>
+        </a>
+    </td></tr>
+</table>
 <!-- readme: contributors -end -->
 
 ## Changelog
