@@ -231,6 +231,7 @@ time_t clockLastUpdate;
 uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
 bool forceClock = false;
+bool clockBlinkAnimated = true;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
@@ -326,6 +327,7 @@ void SaveConfig()
 	json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
 	json["clockDateDayMonth"] = clockDateDayMonth;
 	json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
+	json["clockBlinkAnimated"] = clockBlinkAnimated;
 	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 	json["bootScreenAktiv"] = bootScreenAktiv;
 	json["mqttAktiv"] = mqttAktiv;
@@ -518,6 +520,11 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("clockWithSeconds"))
 	{
 		clockWithSeconds = json["clockWithSeconds"].as<bool>();
+	}
+
+	if (json.containsKey("clockBlinkAnimated"))
+	{
+		clockBlinkAnimated = json["clockBlinkAnimated"].as<bool>();
 	}
 
 	if (json.containsKey("clockAutoFallbackActive"))
@@ -1213,6 +1220,7 @@ void CreateFrames(JsonObject &json)
 				}
 
 				clockWithSeconds = json["clock"]["withSeconds"];
+				clockBlinkAnimated = json["clock"]["blinkAnimated"];
 
 				if (json["clock"]["color"]["r"].as<char *>() != NULL)
 				{
@@ -1931,30 +1939,30 @@ void DrawClock(bool fromJSON)
 	{
 		xPosTime = 2;
 
-		if (clockBlink)
+		if (clockBlink && clockBlinkAnimated)
 		{
 			clockBlink = false;
-			sprintf_P(time, PSTR("%02d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
 		}
 		else
 		{
 			clockBlink = !clockBlink;
-			sprintf_P(time, PSTR("%02d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
 		}
 	}
 	else
 	{
 		xPosTime = 7;
 
-		if (clockBlink)
+		if (clockBlink && clockBlinkAnimated)
 		{
 			clockBlink = false;
-			sprintf_P(time, PSTR("%02d:%02d"), hour(), minute());
+			sprintf_P(time, PSTR("%02d %02d"), hour(), minute());
 		}
 		else
 		{
 			clockBlink = !clockBlink;
-			sprintf_P(time, PSTR("%02d %02d"), hour(), minute());
+			sprintf_P(time, PSTR("%02d:%02d"), hour(), minute());
 		}
 	}
 
