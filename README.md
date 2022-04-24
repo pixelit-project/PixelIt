@@ -23,6 +23,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ## Contributors
 
 Thanks to these great people for supporting this project.
+
 <!-- readme: contributors -start -->
 <table>
 <tr>
@@ -77,8 +78,9 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.19 (2022-04-24)
 
+-   (o0shojo0o) fix weekday is not lighting if week is starting with monday (internal clock)
 -   (o0shojo0o) extended WebUi for non-flashing time separator option
 -   (rozza-m) remove leading zero from hours when in 12h mode (internal clock)
 -   (rozza-m) provide option for non-flashing time separator (internal clock)
