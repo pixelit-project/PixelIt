@@ -2586,15 +2586,11 @@ void ClearBMPArea()
 
 int DayOfWeekFirstMonday(int OrigDayofWeek)
 {
-
-	Log("OrigDayofWeek", String(OrigDayofWeek));
 	int idx = (7 + OrigDayofWeek) - 1;
-	Log("idx", String(idx));
 	if (idx > 6) // week ends at 6, because Enum.DayOfWeek is zero-based
 	{
 		idx -= 7;
 	}
-	Log("return_idx", String(idx));
 	return idx;
 	// int diff = (7 + (OrigDayofWeek - 1)) % 7;
 	// return OrigDayofWeek + (-1 * diff);
