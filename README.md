@@ -38,7 +38,7 @@ Thanks to these great people for supporting this project.
         <a href="https://github.com/miccgn">
             <img src="https://avatars.githubusercontent.com/u/71180164?v=4" width="100;" alt="miccgn"/>
             <br />
-            <sub><b>miccgn</b></sub>
+            <sub><b>Miccgn</b></sub>
         </a>
     </td>
     <td align="center">
@@ -59,14 +59,14 @@ Thanks to these great people for supporting this project.
         <a href="https://github.com/hamster65">
             <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
             <br />
-            <sub><b>hamster65</b></sub>
+            <sub><b>Hamster65</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/rozza-m">
             <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
             <br />
-            <sub><b>rozza-m</b></sub>
+            <sub><b>Rozza-m</b></sub>
         </a>
     </td></tr>
 </table>
