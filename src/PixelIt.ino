@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.3.19_bugfix"
+#define VERSION "0.3.19"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
