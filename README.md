@@ -50,6 +50,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/rozza-m">
+            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
+            <br />
+            <sub><b>Rozza-m</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/hermannbach">
             <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
             <br />
@@ -61,13 +68,6 @@ Thanks to these great people for supporting this project.
             <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
             <br />
             <sub><b>Hamster65</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/rozza-m">
-            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
-            <br />
-            <sub><b>Rozza-m</b></sub>
         </a>
     </td></tr>
 </table>
