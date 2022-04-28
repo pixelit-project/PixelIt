@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.3.19_beta"
+#define VERSION "0.3.19"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -2034,20 +2034,21 @@ void DrawClock(bool fromJSON)
 
 void DrawWeekDay()
 {
+	// The Libary works with dayOfWeek with Sunday = 1...
+	// So Sunday = 1 <-> Saturday = 7
+	int weekDayNumber = 0;
+	if (clockDayOfWeekFirstMonday)
+	{
+		weekDayNumber = DayOfWeekFirstMonday(dayOfWeek(now()) - 1);
+	}
+	else
+	{
+		weekDayNumber = dayOfWeek(now()) - 1;
+	}
+
 	for (int i = 0; i <= 6; i++)
 	{
-		int weekDayNumber = 0;
-
-		if (clockDayOfWeekFirstMonday)
-		{
-			weekDayNumber = DayOfWeekFirstMonday(dayOfWeek(now()));
-		}
-		else
-		{
-			weekDayNumber = dayOfWeek(now());
-		}
-
-		if (i == weekDayNumber - 1)
+		if (i == weekDayNumber)
 		{
 			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, matrix->Color(clockColorR, clockColorG, clockColorB));
 		}
@@ -2585,12 +2586,14 @@ void ClearBMPArea()
 
 int DayOfWeekFirstMonday(int OrigDayofWeek)
 {
-	int idx = 7 + OrigDayofWeek - 1;
+	int idx = (7 + OrigDayofWeek) - 1;
 	if (idx > 6) // week ends at 6, because Enum.DayOfWeek is zero-based
 	{
 		idx -= 7;
 	}
 	return idx;
+	// int diff = (7 + (OrigDayofWeek - 1)) % 7;
+	// return OrigDayofWeek + (-1 * diff);
 }
 
 /////////////////////////////////////////////////////////////////////

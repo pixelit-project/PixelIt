@@ -13,6 +13,7 @@ The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based Pi
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
+
 [Docu](https://docs.bastelbunker.de/pixelit/) |
 [Forum](https://github.com/o0shojo0o/PixelIt/discussions) |
 [Blog](https://www.bastelbunker.de/pixel-it/) |
@@ -23,6 +24,7 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 ## Contributors
 
 Thanks to these great people for supporting this project.
+
 <!-- readme: contributors -start -->
 <table>
 <tr>
@@ -77,8 +79,9 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.19 (2022-04-24)
 
+-   (o0shojo0o) fix weekday is not lighting if week is starting with monday (internal clock)
 -   (o0shojo0o) extended WebUi for non-flashing time separator option
 -   (rozza-m) remove leading zero from hours when in 12h mode (internal clock)
 -   (rozza-m) provide option for non-flashing time separator (internal clock)
