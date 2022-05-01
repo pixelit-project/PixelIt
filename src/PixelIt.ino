@@ -2097,34 +2097,38 @@ boolean MQTTreconnect()
 #elif defined(ESP32)
 		deviceID += uint64ToString(ESP.getEfuseMac());
 #endif
+        // Get host IP to provide URL in MQTT discovery device info
+        String ip_url = "http://" + WiFi.localIP().toString();
 
-		String configTopicTemplate = String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
+        String configTopicTemplate = String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
 		configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
-		String configPayloadTemplate = String(F(
-			"{"
-			"\"device\":{"
-			"\"identifiers\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"model\":\"PixelIt\","
-			"\"sw_version\":\"#VERSION#\""
-			"},"
-			"\"availability_topic\":\"#MASTERTOPIC#state\","
-			"\"payload_available\":\"connected\","
-			"\"payload_not_available\":\"disconnected\","
-			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
-			"\"device_class\":\"#CLASS#\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_measurement\":\"#UNIT#\","
-			"\"value_template\":\"{{value_json.#VALUENAME#}}\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
+        String configPayloadTemplate = String(F(
+            "{"
+            "\"device\":{"
+            "\"identifiers\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"model\":\"PixelIt\","
+            "\"sw_version\":\"#VERSION#\","
+            "\"configuration_url\":\"#IP#\""
+            "},"
+            "\"availability_topic\":\"#MASTERTOPIC#state\","
+            "\"payload_available\":\"connected\","
+            "\"payload_not_available\":\"disconnected\","
+            "\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+            "\"device_class\":\"#CLASS#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"unit_of_measurement\":\"#UNIT#\","
+            "\"value_template\":\"{{value_json.#VALUENAME#}}\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
 		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
 		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
 		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		String topic;
+        String topic;
 		String payload;
 
 		if (tempSensor != TempSensor_None)
@@ -2189,29 +2193,31 @@ boolean MQTTreconnect()
 		payload.replace(F("#VALUENAME#"), F("lux"));
 		client.publish(topic.c_str(), payload.c_str(), true);
 
-		configPayloadTemplate = String(F(
-			"{"
-			"\"device\":{"
-			"\"identifiers\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"model\":\"PixelIt\","
-			"\"sw_version\":\"#VERSION#\""
-			","
-			"\"availability_topic\":\"#MASTERTOPIC#state\","
-			"\"payload_available\":\"connected\","
-			"\"payload_not_available\":\"disconnected\","
-			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
-			"\"device_class\":\"timestamp\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate = String(F(
+            "{"
+            "\"device\":{"
+            "\"identifiers\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"model\":\"PixelIt\","
+            "\"sw_version\":\"#VERSION#\","
+            "\"configuration_url\":\"#IP#\""
+            ","
+            "\"availability_topic\":\"#MASTERTOPIC#state\","
+            "\"payload_available\":\"connected\","
+            "\"payload_not_available\":\"disconnected\","
+            "\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+            "\"device_class\":\"timestamp\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
 		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
 		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
 		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
+        for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
 		{
 			if (btnEnabled[n])
 			{
@@ -2224,7 +2230,49 @@ boolean MQTTreconnect()
 				client.publish(topic.c_str(), payload.c_str(), true);
 			}
 		}
-		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
+
+        configPayloadTemplate = String(F(
+            "{"
+            "\"device\":{"
+            "\"identifiers\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"model\":\"PixelIt\","
+            "\"sw_version\":\"#VERSION#\","
+            "\"configuration_url\":\"#IP#\""
+            "},"
+            "\"availability_topic\":\"#MASTERTOPIC#state\","
+            "\"payload_available\":\"connected\","
+            "\"payload_not_available\":\"disconnected\","
+            "\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"unit_of_measurement\":\"#UNIT#\","
+            "\"value_template\":\"{{value_json.#VALUENAME#}}\","
+            "\"entity_category\":\"diagnostic\","
+            "\"icon\":\"mdi:#ICON#\","
+            "\"enabled_by_default\":\"false\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+        // Wifi Quality sensor
+        topic = configTopicTemplate;
+        topic.replace(F("#SENSORNAME#"), F("WifiQuality"));
+
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORNAME#"), F("WifiQuality"));
+        payload.replace(F("#CLASS#"), F("signal_strength"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#UNIT#"), "%");
+        payload.replace(F("#VALUENAME#"), F("wifiQuality"));
+        payload.replace(F("#ICON#"), "wifi");
+        client.publish(topic.c_str(), payload.c_str(), true);
+
+        Log(F("MQTTreconnect"), F("MQTT discovery information published"));
 	}
 	else
 	{
