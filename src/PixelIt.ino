@@ -2269,11 +2269,11 @@ boolean MQTTreconnect()
         payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
         payload.replace(F("#UNIT#"), "%");
         payload.replace(F("#VALUENAME#"), F("wifiQuality"));
-        payload.replace(F("#ICON#"), "wifi");
+        payload.replace(F("#ICON#"), F("wifi"));
         client.publish(topic.c_str(), payload.c_str(), true);
 
         Log(F("MQTTreconnect"), F("MQTT discovery information published"));
-	}
+    }
 	else
 	{
 		Log(F("MQTTreconnect"), F("MQTT connect failed! Retry in a few seconds..."));
