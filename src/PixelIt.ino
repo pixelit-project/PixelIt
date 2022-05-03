@@ -1963,12 +1963,26 @@ void DrawClock(bool fromJSON)
 		if (clockBlink && clockBlinkAnimated)
 		{
 			clockBlink = false;
-			sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			if(!clockFatFont) 
+				{
+					sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+				}
+			else
+				{
+					sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
+				}
 		}
 		else
 		{
 			clockBlink = !clockBlink;
-			sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			if(!clockFatFont) 
+				{
+					sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+				}
+			else
+				{
+					sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
+				}
 		}
 	}
 	else
