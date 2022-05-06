@@ -1650,19 +1650,6 @@ String GetButtons()
 	return json;
 }
 
-String SetSleep(bool state)
-{
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &root = jsonBuffer.createObject();
-
-    root["sleepMode"] = state;
-
-    String json;
-    root.printTo(json);
-
-    return json;
-}
-
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 void DrawText(String text, bool bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
