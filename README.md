@@ -50,6 +50,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/rozza-m">
+            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
+            <br />
+            <sub><b>Rozza-m</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/hermannbach">
             <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
             <br />
@@ -62,20 +69,13 @@ Thanks to these great people for supporting this project.
             <br />
             <sub><b>Hamster65</b></sub>
         </a>
-    </td>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/pplucky">
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
-            <sub><b>pplucky</b></sub>
-        </a>
-    </td></tr>
-<tr>
-    <td align="center">
-        <a href="https://github.com/rozza-m">
-            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
-            <br />
-            <sub><b>Rozza-m</b></sub>
+            <sub><b>Pplucky</b></sub>
         </a>
     </td></tr>
 </table>
@@ -87,7 +87,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-
+-   (rozza-m) added fat clock font [more](https://github.com/o0shojo0o/PixelIt/pull/169)
 -   (pplucky) Improve MQTT discovery
 
 ### 0.3.19 (2022-04-24)

@@ -67,7 +67,8 @@
                         <ColorPickerTextfield />
                         <v-switch v-model="config.clockDayLightSaving" label="Daylight saving" dense hide-details></v-switch>
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
-                        <v-switch v-model="config.clockWithSeconds" label="Clock with sek" :disabled="!config.clock24Hours" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockFatFont" label="Big clock font" persistent-hint dense hide-details></v-switch>
+                        <v-switch v-model="config.clockWithSeconds" label="Clock with sek" :disabled="!config.clock24Hours || config.clockFatFont" dense hide-details></v-switch>
                         <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense hide-details></v-switch>
                         <v-switch v-model="config.clockBlinkAnimated" label="Flashing time separator" dense hide-details></v-switch>
                         <v-switch v-model="config.clockDayOfWeekFirstMonday" label="Monday as start of the week" dense hide-details></v-switch>

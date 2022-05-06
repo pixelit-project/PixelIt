@@ -232,6 +232,7 @@ uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
 bool forceClock = false;
 bool clockBlinkAnimated = true;
+bool clockFatFont = false;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
@@ -328,6 +329,7 @@ void SaveConfig()
 	json["clockDateDayMonth"] = clockDateDayMonth;
 	json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
 	json["clockBlinkAnimated"] = clockBlinkAnimated;
+	json["clockFatFont"] = clockFatFont;
 	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 	json["bootScreenAktiv"] = bootScreenAktiv;
 	json["mqttAktiv"] = mqttAktiv;
@@ -550,6 +552,11 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("clockDayOfWeekFirstMonday"))
 	{
 		clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
+	}
+
+	if (json.containsKey("clockFatFont"))
+	{
+		clockFatFont = json["clockFatFont"].as<bool>();
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
@@ -1222,6 +1229,11 @@ void CreateFrames(JsonObject &json)
 				clockWithSeconds = json["clock"]["withSeconds"];
 				clockBlinkAnimated = json["clock"]["blinkAnimated"];
 
+				if (json["clock"]["fatFont"])
+				{
+					clockFatFont = json["clock"]["fatFont"];
+				}
+
 				if (json["clock"]["color"]["r"].as<char *>() != NULL)
 				{
 					clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
@@ -1652,29 +1664,31 @@ String GetButtons()
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-void DrawText(String text, bool bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void DrawText(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
 	DrawTextHelper(text, bigFont, false, false, false, false, false, NULL, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawTextCenter(String text, bool bigFont, bool withBMP, int colorRed, int colorGreen, int colorBlue)
+void DrawTextCenter(String text, int bigFont, bool withBMP, int colorRed, int colorGreen, int colorBlue)
 {
 	DrawTextHelper(text, bigFont, true, false, false, withBMP, false, NULL, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
-void DrawTextScrolled(String text, bool bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
+void DrawTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
 {
 	DrawTextHelper(text, bigFont, false, true, false, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
-void DrawAutoTextScrolled(String text, bool bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
+void DrawAutoTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
 {
 	DrawTextHelper(text, bigFont, false, false, true, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
-void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
 	uint16_t xPixelText, xPixel;
+	int16_t boundsx1, boundsy1;
+	uint16_t boundsw, boundsh;
 
 	text = Utf8ToAscii(text);
 
@@ -1690,13 +1704,24 @@ void DrawTextHelper(String text, bool bigFont, bool centerText, bool scrollText,
 		xPixel = 32;
 	}
 
-	if (bigFont)
+	if (bigFont == 1)
 	{
 		// Grosse Schrift setzten
 		matrix->setFont();
 		xPixelText = text.length() * 6;
 		// Positions Korrektur
 		posY = posY - 1;
+	}
+	else if (bigFont == 2) // very large font, only to be used for time display / sehr große Schrift, nür für die Zeitanzeige
+	{
+		// Sehr grosse Schrift setzten
+		matrix->setFont(&FatPixels);
+
+		matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+		xPixelText = boundsw;
+
+		// Positions Korrektur
+		posY = posY + 6;
 	}
 	else
 	{
@@ -1932,7 +1957,7 @@ void DrawClock(bool fromJSON)
 		sprintf_P(date, PSTR("%02d/%02d"), month(), day());
 	}
 
-	if (clock24Hours && clockWithSeconds)
+	if (clock24Hours && clockWithSeconds && !clockFatFont)
 	{
 		xPosTime = 2;
 		sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
@@ -1944,12 +1969,26 @@ void DrawClock(bool fromJSON)
 		if (clockBlink && clockBlinkAnimated)
 		{
 			clockBlink = false;
-			sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			if (!clockFatFont)
+			{
+				sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			}
+			else
+			{
+				sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
+			}
 		}
 		else
 		{
 			clockBlink = !clockBlink;
-			sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			if (!clockFatFont)
+			{
+				sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			}
+			else
+			{
+				sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
+			}
 		}
 	}
 	else
@@ -1979,22 +2018,39 @@ void DrawClock(bool fromJSON)
 		{
 			clockCounterDate = 0;
 
-			int counter = 0;
-			while (counter <= 6)
+			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
 			{
-				counter++;
+				DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+				FadeOut(30);
 				matrix->clear();
-				DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
-				DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
-				matrix->drawLine(0, 7, 33, 7, 0);
-				DrawWeekDay();
-				matrix->show();
-				delay(35);
+				DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+				FadeIn(30);
 			}
+			else
+			{
+				int counter = 0;
+				while (counter <= 6) // vertical animate
+				{
+					counter++;
+					matrix->clear();
+					DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
+					DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
+					matrix->drawLine(0, 7, 33, 7, 0);
+					DrawWeekDay();
+					matrix->show();
+					delay(35);
+				}
+			}
+		}
+		else if (clockFatFont)
+		{
+
+			DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
 		}
 		else
 		{
 			DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, 1);
+			xPosTime = 3;
 		}
 	}
 	else
@@ -2005,18 +2061,33 @@ void DrawClock(bool fromJSON)
 		{
 			clockCounterClock = 0;
 
-			int counter = 0;
-			while (counter <= 6)
+			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
 			{
-				counter++;
+				DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+				FadeOut(30);
 				matrix->clear();
-				DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
-				DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
-				matrix->drawLine(0, 7, 33, 7, 0);
-				DrawWeekDay();
-				matrix->show();
-				delay(35);
+				DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+				FadeIn(30);
 			}
+			else
+			{
+				int counter = 0;
+				while (counter <= 6) // vertical animate
+				{
+					counter++;
+					matrix->clear();
+					DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
+					DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
+					matrix->drawLine(0, 7, 33, 7, 0);
+					DrawWeekDay();
+					matrix->show();
+					delay(35);
+				}
+			}
+		}
+		else if (clockFatFont)
+		{
+			DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
 		}
 		else
 		{
@@ -2024,7 +2095,10 @@ void DrawClock(bool fromJSON)
 		}
 	}
 
-	DrawWeekDay();
+	if (!clockFatFont)
+	{
+		DrawWeekDay();
+	}
 
 	// Wenn der Aufruf nicht über JSON sondern über den Loop kommt
 	// muss ich mich selbst ums Show kümmern.
