@@ -87,7 +87,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-
+-   (rozza-m) Fat clock font
 -   (pplucky) Improve MQTT discovery
 
 ### 0.3.19 (2022-04-24)
