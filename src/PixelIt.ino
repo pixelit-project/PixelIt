@@ -1228,7 +1228,11 @@ void CreateFrames(JsonObject &json)
 
 				clockWithSeconds = json["clock"]["withSeconds"];
 				clockBlinkAnimated = json["clock"]["blinkAnimated"];
-				clockFatFont = json["clock"]["fatFont"];
+
+				if (json["clock"]["fatFont"])
+				{
+					clockFatFont = json["clock"]["fatFont"];
+				}
 
 				if (json["clock"]["color"]["r"].as<char *>() != NULL)
 				{
@@ -1681,7 +1685,7 @@ void DrawAutoTextScrolled(String text, int bigFont, bool withBMP, bool fadeInReq
 void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
 	uint16_t xPixelText, xPixel;
-	int16_t  boundsx1, boundsy1;
+	int16_t boundsx1, boundsy1;
 	uint16_t boundsw, boundsh;
 
 	text = Utf8ToAscii(text);
@@ -1963,26 +1967,26 @@ void DrawClock(bool fromJSON)
 		if (clockBlink && clockBlinkAnimated)
 		{
 			clockBlink = false;
-			if(!clockFatFont) 
-				{
-					sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
-				}
+			if (!clockFatFont)
+			{
+				sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			}
 			else
-				{
-					sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
-				}
+			{
+				sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
+			}
 		}
 		else
 		{
 			clockBlink = !clockBlink;
-			if(!clockFatFont) 
-				{
-					sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
-				}
+			if (!clockFatFont)
+			{
+				sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+			}
 			else
-				{
-					sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
-				}
+			{
+				sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
+			}
 		}
 	}
 	else
@@ -2011,8 +2015,8 @@ void DrawClock(bool fromJSON)
 		if (clockCounterClock > clockSwitchSec)
 		{
 			clockCounterDate = 0;
-			
-			if (clockFatFont) //fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+
+			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
 			{
 				DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
 				FadeOut(30);
@@ -2023,7 +2027,7 @@ void DrawClock(bool fromJSON)
 			else
 			{
 				int counter = 0;
-				while (counter <= 6) //vertical animate
+				while (counter <= 6) // vertical animate
 				{
 					counter++;
 					matrix->clear();
@@ -2038,7 +2042,7 @@ void DrawClock(bool fromJSON)
 		}
 		else if (clockFatFont)
 		{
-			
+
 			DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
 		}
 		else
@@ -2055,7 +2059,7 @@ void DrawClock(bool fromJSON)
 		{
 			clockCounterClock = 0;
 
-			if (clockFatFont) //fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
 			{
 				DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
 				FadeOut(30);
@@ -2064,9 +2068,9 @@ void DrawClock(bool fromJSON)
 				FadeIn(30);
 			}
 			else
-			{	
+			{
 				int counter = 0;
-				while (counter <= 6) //vertical animate
+				while (counter <= 6) // vertical animate
 				{
 					counter++;
 					matrix->clear();
