@@ -87,7 +87,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
--   (rozza-m) Fat clock font
+-   (rozza-m) added fat clock font [more](https://github.com/o0shojo0o/PixelIt/pull/169)
 -   (pplucky) Improve MQTT discovery
 
 ### 0.3.19 (2022-04-24)
