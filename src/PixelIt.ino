@@ -1279,9 +1279,9 @@ void CreateFrames(JsonObject &json)
 			for (JsonVariant x : json["bars"].as<JsonArray>())
 			{
 				uint8_t r, g, b;
-				if (json["bars"]["hexColor"].as<char *>() != NULL)
+				if (x["hexColor"].as<char *>() != NULL)
 				{
-					ColorConverter::HexToRgb(json["bars"]["hexColor"].as<char *>(), r, g, b);
+					ColorConverter::HexToRgb(x["hexColor"].as<char *>(), r, g, b);
 				}
 				else
 				{
