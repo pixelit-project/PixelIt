@@ -13,7 +13,6 @@ The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based Pi
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
-
 [Docu](https://docs.bastelbunker.de/pixelit/) |
 [Forum](https://github.com/o0shojo0o/PixelIt/discussions) |
 [Blog](https://www.bastelbunker.de/pixel-it/) |
@@ -86,7 +85,10 @@ Thanks to these great people for supporting this project.
 <!--
 ### **WORK IN PROGRESS**
 -->
+
 ### **WORK IN PROGRESS**
+
+-   (o0shojo0o) fix hexColor for bar and bars
 -   (rozza-m) added fat clock font [more](https://github.com/o0shojo0o/PixelIt/pull/169)
 -   (pplucky) Improve MQTT discovery
 
