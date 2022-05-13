@@ -368,7 +368,6 @@ function getDisplayValue(key, value) {
         case "sleepMode":
             value = value ? "On" : "Off";
             break;
-        case "currentMatrixBrightness":
         case "temperature":
             if (typeof value == "number") {
                 value = value.toFixed(1) + " °C";
