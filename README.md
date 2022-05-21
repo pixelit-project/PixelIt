@@ -90,6 +90,7 @@ Thanks to these great people for supporting this project.
 
 -   (o0shojo0o) extended WebUi for 'Wifi Reset' and 'Factory Reset'
 -   (o0shojo0o) added 'Wifi Reset' and 'Factory Reset' function for WebAPI and Socket
+-   (o0shojo0o) fix hexColor for bar and bars
 -   (rozza-m) added fat clock font [more](https://github.com/o0shojo0o/PixelIt/pull/169)
 -   (pplucky) Improve MQTT discovery
 
