@@ -690,12 +690,13 @@ void SetConfigVariables(JsonObject &json)
 	}
 }
 
-// void WifiSetup()
-// {
-// 	wifiManager.resetSettings();
-// 	ESP.restart();
-// 	delay(300);
-// }
+void EraseWifiCredentials()
+{
+	wifiManager.resetSettings();
+	delay(300);
+	ESP.restart();
+	delay(300);
+}
 
 void HandleGetMainPage()
 {
@@ -735,11 +736,6 @@ void HandleScreen()
 	}
 }
 
-// void Handle_wifisetup()
-// {
-// 	WifiSetup();
-// }
-
 void HandleSetConfig()
 {
 	DynamicJsonBuffer jsonBuffer;
@@ -772,7 +768,7 @@ void HandleGetLuxSensor()
 	server.send(200, F("application/json"), GetLuxSensor());
 }
 
-void HandelGetBrightness()
+void HandleGetBrightness()
 {
 	server.sendHeader(F("Connection"), F("close"));
 	server.send(200, F("application/json"), GetBrightness());
@@ -802,22 +798,30 @@ void HandleGetMatrixInfo()
 	server.send(200, F("application/json"), GetMatrixInfo());
 }
 
-// void Handle_factoryreset()
-// {
-// #if defined(ESP8266)
-// 	File configFile = LittleFS.open("/config.json", "w");
-// #elif defined(ESP32)
-// 	File configFile = SPIFFS.open("/config.json", "w");
-// #endif
-// 	if (!configFile)
-// 	{
-// 		Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
-// 	}
-// 	configFile.println("");
-// 	configFile.close();
-// 	WifiSetup();
-// 	ESP.restart();
-// }
+void HandelWifiConfigReset()
+{
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+	EraseWifiCredentials();
+}
+
+void HandleFactoryReset()
+{
+	server.sendHeader(F("Connection"), F("close"));
+	server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+#if defined(ESP8266)
+	File configFile = LittleFS.open("/config.json", "w");
+#elif defined(ESP32)
+	File configFile = SPIFFS.open("/config.json", "w");
+#endif
+	if (!configFile)
+	{
+		Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
+	}
+	configFile.println("");
+	configFile.close();
+	EraseWifiCredentials();
+}
 
 void HandleAndSendButtonPress(uint button)
 {
@@ -968,6 +972,20 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 				SetConfig(json["setConfig"]);
 				delay(500);
 				ESP.restart();
+			}
+			else if (json.containsKey("wifiReset"))
+			{
+				if (json["wifiReset"].as<bool>() == true)
+				{
+					HandelWifiConfigReset();
+				}
+			}
+			else if (json.containsKey("factoryReset"))
+			{
+				if (json["factoryReset"].as<bool>() == true)
+				{
+					HandleFactoryReset();
+				}
 			}
 		}
 		break;
@@ -2649,7 +2667,6 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 
 uint8_t TranslatePin(String pin)
 {
-
 	if (pin == "Pin_D0")
 		return D0;
 	if (pin == "Pin_D1")
@@ -2910,7 +2927,7 @@ void setup()
 
 	server.on(F("/api/screen"), HTTP_POST, HandleScreen);
 	server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
-	server.on(F("/api/brightness"), HTTP_GET, HandelGetBrightness);
+	server.on(F("/api/brightness"), HTTP_GET, HandleGetBrightness);
 	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legacy
 	server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
 	server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
@@ -2918,6 +2935,8 @@ void setup()
 	// server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
 	server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
 	server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
+	server.on(F("/api/wifireset"), HTTP_POST, HandelWifiConfigReset);
+	server.on(F("/api/factoryreset"), HTTP_POST, HandleFactoryReset);
 	server.on(F("/"), HTTP_GET, HandleGetMainPage);
 	server.onNotFound(HandleNotFound);
 
@@ -2948,7 +2967,6 @@ void setup()
 
 void loop()
 {
-
 	server.handleClient();
 	webSocket.loop();
 
