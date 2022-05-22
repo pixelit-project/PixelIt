@@ -88,6 +88,7 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+-   (o0shojo0o) update WebUi disallow decimals on 'Auto brightness' settings
 -   (o0shojo0o) extended WebUi for 'Wifi Reset' and 'Factory Reset'
 -   (o0shojo0o) added 'Wifi Reset' and 'Factory Reset' function for WebAPI and Socket
 -   (o0shojo0o) fix hexColor for bar and bars

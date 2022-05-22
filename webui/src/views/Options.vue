@@ -45,18 +45,18 @@
                         <v-switch v-model="config.matrixBrightnessAutomatic" label="Auto brightness active" dense></v-switch>
                         <v-row>
                             <v-col cols="6" lg="6">
-                                <v-text-field v-model="config.mbaDimMin" label="Min bright" hint="0 to 255" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.max255] : []" dense></v-text-field>
+                                <v-text-field v-model="config.mbaDimMin" label="Min bright" hint="0 to 255" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.max255, rules.noDecimals] : []" dense></v-text-field>
                             </v-col>
                             <v-col cols="6" lg="6">
-                                <v-text-field v-model="config.mbaDimMax" label="Max bright" hint="0 to 255" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.max255] : []" dense></v-text-field>
+                                <v-text-field v-model="config.mbaDimMax" label="Max bright" hint="0 to 255" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.max255, rules.noDecimals] : []" dense></v-text-field>
                             </v-col>
                         </v-row>
                         <v-row>
                             <v-col cols="6" lg="6">
-                                <v-text-field v-model="config.mbaLuxMin" label="From lux" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0] : []" dense></v-text-field>
+                                <v-text-field v-model="config.mbaLuxMin" label="From lux" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.noDecimals] : []" dense></v-text-field>
                             </v-col>
                             <v-col cols="6" lg="6">
-                                <v-text-field v-model="config.mbaLuxMax" label="To lux" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0] : []" dense></v-text-field>
+                                <v-text-field v-model="config.mbaLuxMax" label="To lux" type="number" :disabled="!config.matrixBrightnessAutomatic" :rules="config.matrixBrightnessAutomatic ? [rules.required, rules.min0, rules.noDecimals] : []" dense></v-text-field>
                             </v-col>
                         </v-row>
                     </v-card>

@@ -58,6 +58,7 @@ export default new Vuex.Store({
             max14: (value) => value <= 14 || "Must be less than or equal to 14",
             portRange: (value) => (value > 0 && value <= 65535) || "Must be between 1 and 65535",
             volumeRange: (value) => (value > 0 && value <= 30) || "Must be between 1 and 30",
+            noDecimals: (value) => (value % 1 === 0) || "No decimals allowed",
             // Can not be solved like this, we do not have access to the store.
             //   noPinDuplicates: value => ((   //dirty code, but creating an array and running a loop seems to be over-engineering
             //       this.config.DFPRXpin!=this.config.DFPTXpin && this.config.DFPRXpin!=this.config.BMESDAPin && this.config.DFPRXpin!=this.config.BMESCLPin && this.config.DFPRXpin!=this.config.DHTPin
