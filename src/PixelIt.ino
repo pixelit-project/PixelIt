@@ -1645,6 +1645,8 @@ String GetMatrixInfo()
 	root["wifiSSID"] = WiFi.SSID();
 	root["ipAddress"] = WiFi.localIP().toString();
 	root["freeHeap"] = ESP.getFreeHeap();
+	root["currentMatrixBrightness"] = currentMatrixBrightness;
+	root["wifiBSSID"] = WiFi.BSSIDstr();
 
 #if defined(ESP8266)
 	root["sketchSize"] = ESP.getSketchSize();
@@ -2191,27 +2193,27 @@ boolean MQTTreconnect()
 #endif
 		// Get host IP to provide URL in MQTT discovery device info
 		String ip_url = "http://" + WiFi.localIP().toString();
-
-		String configTopicTemplate = String(F("homeassistant/sensor/#DEVICEID#/#DEVICEID##SENSORNAME#/config"));
+		String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
 		configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
 		String configPayloadTemplate = String(F(
 			"{"
-			"\"device\":{"
-			"\"identifiers\":\"#DEVICEID#\","
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
 			"\"name\":\"#HOSTNAME#\","
-			"\"model\":\"PixelIt\","
-			"\"sw_version\":\"#VERSION#\","
-			"\"configuration_url\":\"#IP#\""
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
 			"},"
-			"\"availability_topic\":\"#MASTERTOPIC#state\","
-			"\"payload_available\":\"connected\","
-			"\"payload_not_available\":\"disconnected\","
-			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
-			"\"device_class\":\"#CLASS#\","
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"dev_cla\":\"#CLASS#\","
 			"\"name\":\"#SENSORNAME#\","
-			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_measurement\":\"#UNIT#\","
-			"\"value_template\":\"{{value_json.#VALUENAME#}}\""
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"unit_of_meas\":\"#UNIT#\","
+			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
 			"}"));
 		configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
@@ -2226,9 +2228,11 @@ boolean MQTTreconnect()
 		if (tempSensor != TempSensor_None)
 		{
 			topic = configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"), F("Temperature"));
+			topic.replace(F("#COMPONENT#"), F("sensor"));
+			topic.replace(F("#SENSORID#"), F("Temperature"));
 
 			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORID#"), F("Temperature"));
 			payload.replace(F("#SENSORNAME#"), F("Temperature"));
 			payload.replace(F("#CLASS#"), F("temperature"));
 			payload.replace(F("#STATETOPIC#"), F("sensor"));
@@ -2237,7 +2241,8 @@ boolean MQTTreconnect()
 			client.publish(topic.c_str(), payload.c_str(), true);
 
 			topic = configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"), F("Humidity"));
+			topic.replace(F("#COMPONENT#"), F("sensor"));
+			topic.replace(F("#SENSORID#"), F("Humidity"));
 
 			payload = configPayloadTemplate;
 			payload.replace(F("#SENSORNAME#"), F("Humidity"));
@@ -2250,9 +2255,11 @@ boolean MQTTreconnect()
 		if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
 		{
 			topic = configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"), F("Pressure"));
+			topic.replace(F("#COMPONENT#"), F("sensor"));
+			topic.replace(F("#SENSORID#"), F("Pressure"));
 
 			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORID#"), F("Pressure"));
 			payload.replace(F("#SENSORNAME#"), F("Pressure"));
 			payload.replace(F("#CLASS#"), F("pressure"));
 			payload.replace(F("#STATETOPIC#"), F("sensor"));
@@ -2264,9 +2271,11 @@ boolean MQTTreconnect()
 		if (tempSensor == TempSensor_BME680)
 		{
 			topic = configTopicTemplate;
-			topic.replace(F("#SENSORNAME#"), F("VOC"));
+			topic.replace(F("#COMPONENT#"), F("sensor"));
+			topic.replace(F("#SENSORID#"), F("VOC"));
 
 			payload = configPayloadTemplate;
+			payload.replace(F("#SENSORID#"), F("VOC"));
 			payload.replace(F("#SENSORNAME#"), F("VOC"));
 			payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
 			payload.replace(F("#STATETOPIC#"), F("sensor"));
@@ -2275,9 +2284,11 @@ boolean MQTTreconnect()
 			client.publish(topic.c_str(), payload.c_str(), true);
 		}
 		topic = configTopicTemplate;
-		topic.replace(F("#SENSORNAME#"), F("Illuminance"));
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("Illuminance"));
 
 		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("Illuminance"));
 		payload.replace(F("#SENSORNAME#"), F("Illuminance"));
 		payload.replace(F("#CLASS#"), F("illuminance"));
 		payload.replace(F("#STATETOPIC#"), F("luxsensor"));
@@ -2287,20 +2298,21 @@ boolean MQTTreconnect()
 
 		configPayloadTemplate = String(F(
 			"{"
-			"\"device\":{"
-			"\"identifiers\":\"#DEVICEID#\","
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
 			"\"name\":\"#HOSTNAME#\","
-			"\"model\":\"PixelIt\","
-			"\"sw_version\":\"#VERSION#\","
-			"\"configuration_url\":\"#IP#\""
-			","
-			"\"availability_topic\":\"#MASTERTOPIC#state\","
-			"\"payload_available\":\"connected\","
-			"\"payload_not_available\":\"disconnected\","
-			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
-			"\"device_class\":\"timestamp\","
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
+			"},"
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"dev_cla\":\"timestamp\","
 			"\"name\":\"#SENSORNAME#\","
-			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\""
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
 			"}"));
 		configPayloadTemplate.replace(" ", "");
 		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
@@ -2314,34 +2326,83 @@ boolean MQTTreconnect()
 			if (btnEnabled[n])
 			{
 				topic = configTopicTemplate;
-				topic.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
+				topic.replace(F("#COMPONENT#"), F("sensor"));
+				topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
 
 				payload = configPayloadTemplate;
+				payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
 				payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
 				payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
 				client.publish(topic.c_str(), payload.c_str(), true);
 			}
 		}
 
+		// Wifi RSSI
 		configPayloadTemplate = String(F(
 			"{"
-			"\"device\":{"
-			"\"identifiers\":\"#DEVICEID#\","
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
 			"\"name\":\"#HOSTNAME#\","
-			"\"model\":\"PixelIt\","
-			"\"sw_version\":\"#VERSION#\","
-			"\"configuration_url\":\"#IP#\""
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
 			"},"
-			"\"availability_topic\":\"#MASTERTOPIC#state\","
-			"\"payload_available\":\"connected\","
-			"\"payload_not_available\":\"disconnected\","
-			"\"unique_id\":\"#DEVICEID##SENSORNAME#\","
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"dev_cla\":\"signal_strength\","
 			"\"name\":\"#SENSORNAME#\","
-			"\"state_topic\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_measurement\":\"#UNIT#\","
-			"\"value_template\":\"{{value_json.#VALUENAME#}}\","
-			"\"entity_category\":\"diagnostic\","
-			"\"icon\":\"mdi:#ICON#\","
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"unit_of_meas\":\"#UNIT#\","
+			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+			"\"ent_cat\":\"diagnostic\","
+			"\"ic\":\"mdi:#ICON#\","
+			"\"enabled_by_default\":\"false\""
+			"}"));
+		configPayloadTemplate.replace(" ", "");
+		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+		configPayloadTemplate.replace(F("#IP#"), ip_url);
+    
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("wifiRSSI"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("wifiRSSI"));
+		payload.replace(F("#SENSORNAME#"), F("Wifi Signal"));
+		payload.replace(F("#CLASS#"), F("signal_strength"));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#UNIT#"), "dBm");
+		payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
+		payload.replace(F("#ICON#"), F("signal"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+
+		// Wifi Quality sensor
+		configPayloadTemplate = String(F(
+			"{"
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
+			"\"name\":\"#HOSTNAME#\","
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
+			"},"
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"name\":\"#SENSORNAME#\","
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"unit_of_meas\":\"#UNIT#\","
+			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+			"\"ent_cat\":\"diagnostic\","
+			"\"ic\":\"mdi:#ICON#\","
 			"\"enabled_by_default\":\"false\""
 			"}"));
 		configPayloadTemplate.replace(" ", "");
@@ -2351,19 +2412,143 @@ boolean MQTTreconnect()
 		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
 		configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		// Wifi Quality sensor
 		topic = configTopicTemplate;
-		topic.replace(F("#SENSORNAME#"), F("WifiQuality"));
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("WifiQuality"));
 
 		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORNAME#"), F("WifiQuality"));
-		payload.replace(F("#CLASS#"), F("signal_strength"));
+		payload.replace(F("#SENSORID#"), F("WifiQuality"));
+		payload.replace(F("#SENSORNAME#"), F("Wifi Quality"));
 		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
 		payload.replace(F("#UNIT#"), "%");
 		payload.replace(F("#VALUENAME#"), F("wifiQuality"));
+		payload.replace(F("#ICON#"), F("signal"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+
+		// CPU Freq.
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+		payload.replace(F("#SENSORNAME#"), F("CPU Freq."));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#UNIT#"), "MHz");
+		payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
+		payload.replace(F("#ICON#"), F("developer-board"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+
+		// Wifi SSID
+		configPayloadTemplate = String(F(
+			"{"
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
+			"\"name\":\"#HOSTNAME#\","
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
+			"},"
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"name\":\"#SENSORNAME#\","
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+			"\"ent_cat\":\"diagnostic\","
+			"\"ic\":\"mdi:#ICON#\","
+			"\"enabled_by_default\":\"false\""
+			"}"));
+		configPayloadTemplate.replace(" ", "");
+		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+		configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("WifiSSID"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("WifiSSID"));
+		payload.replace(F("#SENSORNAME#"), F("SSID"));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#VALUENAME#"), F("wifiSSID"));
 		payload.replace(F("#ICON#"), F("wifi"));
 		client.publish(topic.c_str(), payload.c_str(), true);
 
+		// Wifi BSSID
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("WifiBSSID"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("WifiBSSID"));
+		payload.replace(F("#SENSORNAME#"), F("BSSID"));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
+		payload.replace(F("#ICON#"), F("wifi"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+
+		// Chip ID
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("sensor"));
+		topic.replace(F("#SENSORID#"), F("chipID"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("chipID"));
+		payload.replace(F("#SENSORNAME#"), F("Chip ID"));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#VALUENAME#"), F("chipID"));
+		payload.replace(F("#ICON#"), F("developer-board"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+
+		// LED Matrix on/off + brightness light
+		configPayloadTemplate = String(F(
+			"{"
+			"\"dev\":{"
+			"\"ids\":\"#DEVICEID#\","
+			"\"name\":\"#HOSTNAME#\","
+			"\"mdl\":\"PixelIt\","
+			"\"mf\":\"PixelIt\","
+			"\"sw\":\"#VERSION#\","
+			"\"cu\":\"#IP#\""
+			"},"
+			"\"avty_t\":\"#MASTERTOPIC#state\","
+			"\"pl_avail\":\"connected\","
+			"\"pl_not_avail\":\"disconnected\","
+			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
+			"\"name\":\"#SENSORNAME#\","
+			"\"schema\":\"template\","
+			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+			"\"stat_tpl\":\"{{ \'on\' if value_json.sleepMode is false else \'off\' }}\","
+			"\"cmd_t\":\"#MASTERTOPIC##COMMANDTOPIC#\","
+			"\"cmd_on_tpl\":\"{\'sleepMode\': false {%- if brightness is defined -%}, \'brightness\': {{ brightness }}{%- endif -%}}\","
+			"\"cmd_off_tpl\":\"{\'sleepMode\': true}\","
+			"\"bri_tpl\":\"{{ value_json.currentMatrixBrightness }}\","
+			"\"icon\":\"mdi:#ICON#\""
+			"}"));
+		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+		configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+		topic = configTopicTemplate;
+		topic.replace(F("#COMPONENT#"), F("light"));
+		topic.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+
+		payload = configPayloadTemplate;
+		payload.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+		payload.replace(F("#SENSORNAME#"), F("LED Matrix"));
+		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+		payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
+		payload.replace(F("#ICON#"), F("led-strip"));
+		client.publish(topic.c_str(), payload.c_str(), true);
+    
 		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
 	}
 	else

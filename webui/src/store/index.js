@@ -306,6 +306,9 @@ function getDisplayName(key) {
         case "wifiSSID":
             key = "Wifi SSID";
             break;
+        case "wifiBSSID":
+            key = "Wifi BSSID";
+            break;
         case "ipAddress":
             key = "IP-Address";
             break;
@@ -320,6 +323,9 @@ function getDisplayName(key) {
             break;
         case "sleepMode":
             key = "Sleep mode";
+            break;
+        case "currentMatrixBrightness":
+            key = "Current Brightness";
             break;
         case "button0":
             key = "Left button";
