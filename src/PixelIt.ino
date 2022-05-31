@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.3.19"
+#define VERSION "0.3.20"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -2367,7 +2367,7 @@ boolean MQTTreconnect()
 		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
 		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
 		configPayloadTemplate.replace(F("#IP#"), ip_url);
-    
+
 		topic = configTopicTemplate;
 		topic.replace(F("#COMPONENT#"), F("sensor"));
 		topic.replace(F("#SENSORID#"), F("wifiRSSI"));
@@ -2548,7 +2548,7 @@ boolean MQTTreconnect()
 		payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
 		payload.replace(F("#ICON#"), F("led-strip"));
 		client.publish(topic.c_str(), payload.c_str(), true);
-    
+
 		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
 	}
 	else

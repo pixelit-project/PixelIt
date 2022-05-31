@@ -86,9 +86,9 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.3.20 (2022-05-31)
 
--   (pplucky) MQTT Discovery enhancements 
+-   (pplucky) MQTT Discovery enhancements
 -   (o0shojo0o) update WebUi disallow decimals on 'Auto brightness' settings
 -   (o0shojo0o) extended WebUi for 'Wifi Reset' and 'Factory Reset'
 -   (o0shojo0o) added 'Wifi Reset' and 'Factory Reset' function for WebAPI and Socket
