@@ -3044,6 +3044,10 @@ void setup()
 	case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU)
 		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
 		break;
+
+	case 4: // Matix Type 4 (Micro Matrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
+		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
+		break;
 	}
 
 	ColorTemperature userColorTemp = GetUserColorTemp();
