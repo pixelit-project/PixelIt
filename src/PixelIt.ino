@@ -75,9 +75,9 @@ const int MQTT_RECONNECT_INTERVAL = 15000;
 
 //// GPIO Config
 #if defined(ESP8266)
-#define MATRIX_PIN D2
+const int MATRIX_PIN = D2;
 #elif defined(ESP32)
-#define MATRIX_PIN 27
+const int MATRIX_PIN = 27;
 #endif
 
 String dfpRXPin = "Pin_D7";
