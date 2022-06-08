@@ -89,6 +89,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 
 -   (foorschtbar) added support for new "Micro Matrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174)
+-   (foorschtbar) fixed the Tiled 4x 8x8 CJMCU Matrix Type (its doesn't work before)
 
 ### 0.3.20 (2022-05-31)
 
