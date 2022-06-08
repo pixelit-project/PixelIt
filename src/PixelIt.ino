@@ -75,9 +75,9 @@ const int MQTT_RECONNECT_INTERVAL = 15000;
 
 //// GPIO Config
 #if defined(ESP8266)
-#define MATRIX_PIN D2
+const int MATRIX_PIN = D2;
 #elif defined(ESP32)
-#define MATRIX_PIN 27
+const int MATRIX_PIN = 27;
 #endif
 
 String dfpRXPin = "Pin_D7";
@@ -3031,20 +3031,23 @@ void setup()
 		}
 	}
 
-	// Matix Type 1 (Colum major)
-	if (matrixType == 1)
+	switch (matrixType)
 	{
+	default: // Matix Type 1 (Colum major)
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
-	}
-	// Matix Type 2 (Row major)
-	else if (matrixType == 2)
-	{
+		break;
+
+	case 2: // Matix Type 2 (Row major)
 		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
-	}
-	// Matix Type 3 (Tiled 4x 8x8 CJMCU)
-	else if (matrixType == 3)
-	{
-		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_PROGRESSIVE);
+		break;
+
+	case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU)
+		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
+		break;
+
+	case 4: // Matix Type 4 (Micro Matrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
+		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
+		break;
 	}
 
 	ColorTemperature userColorTemp = GetUserColorTemp();

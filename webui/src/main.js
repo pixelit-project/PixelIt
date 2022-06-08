@@ -19,7 +19,11 @@ if (location.host.includes(":")) {
 
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
-Vue.use(VueNativeSock, `ws://${url}:81`, { store: store, reconnection: true, format: 'json' });
+Vue.use(VueNativeSock, `ws://${url}:81`, {
+  store: store,
+  reconnection: true,
+  format: 'json'
+});
 Vue.$cookies.config('10y');
 Vue.config.productionTip = false;
 new Vue({
@@ -28,4 +32,3 @@ new Vue({
   vuetify,
   render: h => h(App)
 }).$mount('#app')
-
