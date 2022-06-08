@@ -86,6 +86,10 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (foorschtbar) added support for new "Micro Matrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174)
+
 ### 0.3.20 (2022-05-31)
 
 -   (pplucky) MQTT Discovery enhancements
