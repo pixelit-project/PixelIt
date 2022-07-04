@@ -86,10 +86,11 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 0.4.0 (2022-07-04)
 
--   (foorschtbar) added support for new "Micro Matrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174) | [Repo](https://github.com/foorschtbar/Sk6805EC15-Matrix)
+-   (foorschtbar) added support for new "Micro Matrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174) | [Repo](https://github.com/foorschtbar/Sk6805EC15-Matrix) :tada:
 -   (foorschtbar) fixed the Tiled 4x 8x8 CJMCU Matrix Type (its doesn't work before)
+-   (o0shojo0o) fixed option for non-flashing time separator over JSON (internal clock)
 
 ### 0.3.20 (2022-05-31)
 

@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.3.20"
+#define VERSION "0.4.0"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -1245,7 +1245,10 @@ void CreateFrames(JsonObject &json)
 				}
 
 				clockWithSeconds = json["clock"]["withSeconds"];
-				clockBlinkAnimated = json["clock"]["blinkAnimated"];
+				if (json["clock"]["blinkAnimated"] != NULL)
+				{
+					clockBlinkAnimated = json["clock"]["blinkAnimated"];
+				}
 
 				if (json["clock"]["fatFont"])
 				{
@@ -3045,7 +3048,7 @@ void setup()
 		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
 		break;
 
-	case 4: // Matix Type 4 (Micro Matrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
+	case 4: // Matix Type 4 (MicroMatrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
 		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
 		break;
 	}
