@@ -45,7 +45,7 @@
 #include "Webinterface.h"
 #include "Tools.h"
 
-#define VERSION "0.4.0"
+#define VERSION "1.0.0_beta"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -99,8 +99,12 @@ enum btnStates
 	btnState_PressedNew,
 	btnState_PressedBefore,
 };
+
+const String btnAPINames[]{"leftButton", "middleButton", "rightButton"};
+const String btnLogNames[]{"Left button", "Middle button", "Right button"};
+
 btnStates btnState[] = {btnState_Released, btnState_Released, btnState_Released};
-unsigned long btnLastPressedMillis[] = {0, 0, 0};
+bool btnLastPublishState[] = {false, false, false};
 
 enum btnActions
 {
@@ -823,23 +827,28 @@ void HandleFactoryReset()
 	EraseWifiCredentials();
 }
 
-void HandleAndSendButtonPress(uint button)
+void HandleAndSendButtonPress(uint button, bool state)
 {
-	btnLastPressedMillis[button] = millis();
-	Log(F("Buttons"), "Btn" + String(button) + " pressed");
+	btnLastPublishState[button] = state;
+	Log(F("Buttons"), btnLogNames[button] + " is now " + (state ? "true" : "false"));
 
 	// Prüfen ob über MQTT versendet werden muss
 	if (mqttAktiv == true && client.connected())
 	{
-		client.publish((mqttMasterTopic + "button" + String(button)).c_str(), String(btnLastPressedMillis[button]).c_str(), true);
+		client.publish((mqttMasterTopic + "buttons").c_str(), String("{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}").c_str(), true);
 	}
 	// Prüfen ob über Websocket versendet werden muss
 	if (webSocket.connectedClients() > 0)
 	{
 		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
 		{
-			webSocket.sendTXT(i, "{\"buttons\":" + GetButtons() + "}");
+			webSocket.sendTXT(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
 		}
+	}
+
+	if (state == false)
+	{
+		return;
 	}
 
 	if (btnAction[button] == btnAction_ToggleSleepMode)
@@ -1672,9 +1681,9 @@ String GetButtons()
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &root = jsonBuffer.createObject();
 
-	for (uint b = 0; b < 3; b++)
+	for (uint button = 0; button < 3; button++)
 	{
-		root["button" + String(b)] = btnLastPressedMillis[b];
+		root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
 	}
 
 	String json;
@@ -3199,22 +3208,23 @@ void loop()
 	}
 
 	// Check buttons
-	for (uint b = 0; b < 3; b++)
+	for (uint button = 0; button < 3; button++)
 	{
-		if (btnEnabled[b])
+		if (btnEnabled[button])
 		{
-			if ((btnState[b] == btnState_Released) && (digitalRead(TranslatePin(btnPin[b])) == btnPressedLevel[b]))
+			if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
 			{
-				btnState[b] = btnState_PressedNew;
+				btnState[button] = btnState_PressedNew;
 			}
-			if ((btnState[b] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[b])) != btnPressedLevel[b]))
+			if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
 			{
-				btnState[b] = btnState_Released;
+				btnState[button] = btnState_Released;
+				HandleAndSendButtonPress(button, false);
 			}
-			if (btnState[b] == btnState_PressedNew)
+			if (btnState[button] == btnState_PressedNew)
 			{
-				btnState[b] = btnState_PressedBefore;
-				HandleAndSendButtonPress(b);
+				btnState[button] = btnState_PressedBefore;
+				HandleAndSendButtonPress(button, true);
 			}
 		}
 	}

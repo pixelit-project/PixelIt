@@ -86,6 +86,10 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+**!!! Braking changes !!!**
+-   (o0shojo0o) reworked the output of the buttons via API and MQTT to get the "press" and "release" event (press = true, release = false). Example: `{"buttons":{"rightButton":true}}` 
+
 ### 0.4.0 (2022-07-04)
 
 -   (foorschtbar) added support for new "MicroMatrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174) | [Repo](https://github.com/foorschtbar/Sk6805EC15-Matrix) :tada:

@@ -538,13 +538,13 @@ function getDisplayName(key) {
         case "currentMatrixBrightness":
             key = "Current Brightness";
             break;
-        case "button0":
+        case "leftButton":
             key = "Left button";
             break;
-        case "button1":
+        case "middleButton":
             key = "Middle button";
             break;
-        case "button2":
+        case "rightButton":
             key = "Right button";
             break;
     }
