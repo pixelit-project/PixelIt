@@ -86,6 +86,10 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+-   (o0shojo0o) added option to disable the weekdays on the clock over API / WebUi
+
 ### 1.0.0 (2022-07-22)
 **!!! Breaking changes !!!**
 -   (o0shojo0o) reworked the output of the buttons via API and MQTT to get the "press" and "release" event (press = true, release = false). Example: `{"buttons":{"rightButton":true}}` 
