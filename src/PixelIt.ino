@@ -237,6 +237,7 @@ uint clockAutoFallbackTime = 30;
 bool forceClock = false;
 bool clockBlinkAnimated = true;
 bool clockFatFont = false;
+bool clockDrawWeekDays = true;
 
 // Scrolltext Vars
 bool scrollTextAktivLoop = false;
@@ -334,6 +335,7 @@ void SaveConfig()
 	json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
 	json["clockBlinkAnimated"] = clockBlinkAnimated;
 	json["clockFatFont"] = clockFatFont;
+	json["clockDrawWeekDays"] = clockDrawWeekDays;
 	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
 	json["bootScreenAktiv"] = bootScreenAktiv;
 	json["mqttAktiv"] = mqttAktiv;
@@ -561,6 +563,11 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("clockFatFont"))
 	{
 		clockFatFont = json["clockFatFont"].as<bool>();
+	}
+
+	if (json.containsKey("clockDrawWeekDays"))
+	{
+		clockDrawWeekDays = json["clockDrawWeekDays"].as<bool>();
 	}
 
 	if (json.containsKey("scrollTextDefaultDelay"))
@@ -1259,9 +1266,14 @@ void CreateFrames(JsonObject &json)
 					clockBlinkAnimated = json["clock"]["blinkAnimated"];
 				}
 
-				if (json["clock"]["fatFont"])
+				if (json["clock"]["fatFont"] != NULL)
 				{
 					clockFatFont = json["clock"]["fatFont"];
+				}
+
+				if (json["clock"]["clockDrawWeekDays"] != NULL)
+				{
+					clockDrawWeekDays = json["clock"]["clockDrawWeekDays"];
 				}
 
 				if (json["clock"]["color"]["r"].as<char *>() != NULL)
@@ -2066,7 +2078,10 @@ void DrawClock(bool fromJSON)
 					DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
 					DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
 					matrix->drawLine(0, 7, 33, 7, 0);
-					DrawWeekDay();
+					if (clockDrawWeekDays)
+					{
+						DrawWeekDay();
+					}
 					matrix->show();
 					delay(35);
 				}
@@ -2125,7 +2140,7 @@ void DrawClock(bool fromJSON)
 		}
 	}
 
-	if (!clockFatFont)
+	if (!clockFatFont && clockDrawWeekDays)
 	{
 		DrawWeekDay();
 	}

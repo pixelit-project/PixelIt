@@ -75,6 +75,7 @@
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
                         <v-switch v-model="config.clockFatFont" label="Big clock font" persistent-hint dense hide-details></v-switch>
                         <v-switch v-model="config.clockWithSeconds" label="Clock with sek" :disabled="!config.clock24Hours || config.clockFatFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockDrawWeekDays" label="Clock with Weekdays" :disabled="config.clockFatFont" dense hide-details></v-switch>
                         <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense hide-details></v-switch>
                         <v-switch v-model="config.clockBlinkAnimated" label="Flashing time separator" dense hide-details></v-switch>
                         <v-switch v-model="config.clockDayOfWeekFirstMonday" label="Monday as start of the week" dense hide-details></v-switch>
@@ -176,7 +177,7 @@ export default {
         placeHolder() {},
     },
     watch: {
-        "$store.state.configData.clock24Hours": function(newVal) {
+        "$store.state.configData.clock24Hours": function (newVal) {
             if (newVal == false) {
                 this.$store.state.configData.clockWithSeconds = newVal;
             }
