@@ -1271,9 +1271,9 @@ void CreateFrames(JsonObject &json)
 					clockFatFont = json["clock"]["fatFont"];
 				}
 
-				if (json["clock"]["clockDrawWeekDays"] != NULL)
+				if (json["clock"]["drawWeekDays"] != NULL)
 				{
-					clockDrawWeekDays = json["clock"]["clockDrawWeekDays"];
+					clockDrawWeekDays = json["clock"]["drawWeekDays"];
 				}
 
 				if (json["clock"]["color"]["r"].as<char *>() != NULL)
