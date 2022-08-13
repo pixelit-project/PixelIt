@@ -2,12 +2,7 @@
 
 # PixelIt
 
-![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20wemos_d1_mini32/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20ESP8266/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Build%20d1_mini/badge.svg)  
-![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20wemos_d1_mini32/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20ESP8266/badge.svg)
-![](https://github.com/o0shojo0o/PixelIt/workflows/Release%20d1_mini/badge.svg)
+![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
 The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
 Settings and small tests are possible via the web interface,
