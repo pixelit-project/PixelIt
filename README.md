@@ -8,8 +8,8 @@ The Pixel It is an ESP8266 / ESP32 (under construction) and WS2812B-LED based Pi
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
-[Docu](https://docs.bastelbunker.de/pixelit/) |
-[Forum](https://github.com/o0shojo0o/PixelIt/discussions) |
+[Docu](https://pixelit-project.github.io/) |
+[Forum](https://github.com/pixelit-project/PixelIt/discussions) |
 [Blog](https://www.bastelbunker.de/pixel-it/) |
 [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery) |
 [![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay) |
