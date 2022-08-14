@@ -27,7 +27,7 @@
 <script>
 import NavLinks from "./components/NavLinks";
 export default {
-    created: function() {
+    created: function () {
         // For develop
         if (location.host.includes(":")) {
             this.$store.state.pixelItIpAdress = "192.168.3.5";
@@ -66,12 +66,12 @@ export default {
         },
     },
     watch: {
-        "$store.state.gitVersion": function(newVal) {
+        "$store.state.gitVersion": function (newVal) {
             if (this.$store.state.version) {
                 this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
             }
         },
-        "$store.state.version": function(newVal) {
+        "$store.state.version": function (newVal) {
             if (this.$store.state.gitVersion) {
                 this.$store.state.newVersionAvailable = newVal != this.$store.state.gitVersion;
             }
@@ -81,7 +81,7 @@ export default {
 
 async function getCurrentGitReleaseData(state) {
     try {
-        const gitData = await (await fetch("https://api.github.com/repos/o0shojo0o/PixelIt/releases")).json();
+        const gitData = await (await fetch("https://api.github.com/repos/pixelit-project/PixelIt/releases")).json();
         state.gitReleases = [];
         for (let i = 0; i < 4; i++) {
             const data = {
@@ -91,12 +91,12 @@ async function getCurrentGitReleaseData(state) {
                 downloadURL: gitData[i].html_url,
                 fwdownloads: [],
                 releaseNoteArray: gitData[i].body.replaceAll("-", "").split("\r\n"),
-                readmeLink: `https://github.com/o0shojo0o/PixelIt#${gitData[i].name.replaceAll(".", "")}-${gitData[i].published_at.split("T")[0]}`,
+                readmeLink: `https://github.com/pixelit-project/PixelIt#${gitData[i].name.replaceAll(".", "")}-${gitData[i].published_at.split("T")[0]}`,
             };
 
             for (const asset of gitData[i].assets) {
                 let fwdownload;
-                // New filename format https://github.com/o0shojo0o/PixelIt/pull/153
+                // New filename format https://github.com/pixelit-project/PixelIt/pull/153
                 // firmware_v3.3.3_wemos_d1_mini32.bin
                 if (asset.name.includes("firmware_v")) {
                     fwdownload = {
@@ -111,10 +111,7 @@ async function getCurrentGitReleaseData(state) {
                         downloads: asset.download_count,
                     };
                 }
-                fwdownload.name = fwdownload.name
-                    .replace(".bin", "")
-                    .replaceAll("_", " ")
-                    .toUpperCase();
+                fwdownload.name = fwdownload.name.replace(".bin", "").replaceAll("_", " ").toUpperCase();
                 data.fwdownloads.push(fwdownload);
             }
 

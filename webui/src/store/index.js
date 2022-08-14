@@ -107,7 +107,7 @@ export default new Vuex.Store({
         {
             title: "Forum",
             icon: "mdi-forum-outline",
-            url: "https://github.com/o0shojo0o/PixelIt/discussions",
+            url: "https://github.com/pixelit-project/PixelIt/discussions",
             target: "_blank"
         },
         {
@@ -119,13 +119,13 @@ export default new Vuex.Store({
         {
             title: "Documentation",
             icon: "mdi-book-open-page-variant-outline",
-            url: "https://docs.bastelbunker.de/pixelit/",
+            url: "https://pixelit-project.github.io/",
             target: "_blank"
         },
         {
             title: "GitHub",
             icon: "mdi-github",
-            url: "https://github.com/o0shojo0o/PixelIt",
+            url: "https://github.com/pixelit-project/PixelIt",
             target: "_blank"
         },
         ],
