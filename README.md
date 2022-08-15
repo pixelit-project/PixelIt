@@ -178,11 +178,11 @@ Thanks to these great people for supporting this project.
 
 ### 0.3.8 (2021-08-11)
 
--   (o0shojo0o) fixed [bitmapAnimation -> rubberbanding](https://docs.bastelbunker.de/pixelit/api.html#bitmap-animation)
+-   (o0shojo0o) fixed [bitmapAnimation -> rubberbanding](https://pixelit-project.github.io/api.html#bitmap-animation)
 
 ### 0.3.7 (2021-07-05)
 
--   (foorschtbar) added some UTF8 icons to [font](https://docs.bastelbunker.de/pixelit/api.html#text)
+-   (foorschtbar) added some UTF8 icons to [font](https://pixelit-project.github.io/api.html#text)
 -   (foorschtbar) rewirtten UTF8 mapper function
 -   (o0shojo0o) added offset options for sensors
 -   (o0shojo0o) added `Clock auto fallback` function
@@ -223,7 +223,7 @@ Thanks to these great people for supporting this project.
 
 ### 0.3.2_beta (2021-05-18)
 
--   (o0shojo0o) add hexColor to [Clock](https://docs.bastelbunker.de/pixelit/api.html#clock), [Text](https://docs.bastelbunker.de/pixelit/api.html#text), [Bar](https://docs.bastelbunker.de/pixelit/api.html#bar) and [Bars](https://docs.bastelbunker.de/pixelit/api.html#bars)
+-   (o0shojo0o) add hexColor to [Clock](https://pixelit-project.github.io/api.html#clock), [Text](https://pixelit-project.github.io/api.html#text), [Bar](https://pixelit-project.github.io/api.html#bar) and [Bars](https://pixelit-project.github.io/api.html#bars)
 -   (o0shojo0o) fix wemos_d1_mini32 build
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/a8f637930d6fac131c5ce175234aff0eca6b395e) show message on hotspot mode
 -   [(xarnze)](https://github.com/xarnze/PixelIt/commit/f6314351b0000c701c2243ce62895b37ff89afc2) added support for 4x 8x8 CJMCU 64 Matrix (Type 3)
