@@ -81,8 +81,9 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 1.1.0 (2022-07-22)
 
+-   (o0shojo0o) fix URLs in WebUi
 -   (o0shojo0o) added option to disable the weekdays on the clock over API / WebUi
 
 ### 1.0.0 (2022-07-22)
@@ -91,7 +92,7 @@ Thanks to these great people for supporting this project.
 
 ### 0.4.0 (2022-07-04)
 
--   (foorschtbar) added support for new "MicroMatrix by foorschtbar" [more](https://github.com/o0shojo0o/PixelIt/pull/174) | [Repo](https://github.com/foorschtbar/Sk6805EC15-Matrix) :tada:
+-   (foorschtbar) added support for new "MicroMatrix by foorschtbar" [more](https://github.com/pixelit-project/PixelIt/pull/174) | [Repo](https://github.com/foorschtbar/Sk6805EC15-Matrix) :tada:
 -   (foorschtbar) fixed the Tiled 4x 8x8 CJMCU Matrix Type (its doesn't work before)
 -   (o0shojo0o) fixed option for non-flashing time separator over JSON (internal clock)
 
@@ -102,7 +103,7 @@ Thanks to these great people for supporting this project.
 -   (o0shojo0o) extended WebUi for 'Wifi Reset' and 'Factory Reset'
 -   (o0shojo0o) added 'Wifi Reset' and 'Factory Reset' function for WebAPI and Socket
 -   (o0shojo0o) fix hexColor for bar and bars
--   (rozza-m) added fat clock font [more](https://github.com/o0shojo0o/PixelIt/pull/169)
+-   (rozza-m) added fat clock font [more](https://github.com/pixelit-project/PixelIt/pull/169)
 -   (pplucky) Improve MQTT discovery
 
 ### 0.3.19 (2022-04-24)
@@ -146,7 +147,7 @@ Thanks to these great people for supporting this project.
 ### 0.3.15 (2021-12-04)
 
 -   (o0shojo0o) added offset options for gas sensor
--   (miccgn) added [BME680](https://docs.bastelbunker.de/pixelit/hardware.html#bme680-sensor-upgrade-temperatur-luftfeuchte-luftdruck-gas) support
+-   (miccgn) added [BME680](https://pixelit-project.github.io/hardware.html#bme680-sensor-upgrade-temperature-humidity-pressure-gas) support
 
 ### 0.3.14 (2021-11-14)
 
