@@ -8,7 +8,7 @@
         <!-- Bar -->
         <v-app-bar app>
             <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-            <v-toolbar-title> <b>Pixel It</b> the Matrix Display </v-toolbar-title>
+            <v-toolbar-title> <b>PixelIt</b> the Matrix Display </v-toolbar-title>
             <v-spacer><p v-if="!sockedIsConnected" class="text-center message">Reconnecting... please wait</p></v-spacer>
             <v-icon v-if="sockedIsConnected" color="green" title="Connected">mdi-lan-connect</v-icon>
             <v-icon v-else color="red" title="Disconnected">mdi-lan-disconnect</v-icon>

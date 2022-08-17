@@ -21,7 +21,7 @@
                     <div class="text-center">
                         <BmpDialog :bmp="bmp" />
                         ID: {{ bmp.id }}
-                        <v-btn icon @click="sendBitmap(bmp.rgB565Array, bmp.sizeX)" class="float-right" title="Send to Pixel It">
+                        <v-btn icon @click="sendBitmap(bmp.rgB565Array, bmp.sizeX)" class="float-right" title="Send to PixelIt">
                             <v-icon>mdi-cloud-upload</v-icon>
                         </v-btn>
                     </div>
@@ -36,10 +36,10 @@ import BmpCanvas from "../components/BmpCanvas";
 import BmpDialog from "../components/BmpDialog";
 export default {
     name: "Home",
-    created: function() {
+    created: function () {
         getBMPsFromAPI(this.$store.state);
     },
-    data: function() {
+    data: function () {
         return {
             message: "",
         };
