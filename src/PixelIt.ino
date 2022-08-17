@@ -2725,7 +2725,7 @@ uint ColorWheel(byte wheelPos, int pos)
 
 void ShowBootAnimation()
 {
-	DrawTextHelper("PIXEL IT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+	DrawTextHelper("PIXELIT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
 	FadeIn(60, 10);
 	FadeOut(60, 10);
 	FadeIn(60, 10);
