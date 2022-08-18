@@ -276,7 +276,8 @@ float temperatureOffset = 0.0f;
 float humidityOffset = 0.0f;
 float pressureOffset = 0.0f;
 float gasOffset = 0.0f;
-
+bool sendStats = true;
+bool checkUpdateScreen = true;
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
 
@@ -365,8 +366,9 @@ void SaveConfig()
 	json["ldrDevice"] = ldrDevice;
 	json["ldrPulldown"] = ldrPulldown;
 	json["ldrSmoothing"] = ldrSmoothing;
-
 	json["initialVolume"] = initialVolume;
+	json["sendStats"] = sendStats;
+	json["checkUpdateScreen"] = checkUpdateScreen;
 
 #if defined(ESP8266)
 	File configFile = LittleFS.open("/config.json", "w");
@@ -698,6 +700,16 @@ void SetConfigVariables(JsonObject &json)
 	if (json.containsKey("initialVolume"))
 	{
 		initialVolume = json["initialVolume"].as<uint>();
+	}
+
+	if (json.containsKey("sendStats"))
+	{
+		sendStats = json["sendStats"].as<bool>();
+	}
+
+	if (json.containsKey("checkUpdateScreen"))
+	{
+		checkUpdateScreen = json["checkUpdateScreen"].as<bool>();
 	}
 }
 
