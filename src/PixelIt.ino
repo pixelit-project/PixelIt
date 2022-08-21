@@ -40,6 +40,8 @@
 #include "ColorConverterLib.h"
 #include <TimeLib.h>
 #include <ArduinoJson.h>
+#include <ArduinoHttpClient.h>
+#include <Hash.h>
 // PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
@@ -88,6 +90,9 @@ String SDAPin = "Pin_D3";
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
+
+String serverAddress = "pixelit.bastelbunker.de";
+int serverPort = 80;
 
 String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
 bool btnEnabled[] = {false, false, false};
@@ -174,6 +179,7 @@ WiFiClient espClient;
 WiFiUDP udp;
 PubSubClient client(espClient);
 WiFiManager wifiManager;
+HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
 #if defined(ESP8266)
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -276,7 +282,7 @@ float temperatureOffset = 0.0f;
 float humidityOffset = 0.0f;
 float pressureOffset = 0.0f;
 float gasOffset = 0.0f;
-bool sendStats = true;
+bool sendTelemetry = true;
 bool checkUpdateScreen = true;
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -367,7 +373,7 @@ void SaveConfig()
 	json["ldrPulldown"] = ldrPulldown;
 	json["ldrSmoothing"] = ldrSmoothing;
 	json["initialVolume"] = initialVolume;
-	json["sendStats"] = sendStats;
+	json["sendTelemetry"] = sendTelemetry;
 	json["checkUpdateScreen"] = checkUpdateScreen;
 
 #if defined(ESP8266)
@@ -702,9 +708,9 @@ void SetConfigVariables(JsonObject &json)
 		initialVolume = json["initialVolume"].as<uint>();
 	}
 
-	if (json.containsKey("sendStats"))
+	if (json.containsKey("sendTelemetry"))
 	{
-		sendStats = json["sendStats"].as<bool>();
+		sendTelemetry = json["sendTelemetry"].as<bool>();
 	}
 
 	if (json.containsKey("checkUpdateScreen"))
@@ -1709,6 +1715,21 @@ String GetButtons()
 	{
 		root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
 	}
+
+	String json;
+	root.printTo(json);
+
+	return json;
+}
+
+String GetTelemetry()
+{
+	DynamicJsonBuffer jsonBuffer;
+	JsonObject &root = jsonBuffer.createObject();
+
+	root["uuid"] = sha1(GetChipID());
+	root["version"] = VERSION;
+	root["type"] = isESP8266 ? "esp8266" : "esp32";
 
 	String json;
 	root.printTo(json);
@@ -3130,7 +3151,7 @@ void setup()
 	// Config menue timeout 180 seconds.
 	wifiManager.setConfigPortalTimeout(180);
 
-	if (!wifiManager.autoConnect("PIXEL_IT"))
+	if (!wifiManager.autoConnect("PIXELIT"))
 	{
 		Log(F("Setup"), F("Wifi failed to connect and hit timeout"));
 		delay(3000);
@@ -3190,6 +3211,13 @@ void setup()
 	mp3Player.begin(*softSerial);
 	Log(F("Setup"), F("DFPlayer started"));
 	mp3Player.volume(initialVolume);
+
+	if (sendTelemetry == true)
+	{
+		Log(F("Setup"), F("Telemetry send"));
+		httpClient.sendHeader("User-Agent", "PixelIt");
+		httpClient.post("/api/telemetry", "application/json", GetTelemetry());
+	}
 }
 
 void loop()
