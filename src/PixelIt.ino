@@ -179,7 +179,6 @@ WiFiClient espClient;
 WiFiUDP udp;
 PubSubClient client(espClient);
 WiFiManager wifiManager;
-HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
 #if defined(ESP8266)
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -1121,7 +1120,7 @@ void CreateFrames(JsonObject &json)
 
 			// Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
 			// So, do it only if there are more commands to come.
-			if (json["sound"]["control"].asString() > "")
+			if (json["sound"]["control"].as<String>() == "")
 			{
 				Log(F("Sound"), F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
 				delay(200);
@@ -1722,8 +1721,12 @@ String GetButtons()
 	return json;
 }
 
-String GetTelemetry()
+void SendTelemetry()
 {
+	const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU", "MicroMatrix"};
+	const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
+	const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
+
 	DynamicJsonBuffer jsonBuffer;
 	JsonObject &root = jsonBuffer.createObject();
 
@@ -1731,10 +1734,23 @@ String GetTelemetry()
 	root["version"] = VERSION;
 	root["type"] = isESP8266 ? "esp8266" : "esp32";
 
+	JsonObject &matrix = root.createNestedObject("matrix");
+	matrix["type"] = matrixType;
+	matrix["name"] = MatrixTypeNames[matrixType - 1];
+
+	JsonArray &sensors = root.createNestedArray("sensors");
+	sensors.add(LuxSensorNames[luxSensor]);
+	if (tempSensor > 0)
+	{
+		sensors.add(TempSensorNames[tempSensor]);
+	}
+
 	String json;
 	root.printTo(json);
 
-	return json;
+	HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
+	httpClient.sendHeader("User-Agent", "PixelIt");
+	httpClient.post("/api/telemetry", "application/json", json);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -3214,9 +3230,7 @@ void setup()
 
 	if (sendTelemetry == true)
 	{
-		Log(F("Setup"), F("Telemetry send"));
-		httpClient.sendHeader("User-Agent", "PixelIt");
-		httpClient.post("/api/telemetry", "application/json", GetTelemetry());
+		SendTelemetry();
 	}
 }
 
