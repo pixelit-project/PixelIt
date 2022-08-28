@@ -1723,6 +1723,13 @@ String GetButtons()
 
 void SendTelemetry()
 {
+	HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
+	httpClient.sendHeader("User-Agent", "PixelIt");
+	httpClient.post("/api/telemetry", "application/json", GetTelemetry());
+}
+
+String GetTelemetry()
+{
 	const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU", "MicroMatrix"};
 	const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
 	const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
@@ -1747,10 +1754,7 @@ void SendTelemetry()
 
 	String json;
 	root.printTo(json);
-
-	HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
-	httpClient.sendHeader("User-Agent", "PixelIt");
-	httpClient.post("/api/telemetry", "application/json", json);
+	return json;
 }
 
 /////////////////////////////////////////////////////////////////////
