@@ -46,8 +46,9 @@
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
+#define TELEMETRY_DELAY 10000UL * 6 * 60 * 12 // 12 Houers
 
-#define VERSION "1.1.0"
+#define VERSION "1.1.0_Telemetry"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -282,6 +283,7 @@ float humidityOffset = 0.0f;
 float pressureOffset = 0.0f;
 float gasOffset = 0.0f;
 bool sendTelemetry = true;
+unsigned long sendTelemetryPrevMillis = 0;
 bool checkUpdateScreen = true;
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -3231,11 +3233,6 @@ void setup()
 	mp3Player.begin(*softSerial);
 	Log(F("Setup"), F("DFPlayer started"));
 	mp3Player.volume(initialVolume);
-
-	if (sendTelemetry == true)
-	{
-		SendTelemetry();
-	}
 }
 
 void loop()
@@ -3256,6 +3253,13 @@ void loop()
 				setGPIOReset[i].resetMillis = -1;
 			}
 		}
+	}
+
+	// Send Telemetry data
+	if (sendTelemetry == true && (sendTelemetryPrevMillis == 0 || millis() - sendTelemetryPrevMillis >= TELEMETRY_DELAY))
+	{
+		sendTelemetryPrevMillis = millis();
+		SendTelemetry();
 	}
 
 	if (mqttAktiv == true)
