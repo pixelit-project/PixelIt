@@ -111,6 +111,32 @@
                         <v-select :items="pinsESP8266" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
                         <v-select :items="pinsESP8266" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
                     </v-card>
+                    <br />
+                    <v-card class="pa-2" elevation="4">
+                        <v-card-title>
+                            <h2>Telemetry</h2>
+                        </v-card-title>
+                        <hr />
+                        <br />
+                        <v-switch v-model="config.sendTelemetry" label="Send Telemetry data" dense></v-switch>
+                        <v-card-text>
+                            Why we want to collect telemetry data and what data:<br /><br />
+                            The telemetry data helps us to understand which hardware is used for the PixelIt and also which software versions of the PixelIt are on the road.<br />
+                            Also it is a motivator for us developers to see the spread so that we can continue to have fun developing :)<br /><br />
+                            The data is sent anonymously and includes the following data:<br />
+                            <li>UUID is a generated hash from the ESP hardware</li>
+                            <li>Version from the PixelIt</li>
+                            <li>Matrix type</li>
+                            <li>Sensors used</li>
+                            <li>Country (via GeoIP service)</li>
+                            <br />
+                            That was it :)
+                        </v-card-text>
+                        <v-card-text>
+                            Telemetry data preview:
+                            <prism-editor class="editor" v-model="telemetryData" :highlight="highlighter" readonly></prism-editor>
+                        </v-card-text>
+                    </v-card>
                 </v-col>
             </v-row>
         </v-form>
@@ -121,6 +147,12 @@
 import ColorPickerTextfield from "../components/ColorPickerTextfield";
 import ButtonCondition from "../components/ButtonCondition";
 import ButtonConfirm from "../components/ButtonConfirm";
+import { PrismEditor } from "vue-prism-editor";
+import "vue-prism-editor/dist/prismeditor.min.css";
+import { highlight, languages } from "prismjs/components/prism-core";
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-json";
+import "prismjs/themes/prism-tomorrow.css";
 
 export default {
     name: "Options",
@@ -131,6 +163,7 @@ export default {
         ColorPickerTextfield,
         ButtonCondition,
         ButtonConfirm,
+        PrismEditor,
     },
     computed: {
         rules() {
@@ -160,6 +193,9 @@ export default {
         pinsESP8266() {
             return this.$store.state.pinsESP8266;
         },
+        telemetryData() {
+            return this.$store.state.telemetryData;
+        },
     },
     methods: {
         save() {
@@ -174,7 +210,9 @@ export default {
         factoryReset() {
             this.$socket.sendObj({ factoryReset: true });
         },
-        placeHolder() {},
+        highlighter(code) {
+            return highlight(code, languages.json);
+        },
     },
     watch: {
         "$store.state.configData.clock24Hours": function (newVal) {

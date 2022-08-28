@@ -31,18 +31,15 @@
                         <hr />
                         <br />
                         <h3>I²C sensors</h3>
-                        <small>If you use BH1750, BME280 or BME680 sensors, these need two pins to communicate. You can use both Lux and Temperature sensors at the same time: just connect them in parallel. If there are no sensors at all, just select any two open pins.</small>
-                        <br />
+                        <v-card-text>If you use BH1750, BME280 or BME680 sensors, these need two pins to communicate. You can use both Lux and Temperature sensors at the same time: just connect them in parallel. If there are no sensors at all, just select any two open pins. </v-card-text>
                         <v-select :items="pinsESP8266" v-model="config.SCLPin" type="number" label="SCL pin (ESP8266 only)" hint="Pick any value when using no I²C sensors" :disabled="!config.isESP8266"></v-select>
                         <v-select :items="pinsESP8266" v-model="config.SDAPin" type="number" label="SDA pin (ESP8266 only)" hint="Pick any value when using no I²C sensors" :disabled="!config.isESP8266"></v-select>
                         <br />
                         <h3>OneWire sensors</h3>
-                        <small> If you use OneWire sensors like DHT22, they need one pin to communicate. If there are no I²C sensors (see above), you can re-use one of the pins above. If there is no OneWire sensor, just select any open pin.</small>
-                        <br />
+                        <v-card-text>If you use OneWire sensors like DHT22, they need one pin to communicate. If there are no I²C sensors (see above), you can re-use one of the pins above. If there is no OneWire sensor, just select any open pin. </v-card-text>
                         <v-select :items="pinsESP8266" v-model="config.onewirePin" type="number" label="DHT sensor pin (ESP8266 only)" hint="Pick any value when using no OneWire sensors" :disabled="!config.isESP8266"></v-select>
                         <h3>LDR</h3>
-                        <small> If you use no BH1750, but an LDR (light dependend resistor) connected to the A0 pin, you can define its type and the pulldown resistor here. Select any values if there is no LDR.</small>
-                        <br />
+                        <v-card-text>If you use no BH1750, but an LDR (light dependend resistor) connected to the A0 pin, you can define its type and the pulldown resistor here. Select any values if there is no LDR.</v-card-text>
                         <v-select :items="ldrDevices" v-model="config.ldrDevice" type="number" label="Lux sensor type" hint="Pick any value when using BH1750 or no lux sensor at all"></v-select>
                         <v-text-field v-model="config.ldrPulldown" type="number" label="Value of pulldown resistor for LDR" suffix="Ohm" hint="Enter any value when using BH1750 or no lux sensor at all" :rules="[rules.required]"></v-text-field>
                     </v-card>

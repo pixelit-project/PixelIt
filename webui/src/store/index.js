@@ -363,6 +363,7 @@ export default new Vuex.Store({
         ],
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
+        telemetryData: '',
     },
     mutations: {
         SOCKET_ONOPEN(state, event) {
@@ -402,6 +403,10 @@ export default new Vuex.Store({
             // SystemInfo
             else if (message.sysinfo) {
                 addToSysInfoData(message.sysinfo, state);
+            }
+            // SystemInfo
+            else if (message.telemetry) {
+                addToTelemetryData(message.telemetry, state);
             }
         },
         // mutations for reconnect methods
@@ -457,6 +462,10 @@ function addToButtonData(obj, state) {
 function addToConfigData(obj, state) {
     state.configData = obj;
     state.testarea.brightness = obj.matrixBrightness;
+}
+
+function addToTelemetryData(obj, state) {
+    state.telemetryData = JSON.stringify(obj, null, 4);
 }
 
 function addToSysInfoData(obj, state) {

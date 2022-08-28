@@ -986,6 +986,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 		SendSensor(true);
 		SendConfig();
 		webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
+		webSocket.sendTXT(num, "{\"telemetry\":" + GetTelemetry() + "}");
 		break;
 	}
 	case WStype_TEXT:
