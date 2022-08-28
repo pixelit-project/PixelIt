@@ -41,6 +41,13 @@ export default {
         setInterval(() => {
             getCurrentGitReleaseData(this.$store.state);
         }, 1000 * 60 * 15);
+
+        getUserMapData(this.$store.state);
+
+        // Check again every 15 minutes
+        setInterval(() => {
+            getUserMapData(this.$store.state);
+        }, 1000 * 60 * 15);
     },
     components: {
         NavLinks,
@@ -122,6 +129,10 @@ async function getCurrentGitReleaseData(state) {
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);
     }
+}
+
+async function getUserMapData(state) {
+    state.userMapData = await (await fetch("https://pixelit.bastelbunker.de/API/GetUserMapData")).json();
 }
 </script>
 

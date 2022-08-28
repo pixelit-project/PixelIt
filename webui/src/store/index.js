@@ -364,6 +364,7 @@ export default new Vuex.Store({
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
         telemetryData: '',
+        userMapData: []
     },
     mutations: {
         SOCKET_ONOPEN(state, event) {

@@ -42,6 +42,15 @@
                     <br />
                     <Log :log="log" />
                 </v-card>
+                <br />
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
+                        <h2>Usermap</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <UserMap :coords="userMapData" />
+                </v-card>
             </v-col>
         </v-row>
     </v-container>
@@ -50,11 +59,14 @@
 <script>
 import Log from "../components/Log";
 import ListInfo from "../components/ListInfo";
+import UserMap from "../components/UserMap";
+
 export default {
     name: "Home",
     components: {
         Log,
         ListInfo,
+        UserMap,
     },
     computed: {
         systemItems() {
@@ -77,6 +89,9 @@ export default {
         },
         gitUpdateURL() {
             return this.$store.state.gitDownloadUrl;
+        },
+        userMapData() {
+            return this.$store.state.userMapData;
         },
     },
 };

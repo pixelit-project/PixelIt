@@ -8,6 +8,7 @@ import vuetify from './plugins/vuetify'
 import VueCookies from 'vue-cookies'
 import VueNativeSock from 'vue-native-websocket'
 import VueSpinners from 'vue-spinners'
+import 'leaflet/dist/leaflet.css'
 
 
 let url;
