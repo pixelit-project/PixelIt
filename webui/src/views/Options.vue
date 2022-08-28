@@ -88,7 +88,7 @@
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-1" elevation="4">
+                    <v-card class="pa-2" elevation="4">
                         <v-card-title>
                             <h2>MQTT</h2>
                         </v-card-title>
