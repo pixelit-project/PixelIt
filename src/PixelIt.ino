@@ -46,7 +46,7 @@
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
-#define TELEMETRY_DELAY 10000UL * 6 * 60 * 12 // 12 Houers
+#define TELEMETRY_DELAY 10000UL * 6 * 60 * 12 // 12 Hours
 
 #define VERSION "1.1.0_Telemetry"
 
@@ -1022,6 +1022,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 				{
 					HandleFactoryReset();
 				}
+			}
+			else if (json.containsKey("sendTelemetry"))
+			{
+				sendTelemetryPrevMillis = 0;
 			}
 		}
 		break;
