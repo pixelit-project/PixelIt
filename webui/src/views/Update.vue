@@ -11,7 +11,7 @@
                     <div class="text-center">
                         <v-file-input v-model="firmwareFile" prepend-icon="mdi-file-powerpoint-outline" show-size filled accept=".bin" label="Select firmware upload" dense></v-file-input>
 
-                        <ButtonCondition color="success" :condition="sockedIsConnected" text="Update Firmware" icon="mdi-file-upload" :onclick="uploadFirmware" />
+                        <ButtonCondition color="success" :condition="sockedIsConnected && inputFWCheck" text="Update Firmware" icon="mdi-file-upload" :onclick="uploadFirmware" />
                     </div>
                 </v-card>
             </v-col>
@@ -24,7 +24,7 @@
                     <br />
                     <div class="text-center">
                         <v-file-input v-model="filesystemFile" prepend-icon="mdi-file-powerpoint-outline" show-size filled accept=".bin" label="Select filesystem upload" dense></v-file-input>
-                        <ButtonCondition color="success" :condition="sockedIsConnected" text="Update Filesystem" icon="mdi-file-upload" :onclick="uploadFilesystem" />
+                        <ButtonCondition color="success" :condition="sockedIsConnected && inputFSCheck" text="Update Filesystem" icon="mdi-file-upload" :onclick="uploadFilesystem" />
                     </div>
                 </v-card>
             </v-col>
@@ -67,6 +67,16 @@ export default {
         gitReleases() {
             return this.$store.state.gitReleases;
         },
+        inputFWCheck() {
+            return this.firmwareFile != null 
+              &&  this.firmwareFile != undefined
+              &&  this.firmwareFile != '';
+        },
+        inputFSCheck() {
+            return this.filesystemFile != null 
+              &&  this.filesystemFile != undefined
+              &&  this.filesystemFile != '';
+        }
     },
     methods: {
         async uploadFirmware() {
