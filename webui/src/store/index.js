@@ -38,7 +38,6 @@ export default new Vuex.Store({
         gitVersion: null,
         gitDownloadUrl: null,
         gitReleases: [],
-        pixelItIpAdress: null,
         logData: [],
         sensorData: [],
         buttonData: [],
