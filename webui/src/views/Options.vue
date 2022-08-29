@@ -120,6 +120,8 @@
                         <br />
                         <v-switch v-model="config.sendTelemetry" label="Send Telemetry data" dense></v-switch>
                         <v-card-text>
+                            <h3>Why?</h3>
+                            <br />
                             Why we want to collect telemetry data and what data:<br /><br />
                             The telemetry data helps us to understand which hardware is used for the PixelIt and also which software versions of the PixelIt are on the road.<br />
                             Also it is a motivator for us developers to see the spread so that we can continue to have fun developing :)<br /><br />
@@ -133,8 +135,11 @@
                             That was it :)
                         </v-card-text>
                         <v-card-text>
-                            Telemetry data preview:
+                            <h3>Data preview</h3>
+                            <br />
                             <prism-editor class="editor" v-model="telemetryData" :highlight="highlighter" readonly></prism-editor>
+                            <br />
+                            <ButtonCondition color="primary" :condition="sockedIsConnected && config.sendTelemetry" text="Send now" icon="mdi-cloud-upload" :onclick="sendTelemetry" />
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -195,7 +200,7 @@ export default {
         },
         telemetryData() {
             return this.$store.state.telemetryData;
-        },
+        }
     },
     methods: {
         save() {
@@ -212,6 +217,9 @@ export default {
         },
         highlighter(code) {
             return highlight(code, languages.json);
+        },
+        sendTelemetry() {
+            this.$socket.sendObj({ sendTelemetry: true });
         },
     },
     watch: {
