@@ -1766,7 +1766,9 @@ String GetButtons()
 
 void SendTelemetry()
 {
+    Log(F("SendTelemetry"), F("Sending..."));
     HttpClient httpClient = HttpClient(wifiClientHTTP, TELEMETRY_SERVER_HOST, TELEMETRY_SERVER_PORT);
+    httpClient.setTimeout(1500);
     httpClient.sendHeader("User-Agent", "PixelIt");
     httpClient.post(TELEMETRY_SERVER_PATH, "application/json", GetTelemetry());
 }
@@ -3326,6 +3328,7 @@ void checkUpdate()
     Log(F("CheckUpdate"), F("Checking..."));
     HttpClient httpClient = HttpClient(wifiClientHTTP, CHECKUPDATE_SERVER_HOST, CHECKUPDATE_SERVER_PORT);
     httpClient.sendHeader("User-Agent", "PixelIt");
+    httpClient.setTimeout(1500);
     httpClient.get(CHECKUPDATE_SERVER_PATH);
     int statusCode = httpClient.responseStatusCode();
     String response = httpClient.responseBody();
@@ -3382,14 +3385,14 @@ void loop()
     if (checkUpdateScreen == true)
     {
 
-        // Check new FW Version
-        if (checkUpdatePrevMillis == 0 || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL)
+        // Check new FW Version first time after 30.5 seconds
+        if ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL)
         {
             checkUpdatePrevMillis = millis();
             checkUpdate();
         }
 
-        // Display new FW nersion
+        // Display new FW Version
         if (millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
         {
             checkUpdateScreenPrevMillis = millis();
@@ -3400,8 +3403,8 @@ void loop()
         }
     }
 
-    // Send Telemetry data
-    if (sendTelemetry == true && (sendTelemetryPrevMillis == 0 || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
+    // Send Telemetry data first time after 30.3 seconds
+    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
