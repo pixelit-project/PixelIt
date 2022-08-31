@@ -23,7 +23,7 @@ boolean IsSummertime(int year, byte month, byte day, byte hour, byte clockTimeZo
 	{
 		return true; // Sommerzeit in Apr, Mai, Jun, Jul, Aug, Sep
 	}
-	//if (month == 3 && (hour + 24 * day) >= (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 4) % 7)) || month == 10 && (hour + 24 * day) < (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 1) % 7)))
+	// if (month == 3 && (hour + 24 * day) >= (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 4) % 7)) || month == 10 && (hour + 24 * day) < (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 1) % 7)))
 	if ((month == 3 && (hour + 24 * day) >= (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 4) % 7))) || (month == 10 && (hour + 24 * day) < (1 + clockTimeZone + 24 * (31 - (5 * year / 4 + 1) % 7))))
 	{
 		return true;

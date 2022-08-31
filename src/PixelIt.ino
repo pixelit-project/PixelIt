@@ -46,9 +46,13 @@
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
-#define TELEMETRY_DELAY 10000UL * 6 * 60 * 12 // 12 Hours
+#include "UpdateScreen.h"
+#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12   // 12 Hours
+#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8   // 8 Hours
+#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
+#define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "1.1.0_Telemetry"
+#define VERSION "1.1.0_Update"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -56,8 +60,8 @@ void FadeIn(int = 10, int = 0);
 class SetGPIO
 {
 public:
-	int gpio;
-	ulong resetMillis;
+    int gpio;
+    ulong resetMillis;
 };
 #define SET_GPIO_SIZE 4
 SetGPIO setGPIOReset[SET_GPIO_SIZE];
@@ -92,8 +96,15 @@ String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
 
-String serverAddress = "pixelit.bastelbunker.de";
-int serverPort = 80;
+// Telemetry API
+#define TELEMETRY_SERVER_HOST "pixelit.bastelbunker.de"
+#define TELEMETRY_SERVER_PATH "/api/telemetry"
+#define TELEMETRY_SERVER_PORT 80
+
+// Check Update API
+#define CHECKUPDATE_SERVER_HOST "pixelit.bastelbunker.de"
+#define CHECKUPDATE_SERVER_PATH "/api/lastversion"
+#define CHECKUPDATE_SERVER_PORT 80
 
 String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
 bool btnEnabled[] = {false, false, false};
@@ -101,9 +112,9 @@ int btnPressedLevel[] = {LOW, LOW, LOW};
 
 enum btnStates
 {
-	btnState_Released,
-	btnState_PressedNew,
-	btnState_PressedBefore,
+    btnState_Released,
+    btnState_PressedNew,
+    btnState_PressedBefore,
 };
 
 const String btnAPINames[]{"leftButton", "middleButton", "rightButton"};
@@ -114,12 +125,12 @@ bool btnLastPublishState[] = {false, false, false};
 
 enum btnActions
 {
-	btnAction_DoNothing = 0,
-	btnAction_GotoClock = 1,
-	btnAction_ToggleSleepMode = 2,
-	btnAction_MP3PlayPause = 3,
-	btnAction_MP3PlayPrevious = 4,
-	btnAction_MP3PlayNext = 5,
+    btnAction_DoNothing = 0,
+    btnAction_GotoClock = 1,
+    btnAction_ToggleSleepMode = 2,
+    btnAction_MP3PlayPause = 3,
+    btnAction_MP3PlayPrevious = 4,
+    btnAction_MP3PlayNext = 5,
 };
 
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
@@ -147,19 +158,19 @@ DHTesp dht;
 // TempSensor
 enum TempSensor
 {
-	TempSensor_None,
-	TempSensor_BME280,
-	TempSensor_DHT,
-	TempSensor_BME680,
-	TempSensor_BMP280,
+    TempSensor_None,
+    TempSensor_BME280,
+    TempSensor_DHT,
+    TempSensor_BME680,
+    TempSensor_BMP280,
 };
 TempSensor tempSensor = TempSensor_None;
 
 // TemperatureUnit
 enum TemperatureUnit
 {
-	TemperatureUnit_Celsius,
-	TemperatureUnit_Fahrenheit
+    TemperatureUnit_Celsius,
+    TemperatureUnit_Fahrenheit
 };
 TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
 
@@ -169,16 +180,17 @@ Max44009 *max44009;
 
 enum LuxSensor
 {
-	LuxSensor_LDR,
-	LuxSensor_BH1750,
-	LuxSensor_Max44009,
+    LuxSensor_LDR,
+    LuxSensor_BH1750,
+    LuxSensor_Max44009,
 };
 LuxSensor luxSensor = LuxSensor_LDR;
 
 FastLED_NeoMatrix *matrix;
-WiFiClient espClient;
+WiFiClient wifiClientMQTT;
+WiFiClient wifiClientHTTP;
 WiFiUDP udp;
-PubSubClient client(espClient);
+PubSubClient client(wifiClientMQTT);
 WiFiManager wifiManager;
 #if defined(ESP8266)
 ESP8266WebServer server(80);
@@ -282,9 +294,16 @@ float temperatureOffset = 0.0f;
 float humidityOffset = 0.0f;
 float pressureOffset = 0.0f;
 float gasOffset = 0.0f;
+
+// Other Vars
 bool sendTelemetry = true;
 unsigned long sendTelemetryPrevMillis = 0;
+unsigned long forcedScreenIsActiveUntil = 0;
 bool checkUpdateScreen = true;
+unsigned long checkUpdateScreenPrevMillis = 0;
+unsigned long checkUpdatePrevMillis = 0;
+String lastReleaseVersion = VERSION;
+
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
 
@@ -293,2357 +312,2376 @@ String websocketConnection[10];
 
 void SetCurrentMatrixBrightness(float newBrightness)
 {
-	currentMatrixBrightness = newBrightness;
-	matrix->setBrightness(currentMatrixBrightness);
+    currentMatrixBrightness = newBrightness;
+    matrix->setBrightness(currentMatrixBrightness);
 }
 
 void EnteredHotspotCallback(WiFiManager *manager)
 {
-	Log(F("Hotspot"), "Waiting for WiFi configuration");
-	matrix->clear();
-	DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
-	FadeIn();
+    Log(F("Hotspot"), "Waiting for WiFi configuration");
+    matrix->clear();
+    DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+    FadeIn();
 }
 
 void SaveConfig()
 {
-	// save the custom parameters to FS
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &json = jsonBuffer.createObject();
+    // save the custom parameters to FS
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.createObject();
 
-	json["version"] = VERSION;
-	json["isESP8266"] = isESP8266;
-	json["temperatureUnit"] = static_cast<int>(temperatureUnit);
-	json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
-	json["mbaDimMin"] = mbaDimMin;
-	json["mbaDimMax"] = mbaDimMax;
-	json["mbaLuxMin"] = mbaLuxMin;
-	json["mbaLuxMax"] = mbaLuxMax;
-	json["matrixBrightness"] = currentMatrixBrightness;
-	json["matrixType"] = matrixType;
-	json["note"] = note;
-	json["hostname"] = hostname;
-	json["matrixTempCorrection"] = matrixTempCorrection;
-	json["ntpServer"] = ntpServer;
-	json["clockTimeZone"] = clockTimeZone;
+    json["version"] = VERSION;
+    json["isESP8266"] = isESP8266;
+    json["temperatureUnit"] = static_cast<int>(temperatureUnit);
+    json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
+    json["mbaDimMin"] = mbaDimMin;
+    json["mbaDimMax"] = mbaDimMax;
+    json["mbaLuxMin"] = mbaLuxMin;
+    json["mbaLuxMax"] = mbaLuxMax;
+    json["matrixBrightness"] = currentMatrixBrightness;
+    json["matrixType"] = matrixType;
+    json["note"] = note;
+    json["hostname"] = hostname;
+    json["matrixTempCorrection"] = matrixTempCorrection;
+    json["ntpServer"] = ntpServer;
+    json["clockTimeZone"] = clockTimeZone;
 
-	String clockColorHex;
-	ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
-	json["clockColor"] = "#" + clockColorHex;
+    String clockColorHex;
+    ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
+    json["clockColor"] = "#" + clockColorHex;
 
-	json["clockSwitchAktiv"] = clockSwitchAktiv;
-	json["clockSwitchSec"] = clockSwitchSec;
-	json["clock24Hours"] = clock24Hours;
-	json["clockDayLightSaving"] = clockDayLightSaving;
-	json["clockWithSeconds"] = clockWithSeconds;
-	json["clockAutoFallbackActive"] = clockAutoFallbackActive;
-	json["clockAutoFallbackTime"] = clockAutoFallbackTime;
-	json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
-	json["clockDateDayMonth"] = clockDateDayMonth;
-	json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
-	json["clockBlinkAnimated"] = clockBlinkAnimated;
-	json["clockFatFont"] = clockFatFont;
-	json["clockDrawWeekDays"] = clockDrawWeekDays;
-	json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
-	json["bootScreenAktiv"] = bootScreenAktiv;
-	json["mqttAktiv"] = mqttAktiv;
-	json["mqttUser"] = mqttUser;
-	json["mqttPassword"] = mqttPassword;
-	json["mqttServer"] = mqttServer;
-	json["mqttMasterTopic"] = mqttMasterTopic;
-	json["mqttPort"] = mqttPort;
-	json["luxOffset"] = luxOffset;
-	json["temperatureOffset"] = temperatureOffset;
-	json["humidityOffset"] = humidityOffset;
-	json["pressureOffset"] = pressureOffset;
-	json["gasOffset"] = gasOffset;
+    json["clockSwitchAktiv"] = clockSwitchAktiv;
+    json["clockSwitchSec"] = clockSwitchSec;
+    json["clock24Hours"] = clock24Hours;
+    json["clockDayLightSaving"] = clockDayLightSaving;
+    json["clockWithSeconds"] = clockWithSeconds;
+    json["clockAutoFallbackActive"] = clockAutoFallbackActive;
+    json["clockAutoFallbackTime"] = clockAutoFallbackTime;
+    json["clockAutoFallbackAnimation"] = clockAutoFallbackAnimation;
+    json["clockDateDayMonth"] = clockDateDayMonth;
+    json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
+    json["clockBlinkAnimated"] = clockBlinkAnimated;
+    json["clockFatFont"] = clockFatFont;
+    json["clockDrawWeekDays"] = clockDrawWeekDays;
+    json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
+    json["bootScreenAktiv"] = bootScreenAktiv;
+    json["mqttAktiv"] = mqttAktiv;
+    json["mqttUser"] = mqttUser;
+    json["mqttPassword"] = mqttPassword;
+    json["mqttServer"] = mqttServer;
+    json["mqttMasterTopic"] = mqttMasterTopic;
+    json["mqttPort"] = mqttPort;
+    json["luxOffset"] = luxOffset;
+    json["temperatureOffset"] = temperatureOffset;
+    json["humidityOffset"] = humidityOffset;
+    json["pressureOffset"] = pressureOffset;
+    json["gasOffset"] = gasOffset;
 
-	json["dfpRXpin"] = dfpRXPin;
-	json["dfpTXpin"] = dfpTXPin;
-	json["onewirePin"] = onewirePin;
-	json["SCLPin"] = SCLPin;
-	json["SDAPin"] = SDAPin;
-	for (uint b = 0; b < 3; b++)
-	{
-		json["btn" + String(b) + "Pin"] = btnPin[b];
-		json["btn" + String(b) + "PressedLevel"] = btnPressedLevel[b];
-		json["btn" + String(b) + "Enabled"] = btnEnabled[b];
-		json["btn" + String(b) + "Action"] = static_cast<int>(btnAction[b]);
-	}
-	json["ldrDevice"] = ldrDevice;
-	json["ldrPulldown"] = ldrPulldown;
-	json["ldrSmoothing"] = ldrSmoothing;
-	json["initialVolume"] = initialVolume;
-	json["sendTelemetry"] = sendTelemetry;
-	json["checkUpdateScreen"] = checkUpdateScreen;
+    json["dfpRXpin"] = dfpRXPin;
+    json["dfpTXpin"] = dfpTXPin;
+    json["onewirePin"] = onewirePin;
+    json["SCLPin"] = SCLPin;
+    json["SDAPin"] = SDAPin;
+    for (uint b = 0; b < 3; b++)
+    {
+        json["btn" + String(b) + "Pin"] = btnPin[b];
+        json["btn" + String(b) + "PressedLevel"] = btnPressedLevel[b];
+        json["btn" + String(b) + "Enabled"] = btnEnabled[b];
+        json["btn" + String(b) + "Action"] = static_cast<int>(btnAction[b]);
+    }
+    json["ldrDevice"] = ldrDevice;
+    json["ldrPulldown"] = ldrPulldown;
+    json["ldrSmoothing"] = ldrSmoothing;
+    json["initialVolume"] = initialVolume;
+    json["sendTelemetry"] = sendTelemetry;
+    json["checkUpdateScreen"] = checkUpdateScreen;
 
 #if defined(ESP8266)
-	File configFile = LittleFS.open("/config.json", "w");
+    File configFile = LittleFS.open("/config.json", "w");
 #elif defined(ESP32)
-	File configFile = SPIFFS.open("/config.json", "w");
+    File configFile = SPIFFS.open("/config.json", "w");
 #endif
-	json.printTo(configFile);
-	configFile.close();
-	Log("SaveConfig", "Saved");
-	// end save
+    json.printTo(configFile);
+    configFile.close();
+    Log("SaveConfig", "Saved");
+    // end save
 }
 
 void LoadConfig()
 {
-	// file exists, reading and loading
+    // file exists, reading and loading
 #if defined(ESP8266)
-	if (LittleFS.exists("/config.json"))
-	{
-		File configFile = LittleFS.open("/config.json", "r");
+    if (LittleFS.exists("/config.json"))
+    {
+        File configFile = LittleFS.open("/config.json", "r");
 #elif defined(ESP32)
-	if (SPIFFS.exists("/config.json"))
-	{
-		File configFile = SPIFFS.open("/config.json", "r");
+    if (SPIFFS.exists("/config.json"))
+    {
+        File configFile = SPIFFS.open("/config.json", "r");
 #endif
-		if (configFile)
-		{
-			// Serial.println("opened config file");
+        if (configFile)
+        {
+            // Serial.println("opened config file");
 
-			DynamicJsonBuffer jsonBuffer;
-			JsonObject &json = jsonBuffer.parseObject(configFile);
+            DynamicJsonBuffer jsonBuffer;
+            JsonObject &json = jsonBuffer.parseObject(configFile);
 
-			if (json.success())
-			{
-				SetConfigVariables(json);
-				Log("LoadConfig", "Loaded");
-			}
-		}
-	}
-	else
-	{
-		Log("LoadConfig", "No Configfile, init new file");
-		SaveConfig();
-	}
+            if (json.success())
+            {
+                SetConfigVariables(json);
+                Log("LoadConfig", "Loaded");
+            }
+        }
+    }
+    else
+    {
+        Log("LoadConfig", "No Configfile, init new file");
+        SaveConfig();
+    }
 }
 
 void SetConfig(JsonObject &json)
 {
-	SetConfigVariables(json);
-	SaveConfig();
+    SetConfigVariables(json);
+    SaveConfig();
 }
 
 void SetConfigVariables(JsonObject &json)
 {
-	if (json.containsKey("version"))
-	{
-		optionsVersion = json["version"].as<String>();
-	}
+    if (json.containsKey("version"))
+    {
+        optionsVersion = json["version"].as<String>();
+    }
 
-	if (json.containsKey("temperatureUnit"))
-	{
-		temperatureUnit = static_cast<TemperatureUnit>(json["temperatureUnit"].as<int>());
-	}
+    if (json.containsKey("temperatureUnit"))
+    {
+        temperatureUnit = static_cast<TemperatureUnit>(json["temperatureUnit"].as<int>());
+    }
 
-	if (json.containsKey("matrixBrightnessAutomatic"))
-	{
-		matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"].as<bool>();
-	}
+    if (json.containsKey("matrixBrightnessAutomatic"))
+    {
+        matrixBrightnessAutomatic = json["matrixBrightnessAutomatic"].as<bool>();
+    }
 
-	if (json.containsKey("mbaDimMin"))
-	{
-		mbaDimMin = json["mbaDimMin"].as<int>();
-	}
+    if (json.containsKey("mbaDimMin"))
+    {
+        mbaDimMin = json["mbaDimMin"].as<int>();
+    }
 
-	if (json.containsKey("mbaDimMax"))
-	{
-		mbaDimMax = json["mbaDimMax"].as<int>();
-	}
+    if (json.containsKey("mbaDimMax"))
+    {
+        mbaDimMax = json["mbaDimMax"].as<int>();
+    }
 
-	if (json.containsKey("mbaLuxMin"))
-	{
-		mbaLuxMin = json["mbaLuxMin"].as<int>();
-	}
+    if (json.containsKey("mbaLuxMin"))
+    {
+        mbaLuxMin = json["mbaLuxMin"].as<int>();
+    }
 
-	if (json.containsKey("mbaLuxMax"))
-	{
-		mbaLuxMax = json["mbaLuxMax"].as<int>();
-	}
+    if (json.containsKey("mbaLuxMax"))
+    {
+        mbaLuxMax = json["mbaLuxMax"].as<int>();
+    }
 
-	if (json.containsKey("matrixBrightness"))
-	{
-		SetCurrentMatrixBrightness(json["matrixBrightness"].as<float>());
-	}
+    if (json.containsKey("matrixBrightness"))
+    {
+        SetCurrentMatrixBrightness(json["matrixBrightness"].as<float>());
+    }
 
-	if (json.containsKey("matrixType"))
-	{
-		matrixType = json["matrixType"].as<int>();
-	}
+    if (json.containsKey("matrixType"))
+    {
+        matrixType = json["matrixType"].as<int>();
+    }
 
-	if (json.containsKey("note"))
-	{
-		note = json["note"].as<char *>();
-	}
+    if (json.containsKey("note"))
+    {
+        note = json["note"].as<char *>();
+    }
 
-	if (json.containsKey("hostname"))
-	{
-		String hostname_raw = json["hostname"].as<char *>();
-		hostname = "";
-		for (uint8_t n = 0; n < hostname_raw.length(); n++)
-		{
-			if ((hostname_raw.charAt(n) >= '0' && hostname_raw.charAt(n) <= '9') || (hostname_raw.charAt(n) >= 'A' && hostname_raw.charAt(n) <= 'Z') || (hostname_raw.charAt(n) >= 'a' && hostname_raw.charAt(n) <= 'z') || (hostname_raw.charAt(n) == '_') || (hostname_raw.charAt(n) == '-'))
-				hostname += hostname_raw.charAt(n);
-		}
-		if (hostname.isEmpty())
-		{
-			hostname = "PixelIt";
-		}
-	}
+    if (json.containsKey("hostname"))
+    {
+        String hostname_raw = json["hostname"].as<char *>();
+        hostname = "";
+        for (uint8_t n = 0; n < hostname_raw.length(); n++)
+        {
+            if ((hostname_raw.charAt(n) >= '0' && hostname_raw.charAt(n) <= '9') || (hostname_raw.charAt(n) >= 'A' && hostname_raw.charAt(n) <= 'Z') || (hostname_raw.charAt(n) >= 'a' && hostname_raw.charAt(n) <= 'z') || (hostname_raw.charAt(n) == '_') || (hostname_raw.charAt(n) == '-'))
+                hostname += hostname_raw.charAt(n);
+        }
+        if (hostname.isEmpty())
+        {
+            hostname = "PixelIt";
+        }
+    }
 
-	if (json.containsKey("matrixTempCorrection"))
-	{
-		matrixTempCorrection = json["matrixTempCorrection"].as<char *>();
-	}
+    if (json.containsKey("matrixTempCorrection"))
+    {
+        matrixTempCorrection = json["matrixTempCorrection"].as<char *>();
+    }
 
-	if (json.containsKey("ntpServer"))
-	{
-		ntpServer = json["ntpServer"].as<char *>();
-	}
+    if (json.containsKey("ntpServer"))
+    {
+        ntpServer = json["ntpServer"].as<char *>();
+    }
 
-	if (json.containsKey("clockTimeZone"))
-	{
-		clockTimeZone = json["clockTimeZone"].as<float>();
-	}
+    if (json.containsKey("clockTimeZone"))
+    {
+        clockTimeZone = json["clockTimeZone"].as<float>();
+    }
 
-	if (json.containsKey("clockColor"))
-	{
-		ColorConverter::HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
-	}
+    if (json.containsKey("clockColor"))
+    {
+        ColorConverter::HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
+    }
 
-	if (json.containsKey("clockSwitchAktiv"))
-	{
-		clockSwitchAktiv = json["clockSwitchAktiv"].as<bool>();
-	}
+    if (json.containsKey("clockSwitchAktiv"))
+    {
+        clockSwitchAktiv = json["clockSwitchAktiv"].as<bool>();
+    }
 
-	if (json.containsKey("clockSwitchSec"))
-	{
-		clockSwitchSec = json["clockSwitchSec"].as<uint>();
-	}
+    if (json.containsKey("clockSwitchSec"))
+    {
+        clockSwitchSec = json["clockSwitchSec"].as<uint>();
+    }
 
-	if (json.containsKey("clock24Hours"))
-	{
-		clock24Hours = json["clock24Hours"].as<bool>();
-	}
+    if (json.containsKey("clock24Hours"))
+    {
+        clock24Hours = json["clock24Hours"].as<bool>();
+    }
 
-	if (json.containsKey("clockDayLightSaving"))
-	{
-		clockDayLightSaving = json["clockDayLightSaving"].as<bool>();
-	}
+    if (json.containsKey("clockDayLightSaving"))
+    {
+        clockDayLightSaving = json["clockDayLightSaving"].as<bool>();
+    }
 
-	if (json.containsKey("clockWithSeconds"))
-	{
-		clockWithSeconds = json["clockWithSeconds"].as<bool>();
-	}
+    if (json.containsKey("clockWithSeconds"))
+    {
+        clockWithSeconds = json["clockWithSeconds"].as<bool>();
+    }
 
-	if (json.containsKey("clockBlinkAnimated"))
-	{
-		clockBlinkAnimated = json["clockBlinkAnimated"].as<bool>();
-	}
+    if (json.containsKey("clockBlinkAnimated"))
+    {
+        clockBlinkAnimated = json["clockBlinkAnimated"].as<bool>();
+    }
 
-	if (json.containsKey("clockAutoFallbackActive"))
-	{
-		clockAutoFallbackActive = json["clockAutoFallbackActive"].as<bool>();
-	}
+    if (json.containsKey("clockAutoFallbackActive"))
+    {
+        clockAutoFallbackActive = json["clockAutoFallbackActive"].as<bool>();
+    }
 
-	if (json.containsKey("clockAutoFallbackAnimation"))
-	{
-		clockAutoFallbackAnimation = json["clockAutoFallbackAnimation"].as<uint>();
-	}
+    if (json.containsKey("clockAutoFallbackAnimation"))
+    {
+        clockAutoFallbackAnimation = json["clockAutoFallbackAnimation"].as<uint>();
+    }
 
-	if (json.containsKey("clockAutoFallbackTime"))
-	{
-		clockAutoFallbackTime = json["clockAutoFallbackTime"].as<uint>();
-	}
+    if (json.containsKey("clockAutoFallbackTime"))
+    {
+        clockAutoFallbackTime = json["clockAutoFallbackTime"].as<uint>();
+    }
 
-	if (json.containsKey("clockDateDayMonth"))
-	{
-		clockDateDayMonth = json["clockDateDayMonth"].as<bool>();
-	}
+    if (json.containsKey("clockDateDayMonth"))
+    {
+        clockDateDayMonth = json["clockDateDayMonth"].as<bool>();
+    }
 
-	if (json.containsKey("clockDayOfWeekFirstMonday"))
-	{
-		clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
-	}
+    if (json.containsKey("clockDayOfWeekFirstMonday"))
+    {
+        clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
+    }
 
-	if (json.containsKey("clockFatFont"))
-	{
-		clockFatFont = json["clockFatFont"].as<bool>();
-	}
+    if (json.containsKey("clockFatFont"))
+    {
+        clockFatFont = json["clockFatFont"].as<bool>();
+    }
 
-	if (json.containsKey("clockDrawWeekDays"))
-	{
-		clockDrawWeekDays = json["clockDrawWeekDays"].as<bool>();
-	}
+    if (json.containsKey("clockDrawWeekDays"))
+    {
+        clockDrawWeekDays = json["clockDrawWeekDays"].as<bool>();
+    }
 
-	if (json.containsKey("scrollTextDefaultDelay"))
-	{
-		scrollTextDefaultDelay = json["scrollTextDefaultDelay"].as<uint>();
-	}
+    if (json.containsKey("scrollTextDefaultDelay"))
+    {
+        scrollTextDefaultDelay = json["scrollTextDefaultDelay"].as<uint>();
+    }
 
-	if (json.containsKey("bootScreenAktiv"))
-	{
-		bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
-	}
+    if (json.containsKey("bootScreenAktiv"))
+    {
+        bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
+    }
 
-	if (json.containsKey("mqttAktiv"))
-	{
-		mqttAktiv = json["mqttAktiv"].as<bool>();
-	}
+    if (json.containsKey("mqttAktiv"))
+    {
+        mqttAktiv = json["mqttAktiv"].as<bool>();
+    }
 
-	if (json.containsKey("mqttUser"))
-	{
-		mqttUser = json["mqttUser"].as<char *>();
-	}
+    if (json.containsKey("mqttUser"))
+    {
+        mqttUser = json["mqttUser"].as<char *>();
+    }
 
-	if (json.containsKey("mqttPassword"))
-	{
-		mqttPassword = json["mqttPassword"].as<char *>();
-	}
+    if (json.containsKey("mqttPassword"))
+    {
+        mqttPassword = json["mqttPassword"].as<char *>();
+    }
 
-	if (json.containsKey("mqttServer"))
-	{
-		mqttServer = json["mqttServer"].as<char *>();
-	}
+    if (json.containsKey("mqttServer"))
+    {
+        mqttServer = json["mqttServer"].as<char *>();
+    }
 
-	if (json.containsKey("mqttMasterTopic"))
-	{
-		mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
-	}
+    if (json.containsKey("mqttMasterTopic"))
+    {
+        mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
+    }
 
-	if (json.containsKey("mqttPort"))
-	{
-		mqttPort = json["mqttPort"].as<int>();
-	}
+    if (json.containsKey("mqttPort"))
+    {
+        mqttPort = json["mqttPort"].as<int>();
+    }
 
-	if (json.containsKey("luxOffset"))
-	{
-		luxOffset = json["luxOffset"].as<float>();
-	}
+    if (json.containsKey("luxOffset"))
+    {
+        luxOffset = json["luxOffset"].as<float>();
+    }
 
-	if (json.containsKey("temperatureOffset"))
-	{
-		temperatureOffset = json["temperatureOffset"].as<float>();
-	}
+    if (json.containsKey("temperatureOffset"))
+    {
+        temperatureOffset = json["temperatureOffset"].as<float>();
+    }
 
-	if (json.containsKey("humidityOffset"))
-	{
-		humidityOffset = json["humidityOffset"].as<float>();
-	}
+    if (json.containsKey("humidityOffset"))
+    {
+        humidityOffset = json["humidityOffset"].as<float>();
+    }
 
-	if (json.containsKey("pressureOffset"))
-	{
-		pressureOffset = json["pressureOffset"].as<float>();
-	}
+    if (json.containsKey("pressureOffset"))
+    {
+        pressureOffset = json["pressureOffset"].as<float>();
+    }
 
-	if (json.containsKey("gasOffset"))
-	{
-		gasOffset = json["gasOffset"].as<float>();
-	}
+    if (json.containsKey("gasOffset"))
+    {
+        gasOffset = json["gasOffset"].as<float>();
+    }
 
-	if (json.containsKey("dfpRXpin"))
-	{
-		dfpRXPin = json["dfpRXpin"].as<char *>();
-	}
+    if (json.containsKey("dfpRXpin"))
+    {
+        dfpRXPin = json["dfpRXpin"].as<char *>();
+    }
 
-	if (json.containsKey("dfpTXpin"))
-	{
-		dfpTXPin = json["dfpTXpin"].as<char *>();
-	}
+    if (json.containsKey("dfpTXpin"))
+    {
+        dfpTXPin = json["dfpTXpin"].as<char *>();
+    }
 
-	if (json.containsKey("onewirePin"))
-	{
-		onewirePin = json["onewirePin"].as<char *>();
-	}
+    if (json.containsKey("onewirePin"))
+    {
+        onewirePin = json["onewirePin"].as<char *>();
+    }
 
-	if (json.containsKey("SCLPin"))
-	{
-		SCLPin = json["SCLPin"].as<char *>();
-	}
+    if (json.containsKey("SCLPin"))
+    {
+        SCLPin = json["SCLPin"].as<char *>();
+    }
 
-	if (json.containsKey("SDAPin"))
-	{
-		SDAPin = json["SDAPin"].as<char *>();
-	}
+    if (json.containsKey("SDAPin"))
+    {
+        SDAPin = json["SDAPin"].as<char *>();
+    }
 
-	for (uint b = 0; b < 3; b++)
-	{
-		if (json.containsKey("btn" + String(b) + "Pin"))
-		{
-			btnPin[b] = json["btn" + String(b) + "Pin"].as<char *>();
-		}
-		if (json.containsKey("btn" + String(b) + "PressedLevel"))
-		{
-			btnPressedLevel[b] = json["btn" + String(b) + "PressedLevel"].as<int>();
-		}
-		if (json.containsKey("btn" + String(b) + "Enabled"))
-		{
-			btnEnabled[b] = json["btn" + String(b) + "Enabled"].as<bool>();
-		}
-		if (json.containsKey("btn" + String(b) + "Action"))
-		{
-			btnAction[b] = static_cast<btnActions>(json["btn" + String(b) + "Action"].as<int>());
-		}
-	}
+    for (uint b = 0; b < 3; b++)
+    {
+        if (json.containsKey("btn" + String(b) + "Pin"))
+        {
+            btnPin[b] = json["btn" + String(b) + "Pin"].as<char *>();
+        }
+        if (json.containsKey("btn" + String(b) + "PressedLevel"))
+        {
+            btnPressedLevel[b] = json["btn" + String(b) + "PressedLevel"].as<int>();
+        }
+        if (json.containsKey("btn" + String(b) + "Enabled"))
+        {
+            btnEnabled[b] = json["btn" + String(b) + "Enabled"].as<bool>();
+        }
+        if (json.containsKey("btn" + String(b) + "Action"))
+        {
+            btnAction[b] = static_cast<btnActions>(json["btn" + String(b) + "Action"].as<int>());
+        }
+    }
 
-	if (json.containsKey("ldrDevice"))
-	{
-		ldrDevice = json["ldrDevice"].as<char *>();
-	}
+    if (json.containsKey("ldrDevice"))
+    {
+        ldrDevice = json["ldrDevice"].as<char *>();
+    }
 
-	if (json.containsKey("ldrPulldown"))
-	{
-		ldrPulldown = json["ldrPulldown"].as<unsigned long>();
-	}
+    if (json.containsKey("ldrPulldown"))
+    {
+        ldrPulldown = json["ldrPulldown"].as<unsigned long>();
+    }
 
-	if (json.containsKey("ldrSmoothing"))
-	{
-		ldrSmoothing = json["ldrSmoothing"].as<uint>();
-	}
+    if (json.containsKey("ldrSmoothing"))
+    {
+        ldrSmoothing = json["ldrSmoothing"].as<uint>();
+    }
 
-	if (json.containsKey("initialVolume"))
-	{
-		initialVolume = json["initialVolume"].as<uint>();
-	}
+    if (json.containsKey("initialVolume"))
+    {
+        initialVolume = json["initialVolume"].as<uint>();
+    }
 
-	if (json.containsKey("sendTelemetry"))
-	{
-		sendTelemetry = json["sendTelemetry"].as<bool>();
-	}
+    if (json.containsKey("sendTelemetry"))
+    {
+        sendTelemetry = json["sendTelemetry"].as<bool>();
+    }
 
-	if (json.containsKey("checkUpdateScreen"))
-	{
-		checkUpdateScreen = json["checkUpdateScreen"].as<bool>();
-	}
+    if (json.containsKey("checkUpdateScreen"))
+    {
+        checkUpdateScreen = json["checkUpdateScreen"].as<bool>();
+    }
 }
 
 void EraseWifiCredentials()
 {
-	wifiManager.resetSettings();
-	delay(300);
-	ESP.restart();
-	delay(300);
+    wifiManager.resetSettings();
+    delay(300);
+    ESP.restart();
+    delay(300);
 }
 
 void HandleGetMainPage()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("text/html"), mainPage);
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("text/html"), mainPage);
 }
 
 void HandleNotFound()
 {
-	if (server.method() == HTTP_OPTIONS)
-	{
-		server.sendHeader(F("Access-Control-Allow-Origin"), "*");
-		server.send(204);
-	}
+    if (server.method() == HTTP_OPTIONS)
+    {
+        server.sendHeader(F("Access-Control-Allow-Origin"), "*");
+        server.send(204);
+    }
 
-	server.sendHeader("Location", "/update", true);
-	server.send(302, F("text/plain"), "");
+    server.sendHeader("Location", "/update", true);
+    server.send(302, F("text/plain"), "");
 }
 
 void HandleScreen()
 {
-	DynamicJsonBuffer jsonBuffer;
-	String args = String(server.arg("plain").c_str());
-	JsonObject &json = jsonBuffer.parseObject(args.begin());
-	server.sendHeader(F("Connection"), F("close"));
-	server.sendHeader(F("Access-Control-Allow-Origin"), "*");
+    DynamicJsonBuffer jsonBuffer;
+    String args = String(server.arg("plain").c_str());
+    JsonObject &json = jsonBuffer.parseObject(args.begin());
+    server.sendHeader(F("Connection"), F("close"));
+    server.sendHeader(F("Access-Control-Allow-Origin"), "*");
 
-	if (json.success())
-	{
-		server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
-		Log(F("HandleScreen"), "Incoming Json length: " + String(json.measureLength()));
-		CreateFrames(json);
-	}
-	else
-	{
-		server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
-	}
+    if (json.success())
+    {
+        server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+        Log(F("HandleScreen"), "Incoming JSON length: " + String(json.measureLength()));
+        CreateFrames(json);
+    }
+    else
+    {
+        server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
+    }
 }
 
 void HandleSetConfig()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
-	server.sendHeader(F("Connection"), F("close"));
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.parseObject(server.arg("plain"));
+    server.sendHeader(F("Connection"), F("close"));
 
-	if (json.success())
-	{
-		Log(F("SetConfig"), "Incoming Json length: " + String(json.measureLength()));
-		SetConfig(json);
-		server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
-		delay(500);
-		ESP.restart();
-	}
-	else
-	{
-		server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
-	}
+    if (json.success())
+    {
+        Log(F("SetConfig"), "Incoming JSON length: " + String(json.measureLength()));
+        SetConfig(json);
+        server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+        delay(500);
+        ESP.restart();
+    }
+    else
+    {
+        server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
+    }
 }
 
 void HandleGetConfig()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetConfig());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetConfig());
 }
 
 void HandleGetLuxSensor()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetLuxSensor());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetLuxSensor());
 }
 
 void HandleGetBrightness()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetBrightness());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetBrightness());
 }
 
 void HandleGetDHTSensor() // Legancy
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetSensor());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetSensor());
 }
 
 void HandleGetSensor()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetSensor());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetSensor());
 }
 
 void HandleGetButtons()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetButtons());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetButtons());
 }
 
 void HandleGetMatrixInfo()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), GetMatrixInfo());
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetMatrixInfo());
 }
 
 void HandelWifiConfigReset()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
-	EraseWifiCredentials();
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+    EraseWifiCredentials();
 }
 
 void HandleFactoryReset()
 {
-	server.sendHeader(F("Connection"), F("close"));
-	server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
 #if defined(ESP8266)
-	File configFile = LittleFS.open("/config.json", "w");
+    File configFile = LittleFS.open("/config.json", "w");
 #elif defined(ESP32)
-	File configFile = SPIFFS.open("/config.json", "w");
+    File configFile = SPIFFS.open("/config.json", "w");
 #endif
-	if (!configFile)
-	{
-		Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
-	}
-	configFile.println("");
-	configFile.close();
-	EraseWifiCredentials();
+    if (!configFile)
+    {
+        Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
+    }
+    configFile.println("");
+    configFile.close();
+    EraseWifiCredentials();
 }
 
 void HandleAndSendButtonPress(uint button, bool state)
 {
-	btnLastPublishState[button] = state;
-	Log(F("Buttons"), btnLogNames[button] + " is now " + (state ? "true" : "false"));
+    btnLastPublishState[button] = state;
+    Log(F("Buttons"), btnLogNames[button] + " is now " + (state ? "true" : "false"));
 
-	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && client.connected())
-	{
-		client.publish((mqttMasterTopic + "buttons").c_str(), String("{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}").c_str(), true);
-	}
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0)
-	{
-		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			webSocket.sendTXT(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
-		}
-	}
+    // Prüfen ob über MQTT versendet werden muss
+    if (mqttAktiv == true && client.connected())
+    {
+        client.publish((mqttMasterTopic + "buttons").c_str(), String("{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}").c_str(), true);
+    }
+    // Prüfen ob über Websocket versendet werden muss
+    if (webSocket.connectedClients() > 0)
+    {
+        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            webSocket.sendTXT(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
+        }
+    }
 
-	if (state == false)
-	{
-		return;
-	}
+    if (state == false)
+    {
+        return;
+    }
 
-	if (btnAction[button] == btnAction_ToggleSleepMode)
-	{
-		sleepMode = !sleepMode;
-		if (sleepMode)
-		{
-			matrix->clear();
-			DrawTextHelper("Zzz", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 1);
-			FadeOut(30, 0);
-			matrix->setBrightness(0);
-			matrix->show();
-		}
-		else
-		{
-			matrix->clear();
-			DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
-			FadeIn(30, 0);
-			delay(150);
-			forceClock = true;
-		}
-	}
-	if (btnAction[button] == btnAction_GotoClock)
-	{
-		forceClock = true;
-	}
-	if (btnAction[button] == btnAction_MP3PlayPrevious)
-	{
-		mp3Player.playPrevious();
-	}
-	if (btnAction[button] == btnAction_MP3PlayNext)
-	{
-		mp3Player.playNext();
-	}
-	if (btnAction[button] == btnAction_MP3PlayPause)
-	{
-		if (mp3Player.isPlaying())
-		{
-			mp3Player.pause();
-		}
-		else
-		{
-			delay(200);
-			mp3Player.resume();
-		}
-	}
+    if (btnAction[button] == btnAction_ToggleSleepMode)
+    {
+        sleepMode = !sleepMode;
+        if (sleepMode)
+        {
+            matrix->clear();
+            DrawTextHelper("Zzz", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 1);
+            FadeOut(30, 0);
+            matrix->setBrightness(0);
+            matrix->show();
+        }
+        else
+        {
+            matrix->clear();
+            DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
+            FadeIn(30, 0);
+            delay(150);
+            forceClock = true;
+        }
+    }
+    if (btnAction[button] == btnAction_GotoClock)
+    {
+        forceClock = true;
+    }
+    if (btnAction[button] == btnAction_MP3PlayPrevious)
+    {
+        mp3Player.playPrevious();
+    }
+    if (btnAction[button] == btnAction_MP3PlayNext)
+    {
+        mp3Player.playNext();
+    }
+    if (btnAction[button] == btnAction_MP3PlayPause)
+    {
+        if (mp3Player.isPlaying())
+        {
+            mp3Player.pause();
+        }
+        else
+        {
+            delay(200);
+            mp3Player.resume();
+        }
+    }
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
-	if (payload[0] == '{')
-	{
-		payload[length] = '\0';
-		String channel = String(topic);
-		channel.replace(mqttMasterTopic, "");
+    if (payload[0] == '{')
+    {
+        payload[length] = '\0';
+        String channel = String(topic);
+        channel.replace(mqttMasterTopic, "");
 
-		DynamicJsonBuffer jsonBuffer;
-		JsonObject &json = jsonBuffer.parseObject(payload);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &json = jsonBuffer.parseObject(payload);
 
-		Log("MQTT_callback", "Incomming Json length: " + String(json.measureLength()));
+        Log("MQTT_callback", "Incomming JSON (Length: " + String(json.measureLength()) + ")");
 
-		if (channel.equals("setScreen"))
-		{
-			CreateFrames(json);
-		}
-		else if (channel.equals("getLuxsensor"))
-		{
-			client.publish((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
-		}
-		else if (channel.equals("getMatrixinfo"))
-		{
-			client.publish((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
-		}
-		else if (channel.equals("getConfig"))
-		{
-			client.publish((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
-		}
-		else if (channel.equals("setConfig"))
-		{
-			SetConfig(json);
-		}
-	}
+        if (channel.equals("setScreen"))
+        {
+            CreateFrames(json);
+        }
+        else if (channel.equals("getLuxsensor"))
+        {
+            client.publish((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
+        }
+        else if (channel.equals("getMatrixinfo"))
+        {
+            client.publish((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
+        }
+        else if (channel.equals("getConfig"))
+        {
+            client.publish((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
+        }
+        else if (channel.equals("setConfig"))
+        {
+            SetConfig(json);
+        }
+    }
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 {
-	switch (type)
-	{
-	case WStype_DISCONNECTED:
-	{
-		Log("WebSocketEvent", "[" + String(num) + "] Disconnected!");
-		websocketConnection[num] = "";
-		break;
-	}
-	case WStype_CONNECTED:
-	{
-		// Merken für was die Connection hergstellt wurde
-		websocketConnection[num] = String((char *)payload);
+    switch (type)
+    {
+    case WStype_DISCONNECTED:
+    {
+        Log("WebSocketEvent", "[" + String(num) + "] Disconnected!");
+        websocketConnection[num] = "";
+        break;
+    }
+    case WStype_CONNECTED:
+    {
+        // Merken für was die Connection hergstellt wurde
+        websocketConnection[num] = String((char *)payload);
 
-		// IP der Connection abfragen
-		IPAddress ip = webSocket.remoteIP(num);
+        // IP der Connection abfragen
+        IPAddress ip = webSocket.remoteIP(num);
 
-		// Logausgabe
-		Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
+        // Logausgabe
+        Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
-		// send message to client
-		SendMatrixInfo(true);
-		SendLDR(true);
-		SendSensor(true);
-		SendConfig();
-		webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
-		webSocket.sendTXT(num, "{\"telemetry\":" + GetTelemetry() + "}");
-		break;
-	}
-	case WStype_TEXT:
-	{
-		if (((char *)payload)[0] == '{')
-		{
-			DynamicJsonBuffer jsonBuffer;
-			JsonObject &json = jsonBuffer.parseObject(payload);
+        // send message to client
+        SendMatrixInfo(true);
+        SendLDR(true);
+        SendSensor(true);
+        SendConfig();
+        webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
+        webSocket.sendTXT(num, "{\"telemetry\":" + GetTelemetry() + "}");
+        break;
+    }
+    case WStype_TEXT:
+    {
+        if (((char *)payload)[0] == '{')
+        {
+            DynamicJsonBuffer jsonBuffer;
+            JsonObject &json = jsonBuffer.parseObject(payload);
 
-			// Logausgabe
-			Log(F("WebSocketEvent"), "Incoming Json length: " + String(json.measureLength()));
+            // Logausgabe
+            Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(json.measureLength()) + ")");
 
-			if (json.containsKey("setScreen"))
-			{
-				CreateFrames(json["setScreen"]);
-			}
-			else if (json.containsKey("setConfig"))
-			{
-				SetConfig(json["setConfig"]);
-				delay(500);
-				ESP.restart();
-			}
-			else if (json.containsKey("wifiReset"))
-			{
-				if (json["wifiReset"].as<bool>() == true)
-				{
-					HandelWifiConfigReset();
-				}
-			}
-			else if (json.containsKey("factoryReset"))
-			{
-				if (json["factoryReset"].as<bool>() == true)
-				{
-					HandleFactoryReset();
-				}
-			}
-			else if (json.containsKey("sendTelemetry"))
-			{
-				sendTelemetryPrevMillis = 0;
-			}
-		}
-		break;
-	}
-	case WStype_BIN:
-		break;
-	case WStype_FRAGMENT_BIN_START:
-		break;
-	case WStype_FRAGMENT_TEXT_START:
-		break;
-	case WStype_FRAGMENT:
-		break;
-	case WStype_FRAGMENT_FIN:
-		break;
-	case WStype_PING:
-		break;
-	case WStype_PONG:
-		break;
-	case WStype_ERROR:
-		break;
-	}
+            if (json.containsKey("setScreen"))
+            {
+                CreateFrames(json["setScreen"]);
+            }
+            else if (json.containsKey("setConfig"))
+            {
+                SetConfig(json["setConfig"]);
+                delay(500);
+                ESP.restart();
+            }
+            else if (json.containsKey("wifiReset"))
+            {
+                if (json["wifiReset"].as<bool>() == true)
+                {
+                    HandelWifiConfigReset();
+                }
+            }
+            else if (json.containsKey("factoryReset"))
+            {
+                if (json["factoryReset"].as<bool>() == true)
+                {
+                    HandleFactoryReset();
+                }
+            }
+            else if (json.containsKey("sendTelemetry"))
+            {
+                sendTelemetryPrevMillis = 0;
+            }
+        }
+        break;
+    }
+    case WStype_BIN:
+        break;
+    case WStype_FRAGMENT_BIN_START:
+        break;
+    case WStype_FRAGMENT_TEXT_START:
+        break;
+    case WStype_FRAGMENT:
+        break;
+    case WStype_FRAGMENT_FIN:
+        break;
+    case WStype_PING:
+        break;
+    case WStype_PONG:
+        break;
+    case WStype_ERROR:
+        break;
+    }
 }
 
 void CreateFrames(JsonObject &json)
 {
-	String logMessage = F("Json contains ");
+    CreateFrames(json, 0);
+}
 
-	// Ist eine Display Helligkeit übergeben worden?
-	if (json.containsKey("brightness"))
-	{
-		logMessage += F("Brightness Control, ");
-		currentMatrixBrightness = json["brightness"];
-	}
+void CreateFrames(JsonObject &json, int forceDuration)
+{
 
-	// Set GPIO
-	if (json.containsKey("setGpio"))
-	{
-		logMessage += F("Set Gpio, ");
-		if (json["setGpio"]["set"].is<bool>() && json["setGpio"]["gpio"].is<uint8_t>())
-		{
-			uint8_t gpio = json["setGpio"]["gpio"].as<uint8_t>();
+    String logMessage = F("JSON contains ");
 
-			// If the GPIO is already present in the array?
-			// has been found, this is to be replaced.
-			if (json["setGpio"]["duration"].is<ulong>())
-			{
-				int arrayIndex = -1;
-				for (int i = 0; i < SET_GPIO_SIZE; i++)
-				{
-					if (setGPIOReset[i].gpio == gpio)
-					{
-						arrayIndex = i;
-						break;
-					}
-				}
-				// Search free place in array.
-				if (arrayIndex == -1)
-				{
-					for (int i = 0; i < SET_GPIO_SIZE; i++)
-					{
-						if (setGPIOReset[i].gpio == -1)
-						{
-							arrayIndex = i;
-							break;
-						}
-					}
-				}
+    // Ist eine Display Helligkeit übergeben worden?
+    if (json.containsKey("brightness"))
+    {
+        logMessage += F("Brightness Control, ");
+        currentMatrixBrightness = json["brightness"];
+    }
 
-				if (arrayIndex == -1)
-				{
-					Log(F("SetGPIO"), F("Error: no free place in array found!"));
-				}
-				else
-				{
-					// Save data in array for the reset.
-					setGPIOReset[arrayIndex].gpio = gpio;
-					setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
-					Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
-				}
-			}
-			else
-			{
-				Log(F("SetGPIO"), "GPIO: " + String(gpio) + ", Value: " + json["setGpio"]["set"].as<char *>());
-			}
-			// Set GPIO
-			pinMode(gpio, OUTPUT);
-			digitalWrite(gpio, json["setGpio"]["set"].as<bool>());
-		}
-	}
+    // Set GPIO
+    if (json.containsKey("setGpio"))
+    {
+        logMessage += F("Set Gpio, ");
+        if (json["setGpio"]["set"].is<bool>() && json["setGpio"]["gpio"].is<uint8_t>())
+        {
+            uint8_t gpio = json["setGpio"]["gpio"].as<uint8_t>();
 
-	// Sound
-	if (json.containsKey("sound"))
-	{
-		logMessage += F("Sound, ");
-		// Volume
-		if (json["sound"]["volume"] != NULL && json["sound"]["volume"].is<int>())
-		{
-			mp3Player.volume(json["sound"]["volume"].as<int>());
+            // If the GPIO is already present in the array?
+            // has been found, this is to be replaced.
+            if (json["setGpio"]["duration"].is<ulong>())
+            {
+                int arrayIndex = -1;
+                for (int i = 0; i < SET_GPIO_SIZE; i++)
+                {
+                    if (setGPIOReset[i].gpio == gpio)
+                    {
+                        arrayIndex = i;
+                        break;
+                    }
+                }
+                // Search free place in array.
+                if (arrayIndex == -1)
+                {
+                    for (int i = 0; i < SET_GPIO_SIZE; i++)
+                    {
+                        if (setGPIOReset[i].gpio == -1)
+                        {
+                            arrayIndex = i;
+                            break;
+                        }
+                    }
+                }
 
-			// Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
-			// So, do it only if there are more commands to come.
-			if (json["sound"]["control"].as<String>() == "")
-			{
-				Log(F("Sound"), F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
-				delay(200);
-			}
-		}
-		// Play
-		if (json["sound"]["control"] == "play")
-		{
-			if (json["sound"]["folder"])
-			{
-				mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
-			}
-			else
-			{
-				mp3Player.play(json["sound"]["file"].as<int>());
-			}
-		}
-		// Stop
-		else if (json["sound"]["control"] == "pause")
-		{
-			mp3Player.pause();
-		}
-		// Play Next
-		else if (json["sound"]["control"] == "next")
-		{
-			mp3Player.playNext();
-		}
-		// Play Previous
-		else if (json["sound"]["control"] == "previous")
-		{
-			mp3Player.playPrevious();
-		}
-	}
+                if (arrayIndex == -1)
+                {
+                    Log(F("SetGPIO"), F("Error: no free place in array found!"));
+                }
+                else
+                {
+                    // Save data in array for the reset.
+                    setGPIOReset[arrayIndex].gpio = gpio;
+                    setGPIOReset[arrayIndex].resetMillis = (millis() + json["setGpio"]["duration"].as<ulong>());
+                    Log(F("SetGPIO"), "Pos: " + String(arrayIndex) + ", GPIO: " + String(gpio) + ", Duration: " + String(json["setGpio"]["duration"].as<char *>()) + ", Value: " + json["setGpio"]["set"].as<char *>());
+                }
+            }
+            else
+            {
+                Log(F("SetGPIO"), "GPIO: " + String(gpio) + ", Value: " + json["setGpio"]["set"].as<char *>());
+            }
+            // Set GPIO
+            pinMode(gpio, OUTPUT);
+            digitalWrite(gpio, json["setGpio"]["set"].as<bool>());
+        }
+    }
 
-	// SleepMode
-	if (json.containsKey("sleepMode"))
-	{
-		logMessage += F("SleepMode Control, ");
-		sleepMode = json["sleepMode"];
-	}
-	// SleepMode
-	if (sleepMode)
-	{
-		matrix->setBrightness(0);
-		matrix->show();
-	}
-	else
-	{
-		matrix->setBrightness(currentMatrixBrightness);
+    // Sound
+    if (json.containsKey("sound"))
+    {
+        logMessage += F("Sound, ");
+        // Volume
+        if (json["sound"]["volume"] != NULL && json["sound"]["volume"].is<int>())
+        {
+            mp3Player.volume(json["sound"]["volume"].as<int>());
 
-		// Prüfung für die Unterbrechnung der lokalen Schleifen
-		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
-		{
-			lastScreenMessageMillis = millis();
-			clockAktiv = false;
-			scrollTextAktivLoop = false;
-			animateBMPAktivLoop = false;
-		}
+            // Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
+            // So, do it only if there are more commands to come.
+            if (json["sound"]["control"].as<String>() == "")
+            {
+                Log(F("Sound"), F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
+                delay(200);
+            }
+        }
+        // Play
+        if (json["sound"]["control"] == "play")
+        {
+            if (json["sound"]["folder"])
+            {
+                mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
+            }
+            else
+            {
+                mp3Player.play(json["sound"]["file"].as<int>());
+            }
+        }
+        // Stop
+        else if (json["sound"]["control"] == "pause")
+        {
+            mp3Player.pause();
+        }
+        // Play Next
+        else if (json["sound"]["control"] == "next")
+        {
+            mp3Player.playNext();
+        }
+        // Play Previous
+        else if (json["sound"]["control"] == "previous")
+        {
+            mp3Player.playPrevious();
+        }
+    }
 
-		// Ist eine Switch Animation übergeben worden?
-		bool fadeAnimationAktiv = false;
-		bool coloredBarWipeAnimationAktiv = false;
-		bool zigzagWipeAnimationAktiv = false;
-		bool bitmapWipeAnimationAktiv = false;
-		if (json.containsKey("switchAnimation"))
-		{
-			logMessage += F("SwitchAnimation, ");
-			// Switch Animation aktiv?
-			if (json["switchAnimation"]["aktiv"])
-			{
-				// Fade Animation aktiv?
-				if (json["switchAnimation"]["animation"] == "fade")
-				{
-					fadeAnimationAktiv = true;
-				}
-				else if (json["switchAnimation"]["animation"] == "coloredBarWipe")
-				{
-					coloredBarWipeAnimationAktiv = true;
-				}
-				else if (json["switchAnimation"]["animation"] == "zigzagWipe")
-				{
-					zigzagWipeAnimationAktiv = true;
-				}
-				else if (json["switchAnimation"]["animation"] == "bitmapWipe")
-				{
-					bitmapWipeAnimationAktiv = true;
-				}
-				else if (json["switchAnimation"]["animation"] == "random")
-				{
-					switch (millis() % 3)
-					{
-					case 0:
-						fadeAnimationAktiv = true;
-						break;
-					case 1:
-						coloredBarWipeAnimationAktiv = true;
-						break;
-					case 2:
-						zigzagWipeAnimationAktiv = true;
-						break;
-					}
-				}
-			}
-		}
+    // SleepMode
+    if (json.containsKey("sleepMode"))
+    {
+        logMessage += F("SleepMode Control, ");
+        sleepMode = json["sleepMode"];
+    }
+    // SleepMode
+    if (sleepMode)
+    {
+        matrix->setBrightness(0);
+        matrix->show();
+    }
+    else if (millis() >= forcedScreenIsActiveUntil)
+    {
+        matrix->setBrightness(currentMatrixBrightness);
 
-		// Fade aktiv?
-		if (fadeAnimationAktiv)
-		{
-			FadeOut();
-		}
-		else if (coloredBarWipeAnimationAktiv)
-		{
-			ColoredBarWipe();
-		}
-		else if (zigzagWipeAnimationAktiv)
-		{
-			uint8_t r = 255;
-			uint8_t g = 255;
-			uint8_t b = 255;
-			if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
-			{
-				ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
-			}
-			else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
-			{
-				r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
-				g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
-				b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
-			}
-			ZigZagWipe(r, g, b);
-		}
-		else if (bitmapWipeAnimationAktiv)
-		{
-			BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(), json["switchAnimation"]["width"].as<uint8_t>());
-		}
+        // Prüfung für die Unterbrechnung der lokalen Schleifen
+        if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
+        {
+            lastScreenMessageMillis = millis();
+            clockAktiv = false;
+            scrollTextAktivLoop = false;
+            animateBMPAktivLoop = false;
+        }
 
-		// Clock
-		if (json.containsKey("clock"))
-		{
-			logMessage += F("InternalClock Control, ");
-			if (json["clock"]["show"])
-			{
-				scrollTextAktivLoop = false;
-				animateBMPAktivLoop = false;
-				clockAktiv = true;
+        // Ist eine Switch Animation übergeben worden?
+        bool fadeAnimationAktiv = false;
+        bool coloredBarWipeAnimationAktiv = false;
+        bool zigzagWipeAnimationAktiv = false;
+        bool bitmapWipeAnimationAktiv = false;
+        if (json.containsKey("switchAnimation"))
+        {
+            logMessage += F("SwitchAnimation, ");
+            // Switch Animation aktiv?
+            if (json["switchAnimation"]["aktiv"])
+            {
+                // Fade Animation aktiv?
+                if (json["switchAnimation"]["animation"] == "fade")
+                {
+                    fadeAnimationAktiv = true;
+                }
+                else if (json["switchAnimation"]["animation"] == "coloredBarWipe")
+                {
+                    coloredBarWipeAnimationAktiv = true;
+                }
+                else if (json["switchAnimation"]["animation"] == "zigzagWipe")
+                {
+                    zigzagWipeAnimationAktiv = true;
+                }
+                else if (json["switchAnimation"]["animation"] == "bitmapWipe")
+                {
+                    bitmapWipeAnimationAktiv = true;
+                }
+                else if (json["switchAnimation"]["animation"] == "random")
+                {
+                    switch (millis() % 3)
+                    {
+                    case 0:
+                        fadeAnimationAktiv = true;
+                        break;
+                    case 1:
+                        coloredBarWipeAnimationAktiv = true;
+                        break;
+                    case 2:
+                        zigzagWipeAnimationAktiv = true;
+                        break;
+                    }
+                }
+            }
+        }
 
-				clockCounterClock = 0;
-				clockCounterDate = 0;
+        // Fade aktiv?
+        if (fadeAnimationAktiv)
+        {
+            FadeOut();
+        }
+        else if (coloredBarWipeAnimationAktiv)
+        {
+            ColoredBarWipe();
+        }
+        else if (zigzagWipeAnimationAktiv)
+        {
+            uint8_t r = 255;
+            uint8_t g = 255;
+            uint8_t b = 255;
+            if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
+            {
+                ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
+            }
+            else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
+            {
+                r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
+                g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
+                b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
+            }
+            ZigZagWipe(r, g, b);
+        }
+        else if (bitmapWipeAnimationAktiv)
+        {
+            BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(), json["switchAnimation"]["width"].as<uint8_t>());
+        }
 
-				clockSwitchAktiv = json["clock"]["switchAktiv"];
+        // Clock
+        if (json.containsKey("clock"))
+        {
+            logMessage += F("InternalClock Control, ");
+            if (json["clock"]["show"])
+            {
+                scrollTextAktivLoop = false;
+                animateBMPAktivLoop = false;
+                clockAktiv = true;
 
-				if (clockSwitchAktiv == true)
-				{
-					clockSwitchSec = json["clock"]["switchSec"];
-				}
+                clockCounterClock = 0;
+                clockCounterDate = 0;
 
-				clockWithSeconds = json["clock"]["withSeconds"];
-				if (json["clock"]["blinkAnimated"] != NULL)
-				{
-					clockBlinkAnimated = json["clock"]["blinkAnimated"];
-				}
+                clockSwitchAktiv = json["clock"]["switchAktiv"];
 
-				if (json["clock"]["fatFont"] != NULL)
-				{
-					clockFatFont = json["clock"]["fatFont"];
-				}
+                if (clockSwitchAktiv == true)
+                {
+                    clockSwitchSec = json["clock"]["switchSec"];
+                }
 
-				if (json["clock"]["drawWeekDays"] != NULL)
-				{
-					clockDrawWeekDays = json["clock"]["drawWeekDays"];
-				}
+                clockWithSeconds = json["clock"]["withSeconds"];
+                if (json["clock"]["blinkAnimated"] != NULL)
+                {
+                    clockBlinkAnimated = json["clock"]["blinkAnimated"];
+                }
 
-				if (json["clock"]["color"]["r"].as<char *>() != NULL)
-				{
-					clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
-					clockColorG = json["clock"]["color"]["g"].as<uint8_t>();
-					clockColorB = json["clock"]["color"]["b"].as<uint8_t>();
-				}
-				else if (json["clock"]["hexColor"].as<char *>() != NULL)
-				{
-					ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
-				}
-				DrawClock(true);
-			}
-		}
+                if (json["clock"]["fatFont"] != NULL)
+                {
+                    clockFatFont = json["clock"]["fatFont"];
+                }
 
-		if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
-		{
-			// Alle Pixel löschen
-			matrix->clear();
-		}
+                if (json["clock"]["drawWeekDays"] != NULL)
+                {
+                    clockDrawWeekDays = json["clock"]["drawWeekDays"];
+                }
 
-		// Bar
-		if (json.containsKey("bar"))
-		{
-			logMessage += F("Bar, ");
-			uint8_t r, g, b;
-			if (json["bar"]["hexColor"].as<char *>() != NULL)
-			{
-				ColorConverter::HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
-			}
-			else
-			{
-				r = json["bar"]["color"]["r"].as<uint8_t>();
-				g = json["bar"]["color"]["g"].as<uint8_t>();
-				b = json["bar"]["color"]["b"].as<uint8_t>();
-			}
-			matrix->drawLine(json["bar"]["position"]["x"], json["bar"]["position"]["y"], json["bar"]["position"]["x2"], json["bar"]["position"]["y2"], matrix->Color(r, g, b));
-		}
+                if (json["clock"]["color"]["r"].as<char *>() != NULL)
+                {
+                    clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
+                    clockColorG = json["clock"]["color"]["g"].as<uint8_t>();
+                    clockColorB = json["clock"]["color"]["b"].as<uint8_t>();
+                }
+                else if (json["clock"]["hexColor"].as<char *>() != NULL)
+                {
+                    ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
+                }
+                DrawClock(true);
+            }
+        }
 
-		// Bars
-		if (json.containsKey("bars"))
-		{
-			logMessage += F("Bars, ");
-			for (JsonVariant x : json["bars"].as<JsonArray>())
-			{
-				uint8_t r, g, b;
-				if (x["hexColor"].as<char *>() != NULL)
-				{
-					ColorConverter::HexToRgb(x["hexColor"].as<char *>(), r, g, b);
-				}
-				else
-				{
-					r = x["color"]["r"].as<uint8_t>();
-					g = x["color"]["g"].as<uint8_t>();
-					b = x["color"]["b"].as<uint8_t>();
-				}
-				matrix->drawLine(x["position"]["x"], x["position"]["y"], x["position"]["x2"], x["position"]["y2"], matrix->Color(r, g, b));
-			}
-		}
+        if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
+        {
+            // Alle Pixel löschen
+            matrix->clear();
+        }
 
-		// Ist ein Bitmap übergeben worden?
-		if (json.containsKey("bitmap"))
-		{
-			logMessage += F("Bitmap, ");
-			DrawSingleBitmap(json["bitmap"]);
-		}
+        // Bar
+        if (json.containsKey("bar"))
+        {
+            logMessage += F("Bar, ");
+            uint8_t r, g, b;
+            if (json["bar"]["hexColor"].as<char *>() != NULL)
+            {
+                ColorConverter::HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
+            }
+            else
+            {
+                r = json["bar"]["color"]["r"].as<uint8_t>();
+                g = json["bar"]["color"]["g"].as<uint8_t>();
+                b = json["bar"]["color"]["b"].as<uint8_t>();
+            }
+            matrix->drawLine(json["bar"]["position"]["x"], json["bar"]["position"]["y"], json["bar"]["position"]["x2"], json["bar"]["position"]["y2"], matrix->Color(r, g, b));
+        }
 
-		// Sind mehrere Bitmaps übergeben worden?
-		if (json.containsKey("bitmaps"))
-		{
-			logMessage += F("Bitmaps (");
-			for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
-			{
-				DrawSingleBitmap(singleBitmap);
-				logMessage += F("Bitmap,");
-			}
+        // Bars
+        if (json.containsKey("bars"))
+        {
+            logMessage += F("Bars, ");
+            for (JsonVariant x : json["bars"].as<JsonArray>())
+            {
+                uint8_t r, g, b;
+                if (x["hexColor"].as<char *>() != NULL)
+                {
+                    ColorConverter::HexToRgb(x["hexColor"].as<char *>(), r, g, b);
+                }
+                else
+                {
+                    r = x["color"]["r"].as<uint8_t>();
+                    g = x["color"]["g"].as<uint8_t>();
+                    b = x["color"]["b"].as<uint8_t>();
+                }
+                matrix->drawLine(x["position"]["x"], x["position"]["y"], x["position"]["x2"], x["position"]["y2"], matrix->Color(r, g, b));
+            }
+        }
 
-			logMessage += F("), ");
-		}
+        // Ist ein Bitmap übergeben worden?
+        if (json.containsKey("bitmap"))
+        {
+            logMessage += F("Bitmap, ");
+            DrawSingleBitmap(json["bitmap"]);
+        }
 
-		// Ist eine BitmapAnimation übergeben worden?
-		if (json.containsKey("bitmapAnimation"))
-		{
-			logMessage += F("BitmapAnimation, ");
-			// animationBmpList zurücksetzten um das ende nacher zu finden -1 (habe aktuell keine bessere Lösung)
-			for (int i = 0; i < 10; i++)
-			{
-				animationBmpList[i][0] = 2;
-			}
+        // Sind mehrere Bitmaps übergeben worden?
+        if (json.containsKey("bitmaps"))
+        {
+            logMessage += F("Bitmaps (");
+            for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
+            {
+                DrawSingleBitmap(singleBitmap);
+                logMessage += F("Bitmap,");
+            }
 
-			int counter = 0;
-			for (JsonVariant x : json["bitmapAnimation"]["data"].as<JsonArray>())
-			{
-				// JsonArray in IntArray konvertieren
-				x.as<JsonArray>().copyTo(bmpArray);
-				// Speichern für die Ausgabe
-				for (int i = 0; i < 64; i++)
-				{
-					animationBmpList[counter][i] = bmpArray[i];
-				}
-				counter++;
-			}
+            logMessage += F("), ");
+        }
 
-			animateBMPDelay = json["bitmapAnimation"]["animationDelay"];
-			animateBMPRubberbandingAktiv = json["bitmapAnimation"]["rubberbanding"];
+        // Ist eine BitmapAnimation übergeben worden?
+        if (json.containsKey("bitmapAnimation"))
+        {
+            logMessage += F("BitmapAnimation, ");
+            // animationBmpList zurücksetzten um das ende nacher zu finden -1 (habe aktuell keine bessere Lösung)
+            for (int i = 0; i < 10; i++)
+            {
+                animationBmpList[i][0] = 2;
+            }
 
-			animateBMPLimitLoops = 0;
-			if (json["bitmapAnimation"]["limitLoops"])
-			{
-				animateBMPLimitLoops = json["bitmapAnimation"]["limitLoops"].as<int>();
-			}
+            int counter = 0;
+            for (JsonVariant x : json["bitmapAnimation"]["data"].as<JsonArray>())
+            {
+                // JsonArray in IntArray konvertieren
+                x.as<JsonArray>().copyTo(bmpArray);
+                // Speichern für die Ausgabe
+                for (int i = 0; i < 64; i++)
+                {
+                    animationBmpList[counter][i] = bmpArray[i];
+                }
+                counter++;
+            }
 
-			// Hier einmal den Counter zurücksetzten
-			animateBMPCounter = 0;
-			animateBMPLoopCount = 0;
-			animateBMPAktivLoop = true;
-			animateBMPReverse = false;
-			animateBMPPrevMillis = millis();
-			AnimateBMP(false);
-		}
+            // Serial.printf("Counter: %d\n", counter);
 
-		// Ist ein Text übergeben worden?
-		bool scrollTextAktiv = false;
-		if (json.containsKey("text"))
-		{
-			logMessage += F("Text");
-			// Immer erstmal den Default Delay annehmen.
-			scrollTextDelay = scrollTextDefaultDelay;
+            animateBMPDelay = json["bitmapAnimation"]["animationDelay"];
+            animateBMPRubberbandingAktiv = json["bitmapAnimation"]["rubberbanding"];
 
-			// Ist ScrollText auto oder true gewählt?
-			scrollTextAktiv = ((json["text"]["scrollText"] == "auto" || ((json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"])));
+            animateBMPLimitLoops = 0;
+            if (json["bitmapAnimation"]["limitLoops"])
+            {
+                animateBMPLimitLoops = json["bitmapAnimation"]["limitLoops"].as<int>();
+            }
 
-			uint8_t r, g, b;
-			if (json["text"]["hexColor"].as<char *>() != NULL)
-			{
-				ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
-			}
-			else
-			{
-				r = json["text"]["color"]["r"].as<uint8_t>();
-				g = json["text"]["color"]["g"].as<uint8_t>();
-				b = json["text"]["color"]["b"].as<uint8_t>();
-			}
+            // Hier einmal den Counter zurücksetzten
+            animateBMPCounter = 0;
+            animateBMPLoopCount = 0;
+            animateBMPAktivLoop = true;
+            animateBMPReverse = false;
+            animateBMPPrevMillis = millis();
+            AnimateBMP(false);
+        }
 
-			if (json["text"]["centerText"])
-			{
-				bool withBMP = json.containsKey("bitmap") || json.containsKey("bitmapAnimation");
+        // Ist ein Text übergeben worden?
+        bool scrollTextAktiv = false;
+        if (json.containsKey("text"))
+        {
+            logMessage += F("Text");
+            // Immer erstmal den Default Delay annehmen.
+            scrollTextDelay = scrollTextDefaultDelay;
 
-				DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], withBMP, r, g, b);
-			}
-			// Ist ScrollText auto oder true gewählt?
-			else if (scrollTextAktiv)
-			{
+            // Ist ScrollText auto oder true gewählt?
+            scrollTextAktiv = ((json["text"]["scrollText"] == "auto" || ((json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"])));
 
-				bool withBMP = (json.containsKey("bitmap") || json.containsKey("bitmapAnimation"));
+            uint8_t r, g, b;
+            if (json["text"]["hexColor"].as<char *>() != NULL)
+            {
+                ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+            }
+            else
+            {
+                r = json["text"]["color"]["r"].as<uint8_t>();
+                g = json["text"]["color"]["g"].as<uint8_t>();
+                b = json["text"]["color"]["b"].as<uint8_t>();
+            }
 
-				bool fadeInRequired = ((json.containsKey("bars") || json.containsKey("bar") || json.containsKey("bitmap") || json.containsKey("bitmapAnimation")) && fadeAnimationAktiv);
+            if (json["text"]["centerText"])
+            {
+                bool withBMP = json.containsKey("bitmap") || json.containsKey("bitmapAnimation");
 
-				// Wurde ein Benutzerdefeniertes Delay übergeben?
-				if (json["text"]["scrollTextDelay"])
-				{
-					scrollTextDelay = json["text"]["scrollTextDelay"];
-				}
+                DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], withBMP, r, g, b);
+            }
+            // Ist ScrollText auto oder true gewählt?
+            else if (scrollTextAktiv)
+            {
 
-				if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
-				{
-					DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
-				}
-				else
-				{
-					DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
-				}
-			}
-			else
-			{
-				DrawText(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
-			}
-		}
+                bool withBMP = (json.containsKey("bitmap") || json.containsKey("bitmapAnimation"));
 
-		// Fade aktiv?
-		if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
-		{
-			FadeIn();
-		}
-		else
-		{
-			// Fade nicht aktiv!
-			// Muss mich selbst um Show kümmern
-			matrix->show();
-		}
-	}
+                bool fadeInRequired = ((json.containsKey("bars") || json.containsKey("bar") || json.containsKey("bitmap") || json.containsKey("bitmapAnimation")) && fadeAnimationAktiv);
 
-	Log(F("CreateFrames"), logMessage);
+                // Wurde ein Benutzerdefeniertes Delay übergeben?
+                if (json["text"]["scrollTextDelay"])
+                {
+                    scrollTextDelay = json["text"]["scrollTextDelay"];
+                }
+
+                if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
+                {
+                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
+                }
+                else
+                {
+                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
+                }
+            }
+            else
+            {
+                DrawText(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
+            }
+        }
+
+        // Fade aktiv?
+        if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
+        {
+            FadeIn();
+        }
+        else
+        {
+            // Fade nicht aktiv!
+            // Muss mich selbst um Show kümmern
+            matrix->show();
+        }
+    }
+    else
+    {
+        logMessage += F("skipped, because an forced screen is currently being displayed.");
+    }
+
+    Log(F("CreateFrames"), logMessage + " (Length: " + json.measureLength() + ")");
+
+    if (forceDuration > 0 && (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation")))
+    {
+        forcedScreenIsActiveUntil = millis() + forceDuration;
+    }
 }
 
 String GetConfig()
 {
 #if defined(ESP8266)
-	File configFile = LittleFS.open("/config.json", "r");
+    File configFile = LittleFS.open("/config.json", "r");
 #elif defined(ESP32)
-	File configFile = SPIFFS.open("/config.json", "r");
+    File configFile = SPIFFS.open("/config.json", "r");
 #endif
 
-	if (configFile)
-	{
-		// Log(F("GetConfig"), F("Opened config file"));
-		size_t size = configFile.size();
-		// Allocate a buffer to store contents of the file.
-		std::unique_ptr<char[]> buf(new char[size]);
+    if (configFile)
+    {
+        // Log(F("GetConfig"), F("Opened config file"));
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
 
-		configFile.readBytes(buf.get(), size);
-		DynamicJsonBuffer jsonBuffer;
-		JsonObject &root = jsonBuffer.parseObject(buf.get());
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &root = jsonBuffer.parseObject(buf.get());
 
-		String json;
-		root.printTo(json);
+        String json;
+        root.printTo(json);
 
-		return json;
-	}
-	return "";
+        return json;
+    }
+    return "";
 }
 
 String GetSensor()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
-	if (tempSensor == TempSensor_BME280)
-	{
-		const float currentTemp = bme280->readTemperature();
-		root["temperature"] = currentTemp + temperatureOffset;
-		root["humidity"] = bme280->readHumidity() + humidityOffset;
-		root["pressure"] = (bme280->readPressure() / 100.0F) + pressureOffset;
-		root["gas"] = "Not installed";
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    if (tempSensor == TempSensor_BME280)
+    {
+        const float currentTemp = bme280->readTemperature();
+        root["temperature"] = currentTemp + temperatureOffset;
+        root["humidity"] = bme280->readHumidity() + humidityOffset;
+        root["pressure"] = (bme280->readPressure() / 100.0F) + pressureOffset;
+        root["gas"] = "Not installed";
 
-		if (temperatureUnit == TemperatureUnit_Fahrenheit)
-		{
-			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-		}
-	}
-	else if (tempSensor == TempSensor_DHT)
-	{
-		const float currentTemp = dht.getTemperature();
-		root["temperature"] = currentTemp + temperatureOffset;
-		root["humidity"] = roundf(dht.getHumidity() + humidityOffset);
-		root["pressure"] = "Not installed";
-		root["gas"] = "Not installed";
+        if (temperatureUnit == TemperatureUnit_Fahrenheit)
+        {
+            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+        }
+    }
+    else if (tempSensor == TempSensor_DHT)
+    {
+        const float currentTemp = dht.getTemperature();
+        root["temperature"] = currentTemp + temperatureOffset;
+        root["humidity"] = roundf(dht.getHumidity() + humidityOffset);
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
 
-		if (temperatureUnit == TemperatureUnit_Fahrenheit)
-		{
-			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-		}
-	}
-	else if (tempSensor == TempSensor_BME680)
-	{
-		/***************************************************************************************************
-		// BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder
-		// animations and scrolling. Therefore, we will use asynchronous reading in most cases.
-		//
-		// First call: starts measuring sequence, returns previous values.
-		// Second call: performs read, returns current values.
-		//
-		// As long as there are more than ~200ms between the calls, there won't be blocking.
-		// PixelIt usually uses a 3000ms loop.
-		//
-		// When there's no loop (no Websock connection, no MQTT) but only HTTP API calls, this would result
-		// in only EVERY OTHER call return new values (which have been taken shortly after the previous call).
-		// This is okay when you are polling very frequently, but might be undesirable when polling every
-		// couple of minutes or so. Therefore: if previous reading is more than 20000ms old, perform
-		// read in any case, even if it might become blocking.
-		//
-		// Please note: the gas value not only depends on gas, but also on the time since last read.
-		// Frequent reads will yield higher values than infrequent reads. There will be a difference
-		// even if we switch from 6secs to 3secs! So, do not attempt to compare values of readings
-		// with an interval of 3 secs to values of readings with an interval of 60 secs!
-		*/
+        if (temperatureUnit == TemperatureUnit_Fahrenheit)
+        {
+            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+        }
+    }
+    else if (tempSensor == TempSensor_BME680)
+    {
+        /***************************************************************************************************
+        // BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder
+        // animations and scrolling. Therefore, we will use asynchronous reading in most cases.
+        //
+        // First call: starts measuring sequence, returns previous values.
+        // Second call: performs read, returns current values.
+        //
+        // As long as there are more than ~200ms between the calls, there won't be blocking.
+        // PixelIt usually uses a 3000ms loop.
+        //
+        // When there's no loop (no Websock connection, no MQTT) but only HTTP API calls, this would result
+        // in only EVERY OTHER call return new values (which have been taken shortly after the previous call).
+        // This is okay when you are polling very frequently, but might be undesirable when polling every
+        // couple of minutes or so. Therefore: if previous reading is more than 20000ms old, perform
+        // read in any case, even if it might become blocking.
+        //
+        // Please note: the gas value not only depends on gas, but also on the time since last read.
+        // Frequent reads will yield higher values than infrequent reads. There will be a difference
+        // even if we switch from 6secs to 3secs! So, do not attempt to compare values of readings
+        // with an interval of 3 secs to values of readings with an interval of 60 secs!
+        */
 
-		const int elapsedSinceLastRead = millis() - lastBME680read;
-		const int remain = bme680->remainingReadingMillis();
+        const int elapsedSinceLastRead = millis() - lastBME680read;
+        const int remain = bme680->remainingReadingMillis();
 
-		if (remain == -1) // no current values available
-		{
-			bme680->beginReading(); // start measurement process
-			// return previous values
-			const float currentTemp = bme680->temperature;
-			root["temperature"] = currentTemp + temperatureOffset;
-			root["humidity"] = bme680->humidity + humidityOffset;
-			root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
-			root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
-			if (temperatureUnit == TemperatureUnit_Fahrenheit)
-			{
-				root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-			}
-		}
+        if (remain == -1) // no current values available
+        {
+            bme680->beginReading(); // start measurement process
+            // return previous values
+            const float currentTemp = bme680->temperature;
+            root["temperature"] = currentTemp + temperatureOffset;
+            root["humidity"] = bme680->humidity + humidityOffset;
+            root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
+            root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
+            if (temperatureUnit == TemperatureUnit_Fahrenheit)
+            {
+                root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+            }
+        }
 
-		if (remain >= 0 || elapsedSinceLastRead > 20000)
-		// remain==0: measurement completed, not read yet
-		// remain>0: measurement still running, but as we already are in the next loop call, block and read
-		// elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
-		{
-			if (bme680->endReading()) // will become blocking if measurement not complete yet
-			{
-				lastBME680read = millis();
-				const float currentTemp = bme680->temperature;
-				root["temperature"] = currentTemp + temperatureOffset;
-				root["humidity"] = bme680->humidity + humidityOffset;
-				root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
-				root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
-				if (temperatureUnit == TemperatureUnit_Fahrenheit)
-				{
-					root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-				}
-			}
-			else
-			{
-				root["humidity"] = "Error while reading";
-				root["temperature"] = "Error while reading";
-				root["pressure"] = "Error while reading";
-				root["gas"] = "Error while reading";
-			}
-		}
-	}
-	else if (tempSensor == TempSensor_BMP280)
-	{
-		const float currentTemp = bmp280->readTemperature();
-		root["temperature"] = currentTemp + temperatureOffset;
-		// root["humidity"] = bmp280->readHumidity() + humidityOffset;
-		root["humidity"] = "Not installed";
-		root["pressure"] = (bmp280->readPressure() / 100.0F) + pressureOffset;
-		root["gas"] = "Not installed";
+        if (remain >= 0 || elapsedSinceLastRead > 20000)
+        // remain==0: measurement completed, not read yet
+        // remain>0: measurement still running, but as we already are in the next loop call, block and read
+        // elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
+        {
+            if (bme680->endReading()) // will become blocking if measurement not complete yet
+            {
+                lastBME680read = millis();
+                const float currentTemp = bme680->temperature;
+                root["temperature"] = currentTemp + temperatureOffset;
+                root["humidity"] = bme680->humidity + humidityOffset;
+                root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
+                root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
+                if (temperatureUnit == TemperatureUnit_Fahrenheit)
+                {
+                    root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+                }
+            }
+            else
+            {
+                root["humidity"] = "Error while reading";
+                root["temperature"] = "Error while reading";
+                root["pressure"] = "Error while reading";
+                root["gas"] = "Error while reading";
+            }
+        }
+    }
+    else if (tempSensor == TempSensor_BMP280)
+    {
+        const float currentTemp = bmp280->readTemperature();
+        root["temperature"] = currentTemp + temperatureOffset;
+        // root["humidity"] = bmp280->readHumidity() + humidityOffset;
+        root["humidity"] = "Not installed";
+        root["pressure"] = (bmp280->readPressure() / 100.0F) + pressureOffset;
+        root["gas"] = "Not installed";
 
-		if (temperatureUnit == TemperatureUnit_Fahrenheit)
-		{
-			root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-		}
-	}
+        if (temperatureUnit == TemperatureUnit_Fahrenheit)
+        {
+            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+        }
+    }
 
-	else
-	{
-		root["humidity"] = "Not installed";
-		root["temperature"] = "Not installed";
-		root["pressure"] = "Not installed";
-		root["gas"] = "Not installed";
-	}
+    else
+    {
+        root["humidity"] = "Not installed";
+        root["temperature"] = "Not installed";
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
+    }
 
-	String json;
-	root.printTo(json);
+    String json;
+    root.printTo(json);
 
-	// Log(F("Sensor readings"), F("Hum/Temp/Press/Gas:"));
-	// Log(F("Sensor readings"), json);
-	return json;
+    // Log(F("Sensor readings"), F("Hum/Temp/Press/Gas:"));
+    // Log(F("Sensor readings"), json);
+    return json;
 }
 
 String GetLuxSensor()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
 
-	root["lux"] = currentLux;
+    root["lux"] = currentLux;
 
-	String json;
-	root.printTo(json);
+    String json;
+    root.printTo(json);
 
-	return json;
+    return json;
 }
 
 String GetBrightness()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
 
-	root["brightness_255"] = currentMatrixBrightness;
-	root["brightness"] = map(currentMatrixBrightness, 0, 255, 0, 100);
+    root["brightness_255"] = currentMatrixBrightness;
+    root["brightness"] = map(currentMatrixBrightness, 0, 255, 0, 100);
 
-	String json;
-	root.printTo(json);
+    String json;
+    root.printTo(json);
 
-	return json;
+    return json;
 }
 
 String GetMatrixInfo()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
 
-	root["pixelitVersion"] = VERSION;
-	//// Matrix Config
-	root["note"] = note;
-	root["hostname"] = hostname;
-	root["freeSketchSpace"] = ESP.getFreeSketchSpace();
-	root["wifiRSSI"] = WiFi.RSSI();
-	root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
-	root["wifiSSID"] = WiFi.SSID();
-	root["ipAddress"] = WiFi.localIP().toString();
-	root["freeHeap"] = ESP.getFreeHeap();
-	root["currentMatrixBrightness"] = currentMatrixBrightness;
-	root["wifiBSSID"] = WiFi.BSSIDstr();
+    root["pixelitVersion"] = VERSION;
+    //// Matrix Config
+    root["note"] = note;
+    root["hostname"] = hostname;
+    root["freeSketchSpace"] = ESP.getFreeSketchSpace();
+    root["wifiRSSI"] = WiFi.RSSI();
+    root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
+    root["wifiSSID"] = WiFi.SSID();
+    root["ipAddress"] = WiFi.localIP().toString();
+    root["freeHeap"] = ESP.getFreeHeap();
+    root["currentMatrixBrightness"] = currentMatrixBrightness;
+    root["wifiBSSID"] = WiFi.BSSIDstr();
 
 #if defined(ESP8266)
-	root["sketchSize"] = ESP.getSketchSize();
-	root["chipID"] = ESP.getChipId();
+    root["sketchSize"] = ESP.getSketchSize();
+    root["chipID"] = ESP.getChipId();
 #elif defined(ESP32)
-	root["chipID"] = uint64ToString(ESP.getEfuseMac());
+    root["chipID"] = uint64ToString(ESP.getEfuseMac());
 #endif
 
-	root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
-	root["sleepMode"] = sleepMode;
+    root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+    root["sleepMode"] = sleepMode;
 
-	String json;
-	root.printTo(json);
+    String json;
+    root.printTo(json);
 
-	return json;
+    return json;
 }
 
 String GetButtons()
 {
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
 
-	for (uint button = 0; button < 3; button++)
-	{
-		root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
-	}
+    for (uint button = 0; button < 3; button++)
+    {
+        root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
+    }
 
-	String json;
-	root.printTo(json);
+    String json;
+    root.printTo(json);
 
-	return json;
+    return json;
 }
 
 void SendTelemetry()
 {
-	HttpClient httpClient = HttpClient(espClient, serverAddress, serverPort);
-	httpClient.sendHeader("User-Agent", "PixelIt");
-	httpClient.post("/api/telemetry", "application/json", GetTelemetry());
+    Log(F("SendTelemetry"), F("Sending..."));
+    HttpClient httpClient = HttpClient(wifiClientHTTP, TELEMETRY_SERVER_HOST, TELEMETRY_SERVER_PORT);
+    httpClient.setTimeout(1500);
+    httpClient.sendHeader("User-Agent", "PixelIt");
+    httpClient.post(TELEMETRY_SERVER_PATH, "application/json", GetTelemetry());
 }
 
 String GetTelemetry()
 {
-	const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU", "MicroMatrix"};
-	const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
-	const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
+    const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU", "MicroMatrix"};
+    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
+    const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
 
-	DynamicJsonBuffer jsonBuffer;
-	JsonObject &root = jsonBuffer.createObject();
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
 
-	root["uuid"] = sha1(GetChipID());
-	root["version"] = VERSION;
-	root["type"] = isESP8266 ? "esp8266" : "esp32";
+    root["uuid"] = sha1(GetChipID());
+    root["version"] = VERSION;
+    root["type"] = isESP8266 ? "esp8266" : "esp32";
 
-	JsonObject &matrix = root.createNestedObject("matrix");
-	matrix["type"] = matrixType;
-	matrix["name"] = MatrixTypeNames[matrixType - 1];
+    JsonObject &matrix = root.createNestedObject("matrix");
+    matrix["type"] = matrixType;
+    matrix["name"] = MatrixTypeNames[matrixType - 1];
 
-	JsonArray &sensors = root.createNestedArray("sensors");
-	sensors.add(LuxSensorNames[luxSensor]);
-	if (tempSensor > 0)
-	{
-		sensors.add(TempSensorNames[tempSensor]);
-	}
+    JsonArray &sensors = root.createNestedArray("sensors");
+    sensors.add(LuxSensorNames[luxSensor]);
+    if (tempSensor > 0)
+    {
+        sensors.add(TempSensorNames[tempSensor]);
+    }
 
-	String json;
-	root.printTo(json);
-	return json;
+    String json;
+    root.printTo(json);
+    return json;
 }
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 void DrawText(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-	DrawTextHelper(text, bigFont, false, false, false, false, false, NULL, colorRed, colorGreen, colorBlue, posX, posY);
+    DrawTextHelper(text, bigFont, false, false, false, false, false, NULL, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
 void DrawTextCenter(String text, int bigFont, bool withBMP, int colorRed, int colorGreen, int colorBlue)
 {
-	DrawTextHelper(text, bigFont, true, false, false, withBMP, false, NULL, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, true, false, false, withBMP, false, NULL, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
 void DrawTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
 {
-	DrawTextHelper(text, bigFont, false, true, false, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, false, true, false, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
 void DrawAutoTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
 {
-	DrawTextHelper(text, bigFont, false, false, true, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, false, false, true, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
 }
 
 void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-	uint16_t xPixelText, xPixel;
-	int16_t boundsx1, boundsy1;
-	uint16_t boundsw, boundsh;
+    uint16_t xPixelText, xPixel;
+    int16_t boundsx1, boundsy1;
+    uint16_t boundsw, boundsh;
 
-	text = Utf8ToAscii(text);
+    text = Utf8ToAscii(text);
 
-	if (withBMP)
-	{
-		// Verfügbare Text Pixelanzahl in der Breite (X) mit Bild
-		xPixel = 24;
-		posX = 8;
-	}
-	else
-	{
-		// Verfügbare Text Pixelanzahl in der Breite (X) ohne Bild
-		xPixel = 32;
-	}
+    if (withBMP)
+    {
+        // Verfügbare Text Pixelanzahl in der Breite (X) mit Bild
+        xPixel = 24;
+        posX = 8;
+    }
+    else
+    {
+        // Verfügbare Text Pixelanzahl in der Breite (X) ohne Bild
+        xPixel = 32;
+    }
 
-	if (bigFont == 1)
-	{
-		// Grosse Schrift setzten
-		matrix->setFont();
-		xPixelText = text.length() * 6;
-		// Positions Korrektur
-		posY = posY - 1;
-	}
-	else if (bigFont == 2) // very large font, only to be used for time display / sehr große Schrift, nür für die Zeitanzeige
-	{
-		// Sehr grosse Schrift setzten
-		matrix->setFont(&FatPixels);
+    if (bigFont == 1)
+    {
+        // Grosse Schrift setzten
+        matrix->setFont();
+        xPixelText = text.length() * 6;
+        // Positions Korrektur
+        posY = posY - 1;
+    }
+    else if (bigFont == 2) // very large font, only to be used for time display / sehr große Schrift, nür für die Zeitanzeige
+    {
+        // Sehr grosse Schrift setzten
+        matrix->setFont(&FatPixels);
 
-		matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
-		xPixelText = boundsw;
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xPixelText = boundsw;
 
-		// Positions Korrektur
-		posY = posY + 6;
-	}
-	else
-	{
-		// Kleine Schrift setzten
-		matrix->setFont(&PixelItFont);
-		xPixelText = text.length() * 4;
-		// Positions Korrektur
-		posY = posY + 5;
-	}
+        // Positions Korrektur
+        posY = posY + 6;
+    }
+    else
+    {
+        // Kleine Schrift setzten
+        matrix->setFont(&PixelItFont);
+        xPixelText = text.length() * 4;
+        // Positions Korrektur
+        posY = posY + 5;
+    }
 
-	// matrix->getTextBounds(text, 0, 0, &x1, &y1, &xPixelText, &h);
+    // matrix->getTextBounds(text, 0, 0, &x1, &y1, &xPixelText, &h);
 
-	if (centerText)
-	{
-		// Kein Offset benötigt.
-		int offset = 0;
+    if (centerText)
+    {
+        // Kein Offset benötigt.
+        int offset = 0;
 
-		// Mit BMP berechnen
-		if (withBMP)
-		{
-			// Offset um nicht das BMP zu überschreiben
-			// + 1 weil wir der erste pixel 0 ist!!!!
-			offset = 8 + 1;
-		}
+        // Mit BMP berechnen
+        if (withBMP)
+        {
+            // Offset um nicht das BMP zu überschreiben
+            // + 1 weil wir der erste pixel 0 ist!!!!
+            offset = 8 + 1;
+        }
 
-		// Berechnung für das erste Pixel des Textes
-		posX = ((xPixel - xPixelText) / 2) + offset;
-	}
+        // Berechnung für das erste Pixel des Textes
+        posX = ((xPixel - xPixelText) / 2) + offset;
+    }
 
-	matrix->setCursor(posX, posY);
+    matrix->setCursor(posX, posY);
 
-	matrix->setTextColor(matrix->Color(colorRed, colorGreen, colorBlue));
+    matrix->setTextColor(matrix->Color(colorRed, colorGreen, colorBlue));
 
-	if (scrollText || (autoScrollText && xPixelText > xPixel))
-	{
+    if (scrollText || (autoScrollText && xPixelText > xPixel))
+    {
 
-		matrix->setBrightness(currentMatrixBrightness);
+        matrix->setBrightness(currentMatrixBrightness);
 
-		scrollTextString = text;
-		scrollposY = posY;
-		scrollwithBMP = withBMP;
-		scrollxPixelText = xPixelText;
-		// + 8 Pixel sonst scrollt er mitten drinn los!
-		scrollPos = 33;
+        scrollTextString = text;
+        scrollposY = posY;
+        scrollwithBMP = withBMP;
+        scrollxPixelText = xPixelText;
+        // + 8 Pixel sonst scrollt er mitten drinn los!
+        scrollPos = 33;
 
-		scrollTextAktivLoop = true;
-		scrollTextPrevMillis = millis();
-		ScrollText(fadeInRequired);
-	}
-	// Fall doch der Text auf denm Display passt!
-	else if (autoScrollText)
-	{
-		matrix->print(text);
-		// Hier muss geprüfter weden ob ausgefadet wurde,
-		// dann ist nämlich die Brightness zu weit unten (0),
-		// aber auch nur wenn nicht animateBMPAktivLoop aktiv ist,
-		// denn sonst hat er das schon erledigt.
-		if (fadeInRequired && !animateBMPAktivLoop)
-		{
-			FadeIn();
-		}
-		else
-		{
-			matrix->show();
-		}
-	}
-	else
-	{
-		matrix->print(text);
-	}
+        scrollTextAktivLoop = true;
+        scrollTextPrevMillis = millis();
+        ScrollText(fadeInRequired);
+    }
+    // Fall doch der Text auf denm Display passt!
+    else if (autoScrollText)
+    {
+        matrix->print(text);
+        // Hier muss geprüfter weden ob ausgefadet wurde,
+        // dann ist nämlich die Brightness zu weit unten (0),
+        // aber auch nur wenn nicht animateBMPAktivLoop aktiv ist,
+        // denn sonst hat er das schon erledigt.
+        if (fadeInRequired && !animateBMPAktivLoop)
+        {
+            FadeIn();
+        }
+        else
+        {
+            matrix->show();
+        }
+    }
+    else
+    {
+        matrix->print(text);
+    }
 }
 
 void ScrollText(bool isFadeInRequired)
 {
-	int tempxPixelText = 0;
+    int tempxPixelText = 0;
 
-	if (scrollxPixelText < 32 && !scrollwithBMP)
-	{
-		scrollxPixelText = 32;
-	}
-	else if (scrollxPixelText < 24 && scrollwithBMP)
-	{
-		scrollxPixelText = 24;
-	}
-	else if (scrollwithBMP)
-	{
-		tempxPixelText = 8;
-	}
+    if (scrollxPixelText < 32 && !scrollwithBMP)
+    {
+        scrollxPixelText = 32;
+    }
+    else if (scrollxPixelText < 24 && scrollwithBMP)
+    {
+        scrollxPixelText = 24;
+    }
+    else if (scrollwithBMP)
+    {
+        tempxPixelText = 8;
+    }
 
-	if (scrollPos > ((scrollxPixelText - tempxPixelText) * -1))
-	{
-		matrix->clear();
-		matrix->setCursor(--scrollPos, scrollposY);
-		matrix->print(scrollTextString);
+    if (scrollPos > ((scrollxPixelText - tempxPixelText) * -1))
+    {
+        matrix->clear();
+        matrix->setCursor(--scrollPos, scrollposY);
+        matrix->print(scrollTextString);
 
-		if (scrollwithBMP)
-		{
-			matrix->drawRGBBitmap(0, 0, bmpArray, 8, 8);
-		}
+        if (scrollwithBMP)
+        {
+            matrix->drawRGBBitmap(0, 0, bmpArray, 8, 8);
+        }
 
-		if (isFadeInRequired)
-		{
-			FadeIn();
-		}
-		else
-		{
-			matrix->show();
-		}
-	}
-	else
-	{
-		// + 8 Pixel sonst scrollt er mitten drinn los!
-		scrollPos = 33;
-	}
+        if (isFadeInRequired)
+        {
+            FadeIn();
+        }
+        else
+        {
+            matrix->show();
+        }
+    }
+    else
+    {
+        // + 8 Pixel sonst scrollt er mitten drinn los!
+        scrollPos = 33;
+    }
 }
 
 void AnimateBMP(bool isShowRequired)
 {
-	// Prüfen auf 2, 2 ist mein Platzhalter für leeres obj!
-	if (animationBmpList[animateBMPCounter][0] == 2)
-	{
-		// Ist ein Repeat Limit übergeben worden.
-		if (animateBMPLimitLoops > 0 && !animateBMPRubberbandingAktiv)
-		{
-			animateBMPLoopCount++;
+    // Prüfen auf 2, 2 ist mein Platzhalter für leeres obj!
+    if (animationBmpList[animateBMPCounter][0] == 2)
+    {
+        // Ist ein Repeat Limit übergeben worden.
+        if (animateBMPLimitLoops > 0 && !animateBMPRubberbandingAktiv)
+        {
+            animateBMPLoopCount++;
 
-			// Ist der Repeat Limit erreicht den AnimateBMP Loop deaktiveren.
-			if (animateBMPLoopCount == animateBMPLimitLoops)
-			{
-				animateBMPAktivLoop = false;
-				return;
-			}
-		}
+            // Ist der Repeat Limit erreicht den AnimateBMP Loop deaktiveren.
+            if (animateBMPLoopCount == animateBMPLimitLoops)
+            {
+                animateBMPAktivLoop = false;
+                return;
+            }
+        }
 
-		// Prüfen ob Rubberbanding aktiv und mehr wie 1 Frame vorhanden ist.
-		if (animateBMPRubberbandingAktiv && animateBMPCounter > 1)
-		{
-			animateBMPReverse = true;
+        // Prüfen ob Rubberbanding aktiv und mehr wie 1 Frame vorhanden ist.
+        if (animateBMPRubberbandingAktiv && animateBMPCounter > 1)
+        {
+            animateBMPReverse = true;
 
-			// 2 abziehen da sonst der letzte Frame doppelt angezeigt wird.
-			if (animateBMPCounter > 0)
-			{
-				animateBMPCounter = animateBMPCounter - 2;
-			}
-		}
-		else
-		{
-			animateBMPCounter = 0;
-		}
-	}
+            // 2 abziehen da sonst der letzte Frame doppelt angezeigt wird.
+            if (animateBMPCounter > 0)
+            {
+                animateBMPCounter = animateBMPCounter - 2;
+            }
+        }
+        else
+        {
+            animateBMPCounter = 0;
+        }
+    }
 
-	if (animateBMPCounter < 0)
-	{
-		// Auf 1 setzten da sons der erste Frame doppelt angezeigt wird.
-		animateBMPCounter = 1;
-		animateBMPReverse = false;
+    if (animateBMPCounter < 0)
+    {
+        // Auf 1 setzten da sons der erste Frame doppelt angezeigt wird.
+        animateBMPCounter = 1;
+        animateBMPReverse = false;
 
-		// Ist ein Repeat Limit übergeben worden.
-		if (animateBMPLimitLoops > 0)
-		{
-			animateBMPLoopCount++;
-			// Ist der Repeat Limit erreicht den AnimateBMP Loop deaktiveren.
-			if (animateBMPLoopCount >= animateBMPLimitLoops)
-			{
-				animateBMPAktivLoop = false;
-				return;
-			}
-		}
-	}
+        // Ist ein Repeat Limit übergeben worden.
+        if (animateBMPLimitLoops > 0)
+        {
+            animateBMPLoopCount++;
+            // Ist der Repeat Limit erreicht den AnimateBMP Loop deaktiveren.
+            if (animateBMPLoopCount >= animateBMPLimitLoops)
+            {
+                animateBMPAktivLoop = false;
+                return;
+            }
+        }
+    }
 
-	ClearBMPArea();
+    ClearBMPArea();
 
-	matrix->drawRGBBitmap(0, 0, animationBmpList[animateBMPCounter], 8, 8);
+    matrix->drawRGBBitmap(0, 0, animationBmpList[animateBMPCounter], 8, 8);
 
-	for (int y = 0; y < 64; y++)
-	{
-		bmpArray[y] = animationBmpList[animateBMPCounter][y];
-	}
+    for (int y = 0; y < 64; y++)
+    {
+        bmpArray[y] = animationBmpList[animateBMPCounter][y];
+    }
 
-	// Soll der Loop wieder zurücklaufen?
-	if (animateBMPReverse)
-	{
-		animateBMPCounter--;
-	}
-	else
-	{
-		animateBMPCounter++;
-	}
+    // Soll der Loop wieder zurücklaufen?
+    if (animateBMPReverse)
+    {
+        animateBMPCounter--;
+    }
+    else
+    {
+        animateBMPCounter++;
+    }
 
-	if (isShowRequired)
-	{
-		matrix->show();
-	}
+    if (isShowRequired)
+    {
+        matrix->show();
+    }
 }
 
 void DrawSingleBitmap(JsonObject &json)
 {
-	int16_t h = json["size"]["height"].as<int16_t>();
-	int16_t w = json["size"]["width"].as<int16_t>();
-	int16_t x = json["position"]["x"].as<int16_t>();
-	int16_t y = json["position"]["y"].as<int16_t>();
+    int16_t h = json["size"]["height"].as<int16_t>();
+    int16_t w = json["size"]["width"].as<int16_t>();
+    int16_t x = json["position"]["x"].as<int16_t>();
+    int16_t y = json["position"]["y"].as<int16_t>();
 
-	// Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
-	for (int16_t j = 0; j < h; j++, y++)
-	{
-		for (int16_t i = 0; i < w; i++)
-		{
-			matrix->drawPixel(x + i, y, json["data"][j * w + i].as<uint16_t>());
-		}
-	}
+    // Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
+    for (int16_t j = 0; j < h; j++, y++)
+    {
+        for (int16_t i = 0; i < w; i++)
+        {
+            matrix->drawPixel(x + i, y, json["data"][j * w + i].as<uint16_t>());
+        }
+    }
 
-	// JsonArray in IntArray konvertieren
-	// dies ist nötig für diverse kleine Logiken z.B. Scrolltext
-	// bei Multibitmaps landet hier nur eine der Bitmaps - das ist aber egal, da dann eh nicht gescrollt wird
-	json["data"].as<JsonArray>().copyTo(bmpArray);
+    // JsonArray in IntArray konvertieren
+    // dies ist nötig für diverse kleine Logiken z.B. Scrolltext
+    // bei Multibitmaps landet hier nur eine der Bitmaps - das ist aber egal, da dann eh nicht gescrollt wird
+    json["data"].as<JsonArray>().copyTo(bmpArray);
 }
 
 void DrawClock(bool fromJSON)
 {
-	matrix->clear();
+    matrix->clear();
 
-	char date[14];
-	char time[14];
+    char date[14];
+    char time[14];
 
-	int xPosTime = 0;
+    int xPosTime = 0;
 
-	if (clockDateDayMonth)
-	{
-		sprintf_P(date, PSTR("%02d.%02d."), day(), month());
-	}
-	else
-	{
-		sprintf_P(date, PSTR("%02d/%02d"), month(), day());
-	}
+    if (clockDateDayMonth)
+    {
+        sprintf_P(date, PSTR("%02d.%02d."), day(), month());
+    }
+    else
+    {
+        sprintf_P(date, PSTR("%02d/%02d"), month(), day());
+    }
 
-	if (clock24Hours && clockWithSeconds && !clockFatFont)
-	{
-		xPosTime = 2;
-		sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
-	}
-	else if (!clock24Hours)
-	{
-		xPosTime = 2;
+    if (clock24Hours && clockWithSeconds && !clockFatFont)
+    {
+        xPosTime = 2;
+        sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
+    }
+    else if (!clock24Hours)
+    {
+        xPosTime = 2;
 
-		if (clockBlink && clockBlinkAnimated)
-		{
-			clockBlink = false;
-			if (!clockFatFont)
-			{
-				sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
-			}
-			else
-			{
-				sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
-			}
-		}
-		else
-		{
-			clockBlink = !clockBlink;
-			if (!clockFatFont)
-			{
-				sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
-			}
-			else
-			{
-				sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
-			}
-		}
-	}
-	else
-	{
-		xPosTime = 7;
+        if (clockBlink && clockBlinkAnimated)
+        {
+            clockBlink = false;
+            if (!clockFatFont)
+            {
+                sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+            }
+            else
+            {
+                sprintf_P(time, PSTR("%2d %02d"), hourFormat12(), minute());
+            }
+        }
+        else
+        {
+            clockBlink = !clockBlink;
+            if (!clockFatFont)
+            {
+                sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
+            }
+            else
+            {
+                sprintf_P(time, PSTR("%2d:%02d"), hourFormat12(), minute());
+            }
+        }
+    }
+    else
+    {
+        xPosTime = 7;
 
-		if (clockBlink && clockBlinkAnimated)
-		{
-			clockBlink = false;
-			sprintf_P(time, PSTR("%02d %02d"), hour(), minute());
-		}
-		else
-		{
-			clockBlink = !clockBlink;
-			sprintf_P(time, PSTR("%02d:%02d"), hour(), minute());
-		}
-	}
+        if (clockBlink && clockBlinkAnimated)
+        {
+            clockBlink = false;
+            sprintf_P(time, PSTR("%02d %02d"), hour(), minute());
+        }
+        else
+        {
+            clockBlink = !clockBlink;
+            sprintf_P(time, PSTR("%02d:%02d"), hour(), minute());
+        }
+    }
 
-	if (!clockSwitchAktiv || (clockSwitchAktiv && clockCounterClock <= clockSwitchSec))
-	{
-		if (clockSwitchAktiv)
-		{
-			clockCounterClock++;
-		}
+    if (!clockSwitchAktiv || (clockSwitchAktiv && clockCounterClock <= clockSwitchSec))
+    {
+        if (clockSwitchAktiv)
+        {
+            clockCounterClock++;
+        }
 
-		if (clockCounterClock > clockSwitchSec)
-		{
-			clockCounterDate = 0;
+        if (clockCounterClock > clockSwitchSec)
+        {
+            clockCounterDate = 0;
 
-			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
-			{
-				DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
-				FadeOut(30);
-				matrix->clear();
-				DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
-				FadeIn(30);
-			}
-			else
-			{
-				int counter = 0;
-				while (counter <= 6) // vertical animate
-				{
-					counter++;
-					matrix->clear();
-					DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
-					DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
-					matrix->drawLine(0, 7, 33, 7, 0);
-					if (clockDrawWeekDays)
-					{
-						DrawWeekDay();
-					}
-					matrix->show();
-					delay(35);
-				}
-			}
-		}
-		else if (clockFatFont)
-		{
+            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            {
+                DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+                FadeOut(30);
+                matrix->clear();
+                DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+                FadeIn(30);
+            }
+            else
+            {
+                int counter = 0;
+                while (counter <= 6) // vertical animate
+                {
+                    counter++;
+                    matrix->clear();
+                    DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
+                    DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
+                    matrix->drawLine(0, 7, 33, 7, 0);
+                    if (clockDrawWeekDays)
+                    {
+                        DrawWeekDay();
+                    }
+                    matrix->show();
+                    delay(35);
+                }
+            }
+        }
+        else if (clockFatFont)
+        {
 
-			DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
-		}
-		else
-		{
-			DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, 1);
-			xPosTime = 3;
-		}
-	}
-	else
-	{
-		clockCounterDate++;
+            DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+        }
+        else
+        {
+            DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, 1);
+            xPosTime = 3;
+        }
+    }
+    else
+    {
+        clockCounterDate++;
 
-		if (clockCounterDate == clockSwitchSec)
-		{
-			clockCounterClock = 0;
+        if (clockCounterDate == clockSwitchSec)
+        {
+            clockCounterClock = 0;
 
-			if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
-			{
-				DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
-				FadeOut(30);
-				matrix->clear();
-				DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
-				FadeIn(30);
-			}
-			else
-			{
-				int counter = 0;
-				while (counter <= 6) // vertical animate
-				{
-					counter++;
-					matrix->clear();
-					DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
-					DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
-					matrix->drawLine(0, 7, 33, 7, 0);
-					DrawWeekDay();
-					matrix->show();
-					delay(35);
-				}
-			}
-		}
-		else if (clockFatFont)
-		{
-			DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
-		}
-		else
-		{
-			DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, 1);
-		}
-	}
+            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            {
+                DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+                FadeOut(30);
+                matrix->clear();
+                DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+                FadeIn(30);
+            }
+            else
+            {
+                int counter = 0;
+                while (counter <= 6) // vertical animate
+                {
+                    counter++;
+                    matrix->clear();
+                    DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
+                    DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
+                    matrix->drawLine(0, 7, 33, 7, 0);
+                    DrawWeekDay();
+                    matrix->show();
+                    delay(35);
+                }
+            }
+        }
+        else if (clockFatFont)
+        {
+            DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+        }
+        else
+        {
+            DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, 1);
+        }
+    }
 
-	if (!clockFatFont && clockDrawWeekDays)
-	{
-		DrawWeekDay();
-	}
+    if (!clockFatFont && clockDrawWeekDays)
+    {
+        DrawWeekDay();
+    }
 
-	// Wenn der Aufruf nicht über JSON sondern über den Loop kommt
-	// muss ich mich selbst ums Show kümmern.
-	if (!fromJSON)
-	{
-		matrix->show();
-	}
+    // Wenn der Aufruf nicht über JSON sondern über den Loop kommt
+    // muss ich mich selbst ums Show kümmern.
+    if (!fromJSON)
+    {
+        matrix->show();
+    }
 }
 
 void DrawWeekDay()
 {
-	// The Libary works with dayOfWeek with Sunday = 1...
-	// So Sunday = 1 <-> Saturday = 7
-	int weekDayNumber = 0;
-	if (clockDayOfWeekFirstMonday)
-	{
-		weekDayNumber = DayOfWeekFirstMonday(dayOfWeek(now()) - 1);
-	}
-	else
-	{
-		weekDayNumber = dayOfWeek(now()) - 1;
-	}
+    // The Libary works with dayOfWeek with Sunday = 1...
+    // So Sunday = 1 <-> Saturday = 7
+    int weekDayNumber = 0;
+    if (clockDayOfWeekFirstMonday)
+    {
+        weekDayNumber = DayOfWeekFirstMonday(dayOfWeek(now()) - 1);
+    }
+    else
+    {
+        weekDayNumber = dayOfWeek(now()) - 1;
+    }
 
-	for (int i = 0; i <= 6; i++)
-	{
-		if (i == weekDayNumber)
-		{
-			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, matrix->Color(clockColorR, clockColorG, clockColorB));
-		}
-		else
-		{
-			matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, 21162);
-		}
-	}
+    for (int i = 0; i <= 6; i++)
+    {
+        if (i == weekDayNumber)
+        {
+            matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, matrix->Color(clockColorR, clockColorG, clockColorB));
+        }
+        else
+        {
+            matrix->drawLine(2 + i * 4, 7, i * 4 + 4, 7, 21162);
+        }
+    }
 }
 
 boolean MQTTreconnect()
 {
 
-	bool connected = false;
-	if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
-	{
-		Log(F("MQTTreconnect"), F("MQTT connecting to broker with user and password"));
-		connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
-	}
-	else
-	{
-		Log(F("MQTTreconnect"), F("MQTT connecting to broker without user and password"));
-		connected = client.connect(hostname.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
-	}
+    bool connected = false;
+    if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
+    {
+        Log(F("MQTTreconnect"), F("MQTT connecting to broker..."));
+        connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
+    }
+    else
+    {
+        Log(F("MQTTreconnect"), F("MQTT connecting to broker..."));
+        connected = client.connect(hostname.c_str(), (mqttMasterTopic + "state").c_str(), 0, true, "disconnected");
+    }
 
-	if (connected)
-	{
-		Log(F("MQTTreconnect"), F("MQTT connected!"));
-		// Subscribe to topics ...
-		client.subscribe((mqttMasterTopic + "setScreen").c_str());
-		client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
-		client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
-		client.subscribe((mqttMasterTopic + "getConfig").c_str());
-		client.subscribe((mqttMasterTopic + "setConfig").c_str());
-		// ... and publish state ....
-		client.publish((mqttMasterTopic + "state").c_str(), "connected", true);
+    if (connected)
+    {
+        Log(F("MQTTreconnect"), F("MQTT connected!"));
+        // Subscribe to topics ...
+        client.subscribe((mqttMasterTopic + "setScreen").c_str());
+        client.subscribe((mqttMasterTopic + "getLuxsensor").c_str());
+        client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
+        client.subscribe((mqttMasterTopic + "getConfig").c_str());
+        client.subscribe((mqttMasterTopic + "setConfig").c_str());
+        // ... and publish state ....
+        client.publish((mqttMasterTopic + "state").c_str(), "connected", true);
 
-		// ... and provide discovery information
-		// Create discovery information for Homeassistant
-		// Can also be processed by ioBroker, OpenHAB etc.
-		String deviceID = hostname;
-		if (deviceID.isEmpty())
-			deviceID = "pixelit";
+        // ... and provide discovery information
+        // Create discovery information for Homeassistant
+        // Can also be processed by ioBroker, OpenHAB etc.
+        String deviceID = hostname;
+        if (deviceID.isEmpty())
+            deviceID = "pixelit";
 #if defined(ESP8266)
-		deviceID += ESP.getChipId();
+        deviceID += ESP.getChipId();
 #elif defined(ESP32)
-		deviceID += uint64ToString(ESP.getEfuseMac());
+        deviceID += uint64ToString(ESP.getEfuseMac());
 #endif
-		// Get host IP to provide URL in MQTT discovery device info
-		String ip_url = "http://" + WiFi.localIP().toString();
-		String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
-		configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
-		String configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"dev_cla\":\"#CLASS#\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_meas\":\"#UNIT#\","
-			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        // Get host IP to provide URL in MQTT discovery device info
+        String ip_url = "http://" + WiFi.localIP().toString();
+        String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
+        configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
+        String configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"dev_cla\":\"#CLASS#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"unit_of_meas\":\"#UNIT#\","
+            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		String topic;
-		String payload;
+        String topic;
+        String payload;
 
-		if (tempSensor != TempSensor_None)
-		{
-			topic = configTopicTemplate;
-			topic.replace(F("#COMPONENT#"), F("sensor"));
-			topic.replace(F("#SENSORID#"), F("Temperature"));
+        if (tempSensor != TempSensor_None)
+        {
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("Temperature"));
 
-			payload = configPayloadTemplate;
-			payload.replace(F("#SENSORID#"), F("Temperature"));
-			payload.replace(F("#SENSORNAME#"), F("Temperature"));
-			payload.replace(F("#CLASS#"), F("temperature"));
-			payload.replace(F("#STATETOPIC#"), F("sensor"));
-			payload.replace(F("#UNIT#"), "°C");
-			payload.replace(F("#VALUENAME#"), F("temperature"));
-			client.publish(topic.c_str(), payload.c_str(), true);
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("Temperature"));
+            payload.replace(F("#SENSORNAME#"), F("Temperature"));
+            payload.replace(F("#CLASS#"), F("temperature"));
+            payload.replace(F("#STATETOPIC#"), F("sensor"));
+            payload.replace(F("#UNIT#"), "°C");
+            payload.replace(F("#VALUENAME#"), F("temperature"));
+            client.publish(topic.c_str(), payload.c_str(), true);
 
-			topic = configTopicTemplate;
-			topic.replace(F("#COMPONENT#"), F("sensor"));
-			topic.replace(F("#SENSORID#"), F("Humidity"));
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("Humidity"));
 
-			payload = configPayloadTemplate;
-			payload.replace(F("#SENSORNAME#"), F("Humidity"));
-			payload.replace(F("#CLASS#"), F("humidity"));
-			payload.replace(F("#STATETOPIC#"), F("sensor"));
-			payload.replace(F("#UNIT#"), "%");
-			payload.replace(F("#VALUENAME#"), F("humidity"));
-			client.publish(topic.c_str(), payload.c_str(), true);
-		}
-		if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
-		{
-			topic = configTopicTemplate;
-			topic.replace(F("#COMPONENT#"), F("sensor"));
-			topic.replace(F("#SENSORID#"), F("Pressure"));
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORNAME#"), F("Humidity"));
+            payload.replace(F("#CLASS#"), F("humidity"));
+            payload.replace(F("#STATETOPIC#"), F("sensor"));
+            payload.replace(F("#UNIT#"), "%");
+            payload.replace(F("#VALUENAME#"), F("humidity"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+        }
+        if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
+        {
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("Pressure"));
 
-			payload = configPayloadTemplate;
-			payload.replace(F("#SENSORID#"), F("Pressure"));
-			payload.replace(F("#SENSORNAME#"), F("Pressure"));
-			payload.replace(F("#CLASS#"), F("pressure"));
-			payload.replace(F("#STATETOPIC#"), F("sensor"));
-			payload.replace(F("#UNIT#"), "hPa");
-			payload.replace(F("#VALUENAME#"), F("pressure"));
-			client.publish(topic.c_str(), payload.c_str(), true);
-		}
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("Pressure"));
+            payload.replace(F("#SENSORNAME#"), F("Pressure"));
+            payload.replace(F("#CLASS#"), F("pressure"));
+            payload.replace(F("#STATETOPIC#"), F("sensor"));
+            payload.replace(F("#UNIT#"), "hPa");
+            payload.replace(F("#VALUENAME#"), F("pressure"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+        }
 
-		if (tempSensor == TempSensor_BME680)
-		{
-			topic = configTopicTemplate;
-			topic.replace(F("#COMPONENT#"), F("sensor"));
-			topic.replace(F("#SENSORID#"), F("VOC"));
+        if (tempSensor == TempSensor_BME680)
+        {
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("VOC"));
 
-			payload = configPayloadTemplate;
-			payload.replace(F("#SENSORID#"), F("VOC"));
-			payload.replace(F("#SENSORNAME#"), F("VOC"));
-			payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
-			payload.replace(F("#STATETOPIC#"), F("sensor"));
-			payload.replace(F("#UNIT#"), "kOhm");
-			payload.replace(F("#VALUENAME#"), F("gas"));
-			client.publish(topic.c_str(), payload.c_str(), true);
-		}
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("Illuminance"));
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("VOC"));
+            payload.replace(F("#SENSORNAME#"), F("VOC"));
+            payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
+            payload.replace(F("#STATETOPIC#"), F("sensor"));
+            payload.replace(F("#UNIT#"), "kOhm");
+            payload.replace(F("#VALUENAME#"), F("gas"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+        }
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("Illuminance"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("Illuminance"));
-		payload.replace(F("#SENSORNAME#"), F("Illuminance"));
-		payload.replace(F("#CLASS#"), F("illuminance"));
-		payload.replace(F("#STATETOPIC#"), F("luxsensor"));
-		payload.replace(F("#UNIT#"), "lx");
-		payload.replace(F("#VALUENAME#"), F("lux"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("Illuminance"));
+        payload.replace(F("#SENSORNAME#"), F("Illuminance"));
+        payload.replace(F("#CLASS#"), F("illuminance"));
+        payload.replace(F("#STATETOPIC#"), F("luxsensor"));
+        payload.replace(F("#UNIT#"), "lx");
+        payload.replace(F("#VALUENAME#"), F("lux"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"dev_cla\":\"timestamp\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"dev_cla\":\"timestamp\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
-		{
-			if (btnEnabled[n])
-			{
-				topic = configTopicTemplate;
-				topic.replace(F("#COMPONENT#"), F("sensor"));
-				topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
+        for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
+        {
+            if (btnEnabled[n])
+            {
+                topic = configTopicTemplate;
+                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
 
-				payload = configPayloadTemplate;
-				payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
-				payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
-				payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
-				client.publish(topic.c_str(), payload.c_str(), true);
-			}
-		}
+                payload = configPayloadTemplate;
+                payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
+                payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
+                payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
+                client.publish(topic.c_str(), payload.c_str(), true);
+            }
+        }
 
-		// Wifi RSSI
-		configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"dev_cla\":\"signal_strength\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_meas\":\"#UNIT#\","
-			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-			"\"ent_cat\":\"diagnostic\","
-			"\"ic\":\"mdi:#ICON#\","
-			"\"enabled_by_default\":\"false\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        // Wifi RSSI
+        configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"dev_cla\":\"signal_strength\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"unit_of_meas\":\"#UNIT#\","
+            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+            "\"ent_cat\":\"diagnostic\","
+            "\"ic\":\"mdi:#ICON#\","
+            "\"enabled_by_default\":\"false\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("wifiRSSI"));
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("wifiRSSI"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("wifiRSSI"));
-		payload.replace(F("#SENSORNAME#"), F("Wifi Signal"));
-		payload.replace(F("#CLASS#"), F("signal_strength"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#UNIT#"), "dBm");
-		payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
-		payload.replace(F("#ICON#"), F("signal"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("wifiRSSI"));
+        payload.replace(F("#SENSORNAME#"), F("Wifi Signal"));
+        payload.replace(F("#CLASS#"), F("signal_strength"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#UNIT#"), "dBm");
+        payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
+        payload.replace(F("#ICON#"), F("signal"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// Wifi Quality sensor
-		configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"unit_of_meas\":\"#UNIT#\","
-			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-			"\"ent_cat\":\"diagnostic\","
-			"\"ic\":\"mdi:#ICON#\","
-			"\"enabled_by_default\":\"false\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        // Wifi Quality sensor
+        configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"unit_of_meas\":\"#UNIT#\","
+            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+            "\"ent_cat\":\"diagnostic\","
+            "\"ic\":\"mdi:#ICON#\","
+            "\"enabled_by_default\":\"false\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("WifiQuality"));
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("WifiQuality"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("WifiQuality"));
-		payload.replace(F("#SENSORNAME#"), F("Wifi Quality"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#UNIT#"), "%");
-		payload.replace(F("#VALUENAME#"), F("wifiQuality"));
-		payload.replace(F("#ICON#"), F("signal"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("WifiQuality"));
+        payload.replace(F("#SENSORNAME#"), F("Wifi Quality"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#UNIT#"), "%");
+        payload.replace(F("#VALUENAME#"), F("wifiQuality"));
+        payload.replace(F("#ICON#"), F("signal"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// CPU Freq.
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+        // CPU Freq.
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("cpuFreqMHz"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("cpuFreqMHz"));
-		payload.replace(F("#SENSORNAME#"), F("CPU Freq."));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#UNIT#"), "MHz");
-		payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
-		payload.replace(F("#ICON#"), F("developer-board"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+        payload.replace(F("#SENSORNAME#"), F("CPU Freq."));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#UNIT#"), "MHz");
+        payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
+        payload.replace(F("#ICON#"), F("developer-board"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// Wifi SSID
-		configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-			"\"ent_cat\":\"diagnostic\","
-			"\"ic\":\"mdi:#ICON#\","
-			"\"enabled_by_default\":\"false\""
-			"}"));
-		configPayloadTemplate.replace(" ", "");
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        // Wifi SSID
+        configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+            "\"ent_cat\":\"diagnostic\","
+            "\"ic\":\"mdi:#ICON#\","
+            "\"enabled_by_default\":\"false\""
+            "}"));
+        configPayloadTemplate.replace(" ", "");
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("WifiSSID"));
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("WifiSSID"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("WifiSSID"));
-		payload.replace(F("#SENSORNAME#"), F("SSID"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#VALUENAME#"), F("wifiSSID"));
-		payload.replace(F("#ICON#"), F("wifi"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("WifiSSID"));
+        payload.replace(F("#SENSORNAME#"), F("SSID"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#VALUENAME#"), F("wifiSSID"));
+        payload.replace(F("#ICON#"), F("wifi"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// Wifi BSSID
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("WifiBSSID"));
+        // Wifi BSSID
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("WifiBSSID"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("WifiBSSID"));
-		payload.replace(F("#SENSORNAME#"), F("BSSID"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
-		payload.replace(F("#ICON#"), F("wifi"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("WifiBSSID"));
+        payload.replace(F("#SENSORNAME#"), F("BSSID"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
+        payload.replace(F("#ICON#"), F("wifi"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// Chip ID
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("sensor"));
-		topic.replace(F("#SENSORID#"), F("chipID"));
+        // Chip ID
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("sensor"));
+        topic.replace(F("#SENSORID#"), F("chipID"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("chipID"));
-		payload.replace(F("#SENSORNAME#"), F("Chip ID"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#VALUENAME#"), F("chipID"));
-		payload.replace(F("#ICON#"), F("developer-board"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("chipID"));
+        payload.replace(F("#SENSORNAME#"), F("Chip ID"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#VALUENAME#"), F("chipID"));
+        payload.replace(F("#ICON#"), F("developer-board"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		// LED Matrix on/off + brightness light
-		configPayloadTemplate = String(F(
-			"{"
-			"\"dev\":{"
-			"\"ids\":\"#DEVICEID#\","
-			"\"name\":\"#HOSTNAME#\","
-			"\"mdl\":\"PixelIt\","
-			"\"mf\":\"PixelIt\","
-			"\"sw\":\"#VERSION#\","
-			"\"cu\":\"#IP#\""
-			"},"
-			"\"avty_t\":\"#MASTERTOPIC#state\","
-			"\"pl_avail\":\"connected\","
-			"\"pl_not_avail\":\"disconnected\","
-			"\"uniq_id\":\"#DEVICEID##SENSORID#\","
-			"\"name\":\"#SENSORNAME#\","
-			"\"schema\":\"template\","
-			"\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-			"\"stat_tpl\":\"{{ \'on\' if value_json.sleepMode is false else \'off\' }}\","
-			"\"cmd_t\":\"#MASTERTOPIC##COMMANDTOPIC#\","
-			"\"cmd_on_tpl\":\"{\'sleepMode\': false {%- if brightness is defined -%}, \'brightness\': {{ brightness }}{%- endif -%}}\","
-			"\"cmd_off_tpl\":\"{\'sleepMode\': true}\","
-			"\"bri_tpl\":\"{{ value_json.currentMatrixBrightness }}\","
-			"\"icon\":\"mdi:#ICON#\""
-			"}"));
-		configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-		configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-		configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-		configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-		configPayloadTemplate.replace(F("#IP#"), ip_url);
+        // LED Matrix on/off + brightness light
+        configPayloadTemplate = String(F(
+            "{"
+            "\"dev\":{"
+            "\"ids\":\"#DEVICEID#\","
+            "\"name\":\"#HOSTNAME#\","
+            "\"mdl\":\"PixelIt\","
+            "\"mf\":\"PixelIt\","
+            "\"sw\":\"#VERSION#\","
+            "\"cu\":\"#IP#\""
+            "},"
+            "\"avty_t\":\"#MASTERTOPIC#state\","
+            "\"pl_avail\":\"connected\","
+            "\"pl_not_avail\":\"disconnected\","
+            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+            "\"name\":\"#SENSORNAME#\","
+            "\"schema\":\"template\","
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"stat_tpl\":\"{{ \'on\' if value_json.sleepMode is false else \'off\' }}\","
+            "\"cmd_t\":\"#MASTERTOPIC##COMMANDTOPIC#\","
+            "\"cmd_on_tpl\":\"{\'sleepMode\': false {%- if brightness is defined -%}, \'brightness\': {{ brightness }}{%- endif -%}}\","
+            "\"cmd_off_tpl\":\"{\'sleepMode\': true}\","
+            "\"bri_tpl\":\"{{ value_json.currentMatrixBrightness }}\","
+            "\"icon\":\"mdi:#ICON#\""
+            "}"));
+        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+        configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-		topic = configTopicTemplate;
-		topic.replace(F("#COMPONENT#"), F("light"));
-		topic.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+        topic = configTopicTemplate;
+        topic.replace(F("#COMPONENT#"), F("light"));
+        topic.replace(F("#SENSORID#"), F("LEDMatrixLight"));
 
-		payload = configPayloadTemplate;
-		payload.replace(F("#SENSORID#"), F("LEDMatrixLight"));
-		payload.replace(F("#SENSORNAME#"), F("LED Matrix"));
-		payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-		payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
-		payload.replace(F("#ICON#"), F("led-strip"));
-		client.publish(topic.c_str(), payload.c_str(), true);
+        payload = configPayloadTemplate;
+        payload.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+        payload.replace(F("#SENSORNAME#"), F("LED Matrix"));
+        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+        payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
+        payload.replace(F("#ICON#"), F("led-strip"));
+        client.publish(topic.c_str(), payload.c_str(), true);
 
-		Log(F("MQTTreconnect"), F("MQTT discovery information published"));
-	}
-	else
-	{
-		Log(F("MQTTreconnect"), F("MQTT connect failed! Retry in a few seconds..."));
-	}
+        Log(F("MQTTreconnect"), F("MQTT discovery information published"));
+    }
+    else
+    {
+        Log(F("MQTTreconnect"), F("MQTT connect failed! Retry in a few seconds..."));
+    }
 
-	return connected;
+    return connected;
 }
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -2651,360 +2689,386 @@ boolean MQTTreconnect()
 
 void FadeOut(int dealy, int minBrightness)
 {
-	int currentFadeBrightness = currentMatrixBrightness;
+    int currentFadeBrightness = currentMatrixBrightness;
 
-	int counter = 25;
-	while (counter >= 0)
-	{
-		currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
-		matrix->setBrightness(currentFadeBrightness);
-		matrix->show();
-		counter--;
-		delay(dealy);
-	}
+    int counter = 25;
+    while (counter >= 0)
+    {
+        currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
+        matrix->setBrightness(currentFadeBrightness);
+        matrix->show();
+        counter--;
+        delay(dealy);
+    }
 }
 
 void FadeIn(int dealy, int minBrightness)
 {
-	int currentFadeBrightness = minBrightness;
+    int currentFadeBrightness = minBrightness;
 
-	int counter = 0;
-	while (counter <= 25)
-	{
-		currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
-		matrix->setBrightness(currentFadeBrightness);
-		matrix->show();
-		counter++;
-		delay(dealy);
-	}
+    int counter = 0;
+    while (counter <= 25)
+    {
+        currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
+        matrix->setBrightness(currentFadeBrightness);
+        matrix->show();
+        counter++;
+        delay(dealy);
+    }
 }
 
 void ColoredBarWipe()
 {
-	for (uint16_t i = 0; i < 32 + 1; i++)
-	{
-		matrix->fillRect(0, 0, i - 1, 8, matrix->Color(0, 0, 0));
+    for (uint16_t i = 0; i < 32 + 1; i++)
+    {
+        matrix->fillRect(0, 0, i - 1, 8, matrix->Color(0, 0, 0));
 
-		matrix->drawFastVLine(i, 0, 8, ColorWheel((i * 8) & 255, 0));
-		matrix->drawFastVLine(i + 1, 0, 8, ColorWheel((i * 9) & 255, 0));
-		matrix->drawFastVLine(i - 1, 0, 8, 0);
-		matrix->drawFastVLine(i - 2, 0, 8, 0);
-		matrix->show();
-		delay(15);
-	}
+        matrix->drawFastVLine(i, 0, 8, ColorWheel((i * 8) & 255, 0));
+        matrix->drawFastVLine(i + 1, 0, 8, ColorWheel((i * 9) & 255, 0));
+        matrix->drawFastVLine(i - 1, 0, 8, 0);
+        matrix->drawFastVLine(i - 2, 0, 8, 0);
+        matrix->show();
+        delay(15);
+    }
 }
 
 void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
 {
-	for (uint16_t row = 0; row <= 7; row += 2)
-	{
-		for (uint16_t col = 0; col <= 31; col++)
-		{
-			if (row == 0 || row == 4)
-			{
-				matrix->fillRect(0, row, col - 1, 2, matrix->Color(0, 0, 0));
-				matrix->drawFastVLine(col - 1, row, 2, matrix->Color(r, g, b));
-				matrix->drawFastVLine(col, row, 2, matrix->Color(r, g, b));
-			}
-			else
-			{
-				matrix->fillRect(32 - col, row, col, 2, matrix->Color(0, 0, 0));
-				matrix->drawFastVLine(32 - col, row, 2, matrix->Color(r, g, b));
-				matrix->drawFastVLine(32 - col - 1, row, 2, matrix->Color(r, g, b));
-			}
-			matrix->show();
-			delay(5);
-		}
-		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
-		if (row == 0 || row == 4)
-		{
-			matrix->drawFastVLine(30, row + 1, 2, matrix->Color(r, g, b));
-			matrix->drawFastVLine(31, row + 1, 2, matrix->Color(r, g, b));
-		}
-		else
-		{
-			matrix->drawFastVLine(0, row + 1, 2, matrix->Color(r, g, b));
-			matrix->drawFastVLine(1, row + 1, 2, matrix->Color(r, g, b));
-		}
-		matrix->show();
-		delay(5);
-		matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
-	}
-	matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
-	matrix->show();
+    for (uint16_t row = 0; row <= 7; row += 2)
+    {
+        for (uint16_t col = 0; col <= 31; col++)
+        {
+            if (row == 0 || row == 4)
+            {
+                matrix->fillRect(0, row, col - 1, 2, matrix->Color(0, 0, 0));
+                matrix->drawFastVLine(col - 1, row, 2, matrix->Color(r, g, b));
+                matrix->drawFastVLine(col, row, 2, matrix->Color(r, g, b));
+            }
+            else
+            {
+                matrix->fillRect(32 - col, row, col, 2, matrix->Color(0, 0, 0));
+                matrix->drawFastVLine(32 - col, row, 2, matrix->Color(r, g, b));
+                matrix->drawFastVLine(32 - col - 1, row, 2, matrix->Color(r, g, b));
+            }
+            matrix->show();
+            delay(5);
+        }
+        matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+        if (row == 0 || row == 4)
+        {
+            matrix->drawFastVLine(30, row + 1, 2, matrix->Color(r, g, b));
+            matrix->drawFastVLine(31, row + 1, 2, matrix->Color(r, g, b));
+        }
+        else
+        {
+            matrix->drawFastVLine(0, row + 1, 2, matrix->Color(r, g, b));
+            matrix->drawFastVLine(1, row + 1, 2, matrix->Color(r, g, b));
+        }
+        matrix->show();
+        delay(5);
+        matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
+    }
+    matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
+    matrix->show();
 }
 
 void BitmapWipe(JsonArray &data, int16_t w)
 {
-	for (int16_t x = -w + 1; x <= 31; x++)
-	{
-		int16_t y = 0;
-		for (int16_t j = 0; j < 8; j++, y++)
-		{
-			for (int16_t i = 0; i < w; i++)
-			{
-				matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
-			}
-		}
-		matrix->show();
-		delay(18);
-		matrix->fillRect(0, 0, x, 8, matrix->Color(0, 0, 0));
-		matrix->show();
-	}
+    for (int16_t x = -w + 1; x <= 31; x++)
+    {
+        int16_t y = 0;
+        for (int16_t j = 0; j < 8; j++, y++)
+        {
+            for (int16_t i = 0; i < w; i++)
+            {
+                matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
+            }
+        }
+        matrix->show();
+        delay(18);
+        matrix->fillRect(0, 0, x, 8, matrix->Color(0, 0, 0));
+        matrix->show();
+    }
 }
 
 void ColorFlash(int red, int green, int blue)
 {
-	for (uint16_t row = 0; row < 8; row++)
-	{
-		for (uint16_t column = 0; column < 32; column++)
-		{
-			matrix->drawPixel(column, row, matrix->Color(red, green, blue));
-		}
-	}
-	matrix->show();
+    for (uint16_t row = 0; row < 8; row++)
+    {
+        for (uint16_t column = 0; column < 32; column++)
+        {
+            matrix->drawPixel(column, row, matrix->Color(red, green, blue));
+        }
+    }
+    matrix->show();
 }
 
 uint ColorWheel(byte wheelPos, int pos)
 {
-	if (wheelPos < 85)
-	{
-		return matrix->Color((wheelPos * 3) - pos, (255 - wheelPos * 3) - pos, 0);
-	}
-	else if (wheelPos < 170)
-	{
-		wheelPos -= 85;
-		return matrix->Color((255 - wheelPos * 3) - pos, 0, (wheelPos * 3) - pos);
-	}
-	else
-	{
-		wheelPos -= 170;
-		return matrix->Color(0, (wheelPos * 3) - pos, (255 - wheelPos * 3) - pos);
-	}
+    if (wheelPos < 85)
+    {
+        return matrix->Color((wheelPos * 3) - pos, (255 - wheelPos * 3) - pos, 0);
+    }
+    else if (wheelPos < 170)
+    {
+        wheelPos -= 85;
+        return matrix->Color((255 - wheelPos * 3) - pos, 0, (wheelPos * 3) - pos);
+    }
+    else
+    {
+        wheelPos -= 170;
+        return matrix->Color(0, (wheelPos * 3) - pos, (255 - wheelPos * 3) - pos);
+    }
 }
 
 void ShowBootAnimation()
 {
-	DrawTextHelper("PIXELIT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
-	FadeIn(60, 10);
-	FadeOut(60, 10);
-	FadeIn(60, 10);
-	FadeOut(60, 10);
-	FadeIn(60, 10);
+    DrawTextHelper("P", false, false, false, false, false, false, NULL, 255, 51, 255, 4, 1);
+    matrix->show();
+
+    delay(200);
+    DrawTextHelper("I", false, false, false, false, false, false, NULL, 0, 255, 42, 8, 1);
+    matrix->show();
+
+    delay(200);
+    DrawTextHelper("X", false, false, false, false, false, false, NULL, 255, 25, 25, 10, 1);
+    matrix->show();
+
+    delay(200);
+    DrawTextHelper("E", false, false, false, false, false, false, NULL, 25, 255, 255, 14, 1);
+    matrix->show();
+
+    delay(200);
+    DrawTextHelper("L", false, false, false, false, false, false, NULL, 255, 221, 51, 18, 1);
+    matrix->show();
+
+    delay(500);
+    DrawTextHelper("I", false, false, false, false, false, false, NULL, 255, 255, 255, 22, 1);
+    DrawTextHelper("T", false, false, false, false, false, false, NULL, 255, 255, 255, 24, 1);
+    matrix->show();
+    delay(1000);
+
+    // FadeIn(60, 10);
+    // DrawTextHelper("PIXELIT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+    // FadeIn(60, 10);
+    // FadeOut(60, 10);
+    // FadeIn(60, 10);
+    // FadeOut(60, 10);
+    // FadeIn(60, 10);
 }
 
 ColorTemperature GetUserColorTemp()
 {
-	if (matrixTempCorrection == "tungsten40w")
-	{
-		return Tungsten40W;
-	}
+    if (matrixTempCorrection == "tungsten40w")
+    {
+        return Tungsten40W;
+    }
 
-	if (matrixTempCorrection == "tungsten100w")
-	{
-		return Tungsten100W;
-	}
+    if (matrixTempCorrection == "tungsten100w")
+    {
+        return Tungsten100W;
+    }
 
-	if (matrixTempCorrection == "halogen")
-	{
-		return Halogen;
-	}
+    if (matrixTempCorrection == "halogen")
+    {
+        return Halogen;
+    }
 
-	if (matrixTempCorrection == "carbonarc")
-	{
-		return CarbonArc;
-	}
+    if (matrixTempCorrection == "carbonarc")
+    {
+        return CarbonArc;
+    }
 
-	if (matrixTempCorrection == "highnoonsun")
-	{
-		return HighNoonSun;
-	}
+    if (matrixTempCorrection == "highnoonsun")
+    {
+        return HighNoonSun;
+    }
 
-	if (matrixTempCorrection == "directsunlight")
-	{
-		return DirectSunlight;
-	}
+    if (matrixTempCorrection == "directsunlight")
+    {
+        return DirectSunlight;
+    }
 
-	if (matrixTempCorrection == "overcastsky")
-	{
-		return OvercastSky;
-	}
+    if (matrixTempCorrection == "overcastsky")
+    {
+        return OvercastSky;
+    }
 
-	if (matrixTempCorrection == "clearbluesky")
-	{
-		return ClearBlueSky;
-	}
+    if (matrixTempCorrection == "clearbluesky")
+    {
+        return ClearBlueSky;
+    }
 
-	if (matrixTempCorrection == "warmfluorescent")
-	{
-		return WarmFluorescent;
-	}
+    if (matrixTempCorrection == "warmfluorescent")
+    {
+        return WarmFluorescent;
+    }
 
-	if (matrixTempCorrection == "standardfluorescent")
-	{
-		return StandardFluorescent;
-	}
+    if (matrixTempCorrection == "standardfluorescent")
+    {
+        return StandardFluorescent;
+    }
 
-	if (matrixTempCorrection == "coolwhitefluorescent")
-	{
-		return CoolWhiteFluorescent;
-	}
-	if (matrixTempCorrection == "fullspectrumfluorescent")
-	{
-		return FullSpectrumFluorescent;
-	}
-	if (matrixTempCorrection == "growlightfluorescent")
-	{
-		return GrowLightFluorescent;
-	}
-	if (matrixTempCorrection == "blacklightfluorescent")
-	{
-		return BlackLightFluorescent;
-	}
-	if (matrixTempCorrection == "mercuryvapor")
-	{
-		return MercuryVapor;
-	}
-	if (matrixTempCorrection == "sodiumvapor")
-	{
-		return SodiumVapor;
-	}
-	if (matrixTempCorrection == "metalhalide")
-	{
-		return MetalHalide;
-	}
-	if (matrixTempCorrection == "highpressuresodium")
-	{
-		return HighPressureSodium;
-	}
+    if (matrixTempCorrection == "coolwhitefluorescent")
+    {
+        return CoolWhiteFluorescent;
+    }
+    if (matrixTempCorrection == "fullspectrumfluorescent")
+    {
+        return FullSpectrumFluorescent;
+    }
+    if (matrixTempCorrection == "growlightfluorescent")
+    {
+        return GrowLightFluorescent;
+    }
+    if (matrixTempCorrection == "blacklightfluorescent")
+    {
+        return BlackLightFluorescent;
+    }
+    if (matrixTempCorrection == "mercuryvapor")
+    {
+        return MercuryVapor;
+    }
+    if (matrixTempCorrection == "sodiumvapor")
+    {
+        return SodiumVapor;
+    }
+    if (matrixTempCorrection == "metalhalide")
+    {
+        return MetalHalide;
+    }
+    if (matrixTempCorrection == "highpressuresodium")
+    {
+        return HighPressureSodium;
+    }
 
-	return UncorrectedTemperature;
+    return UncorrectedTemperature;
 }
 
 LEDColorCorrection GetUserColorCorrection()
 {
-	if (matrixTempCorrection == "default")
-	{
-		return TypicalSMD5050;
-	}
+    if (matrixTempCorrection == "default")
+    {
+        return TypicalSMD5050;
+    }
 
-	if (matrixTempCorrection == "typicalsmd5050")
-	{
-		return TypicalSMD5050;
-	}
+    if (matrixTempCorrection == "typicalsmd5050")
+    {
+        return TypicalSMD5050;
+    }
 
-	if (matrixTempCorrection == "typical8mmpixel")
-	{
-		return Typical8mmPixel;
-	}
+    if (matrixTempCorrection == "typical8mmpixel")
+    {
+        return Typical8mmPixel;
+    }
 
-	return UncorrectedColor;
+    return UncorrectedColor;
 }
 
 int *GetUserCutomCorrection()
 {
-	String rgbString = matrixTempCorrection;
-	rgbString.trim();
+    String rgbString = matrixTempCorrection;
+    rgbString.trim();
 
-	// R,G,B / 255,255,255
-	static int rgbArray[3];
+    // R,G,B / 255,255,255
+    static int rgbArray[3];
 
-	// R
-	rgbArray[0] = rgbString.substring(0, 3).toInt();
-	// G
-	rgbArray[1] = rgbString.substring(4, 7).toInt();
-	// B
-	rgbArray[2] = rgbString.substring(8, 11).toInt();
+    // R
+    rgbArray[0] = rgbString.substring(0, 3).toInt();
+    // G
+    rgbArray[1] = rgbString.substring(4, 7).toInt();
+    // B
+    rgbArray[2] = rgbString.substring(8, 11).toInt();
 
-	return rgbArray;
+    return rgbArray;
 }
 
 LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 {
-	if (photocell == "GL5516")
-		return LightDependentResistor::GL5516;
-	if (photocell == "GL5528")
-		return LightDependentResistor::GL5528;
-	if (photocell == "GL5537_1")
-		return LightDependentResistor::GL5537_1;
-	if (photocell == "GL5537_2")
-		return LightDependentResistor::GL5537_2;
-	if (photocell == "GL5539")
-		return LightDependentResistor::GL5539;
-	if (photocell == "GL5549")
-		return LightDependentResistor::GL5549;
-	Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
-	return LightDependentResistor::GL5528;
+    if (photocell == "GL5516")
+        return LightDependentResistor::GL5516;
+    if (photocell == "GL5528")
+        return LightDependentResistor::GL5528;
+    if (photocell == "GL5537_1")
+        return LightDependentResistor::GL5537_1;
+    if (photocell == "GL5537_2")
+        return LightDependentResistor::GL5537_2;
+    if (photocell == "GL5539")
+        return LightDependentResistor::GL5539;
+    if (photocell == "GL5549")
+        return LightDependentResistor::GL5549;
+    Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
+    return LightDependentResistor::GL5528;
 }
 
 uint8_t TranslatePin(String pin)
 {
-	if (pin == "Pin_D0")
-		return D0;
-	if (pin == "Pin_D1")
-		return D1;
-	if (pin == "Pin_D2")
-		return D2;
-	if (pin == "Pin_D3")
-		return D3;
-	if (pin == "Pin_D4")
-		return D4;
-	if (pin == "Pin_D5")
-		return D5;
-	if (pin == "Pin_D6")
-		return D6;
-	if (pin == "Pin_D7")
-		return D7;
-	if (pin == "Pin_D8")
-		return D8;
-	if (pin == "Pin_27")
-		return 27;
-	Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
-	return LED_BUILTIN;
+    if (pin == "Pin_D0")
+        return D0;
+    if (pin == "Pin_D1")
+        return D1;
+    if (pin == "Pin_D2")
+        return D2;
+    if (pin == "Pin_D3")
+        return D3;
+    if (pin == "Pin_D4")
+        return D4;
+    if (pin == "Pin_D5")
+        return D5;
+    if (pin == "Pin_D6")
+        return D6;
+    if (pin == "Pin_D7")
+        return D7;
+    if (pin == "Pin_D8")
+        return D8;
+    if (pin == "Pin_27")
+        return 27;
+    Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+    return LED_BUILTIN;
 }
 
 void ClearTextArea()
 {
-	int16_t h = 8;
-	int16_t w = 24;
-	int16_t x = 8;
-	int16_t y = 0;
+    int16_t h = 8;
+    int16_t w = 24;
+    int16_t x = 8;
+    int16_t y = 0;
 
-	for (int16_t j = 0; j < h; j++, y++)
-	{
-		for (int16_t i = 0; i < w; i++)
-		{
-			matrix->drawPixel(x + i, y, (uint16_t)0);
-		}
-	}
+    for (int16_t j = 0; j < h; j++, y++)
+    {
+        for (int16_t i = 0; i < w; i++)
+        {
+            matrix->drawPixel(x + i, y, (uint16_t)0);
+        }
+    }
 }
 
 void ClearBMPArea()
 {
-	int16_t h = 8;
-	int16_t w = 8;
-	int16_t x = 0;
-	int16_t y = 0;
+    int16_t h = 8;
+    int16_t w = 8;
+    int16_t x = 0;
+    int16_t y = 0;
 
-	for (int16_t j = 0; j < h; j++, y++)
-	{
-		for (int16_t i = 0; i < w; i++)
-		{
-			matrix->drawPixel(x + i, y, (uint16_t)0);
-		}
-	}
+    for (int16_t j = 0; j < h; j++, y++)
+    {
+        for (int16_t i = 0; i < w; i++)
+        {
+            matrix->drawPixel(x + i, y, (uint16_t)0);
+        }
+    }
 }
 
 int DayOfWeekFirstMonday(int OrigDayofWeek)
 {
-	int idx = (7 + OrigDayofWeek) - 1;
-	if (idx > 6) // week ends at 6, because Enum.DayOfWeek is zero-based
-	{
-		idx -= 7;
-	}
-	return idx;
-	// int diff = (7 + (OrigDayofWeek - 1)) % 7;
-	// return OrigDayofWeek + (-1 * diff);
+    int idx = (7 + OrigDayofWeek) - 1;
+    if (idx > 6) // week ends at 6, because Enum.DayOfWeek is zero-based
+    {
+        idx -= 7;
+    }
+    return idx;
+    // int diff = (7 + (OrigDayofWeek - 1)) % 7;
+    // return OrigDayofWeek + (-1 * diff);
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -3012,541 +3076,620 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
 void setup()
 {
 
-	Serial.begin(115200);
+    Serial.begin(115200);
 
-	// Mounting FileSystem
-	Serial.println(F("Mounting file system..."));
+    // Mounting FileSystem
+    Serial.println(F("Mounting file system..."));
 #if defined(ESP8266)
-	if (LittleFS.begin())
+    if (LittleFS.begin())
 #elif defined(ESP32)
-	if (SPIFFS.begin())
+    if (SPIFFS.begin())
 #endif
-	{
-		Serial.println(F("Mounted file system."));
-		LoadConfig();
-		// If new version detected, create new variables in config if necessary.
-		if (optionsVersion != VERSION)
-		{
-			Log(F("LoadConfig"), F("New version detected, create new variables in config if necessary"));
-			SaveConfig();
-			LoadConfig();
-		}
-	}
-	else
-	{
-		Serial.println(F("Failed to mount FS"));
-	}
+    {
+        Serial.println(F("Mounted file system."));
+        LoadConfig();
+        // If new version detected, create new variables in config if necessary.
+        if (optionsVersion != VERSION)
+        {
+            Log(F("LoadConfig"), F("New version detected, create new variables in config if necessary"));
+            SaveConfig();
+            LoadConfig();
+        }
+    }
+    else
+    {
+        Serial.println(F("Failed to mount FS"));
+    }
 
-	// Init SetGPIO Array
-	for (int i = 0; i < SET_GPIO_SIZE; i++)
-	{
-		setGPIOReset[i].gpio = -1;
-		setGPIOReset[i].resetMillis = -1;
-	}
+    // Init SetGPIO Array
+    for (int i = 0; i < SET_GPIO_SIZE; i++)
+    {
+        setGPIOReset[i].gpio = -1;
+        setGPIOReset[i].resetMillis = -1;
+    }
 
-	// I2C Sensors
-	twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin));
+    // I2C Sensors
+    twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin));
 
-	// Init LightSensor
-	bh1750 = new BH1750();
-	if (bh1750->begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &twowire))
-	{
-		Log(F("Setup"), F("BH1750 started"));
-		luxSensor = LuxSensor_BH1750;
-	}
-	else
-	{
-		delete bh1750;
-		max44009 = new Max44009(Max44009::Boolean::False);
-		max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
-		if (max44009->isConnected())
-		{
-			Log(F("Setup"), F("Max44009/GY-049 started"));
-			luxSensor = LuxSensor_Max44009;
-		}
-		else
-		{
-			delete max44009;
-			photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
-			photocell->setPhotocellPositionOnGround(false);
-			luxSensor = LuxSensor_LDR;
-		}
-	}
+    // Init LightSensor
+    bh1750 = new BH1750();
+    if (bh1750->begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &twowire))
+    {
+        Log(F("Setup"), F("BH1750 started"));
+        luxSensor = LuxSensor_BH1750;
+    }
+    else
+    {
+        delete bh1750;
+        max44009 = new Max44009(Max44009::Boolean::False);
+        max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
+        if (max44009->isConnected())
+        {
+            Log(F("Setup"), F("Max44009/GY-049 started"));
+            luxSensor = LuxSensor_Max44009;
+        }
+        else
+        {
+            delete max44009;
+            photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
+            photocell->setPhotocellPositionOnGround(false);
+            luxSensor = LuxSensor_LDR;
+        }
+    }
 
-	// Init Temp Sensors
-	bme280 = new Adafruit_BME280();
-	if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
-	{
-		Log(F("Setup"), F("BME280 started"));
-		tempSensor = TempSensor_BME280;
-	}
-	else
-	{
-		delete bme280;
-		bmp280 = new Adafruit_BMP280(&twowire);
-		Log(F("Setup"), F("BMP280 Trying"));
-		if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
-		{
-			Log(F("Setup"), F("BMP280 started"));
-			tempSensor = TempSensor_BMP280;
-		}
-		else
-		{
-			delete bmp280;
-			bme680 = new Adafruit_BME680(&twowire);
-			if (bme680->begin())
-			{
-				Log(F("Setup"), F("BME680 started"));
-				tempSensor = TempSensor_BME680;
-			}
-			else
-			{
-				delete bme680;
-				// AM2320 needs a delay to be reliably initialized
-				delay(800);
-				dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-				if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
-				{
-					Log(F("Setup"), F("DHT started"));
-					tempSensor = TempSensor_DHT;
-				}
-				else
-				{
-					Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
-				}
-			}
-		}
-	}
+    // Init Temp Sensors
+    bme280 = new Adafruit_BME280();
+    if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
+    {
+        Log(F("Setup"), F("BME280 started"));
+        tempSensor = TempSensor_BME280;
+    }
+    else
+    {
+        delete bme280;
+        bmp280 = new Adafruit_BMP280(&twowire);
+        Log(F("Setup"), F("BMP280 Trying"));
+        if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
+        {
+            Log(F("Setup"), F("BMP280 started"));
+            tempSensor = TempSensor_BMP280;
+        }
+        else
+        {
+            delete bmp280;
+            bme680 = new Adafruit_BME680(&twowire);
+            if (bme680->begin())
+            {
+                Log(F("Setup"), F("BME680 started"));
+                tempSensor = TempSensor_BME680;
+            }
+            else
+            {
+                delete bme680;
+                // AM2320 needs a delay to be reliably initialized
+                delay(800);
+                dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
+                if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+                {
+                    Log(F("Setup"), F("DHT started"));
+                    tempSensor = TempSensor_DHT;
+                }
+                else
+                {
+                    Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
+                }
+            }
+        }
+    }
 
-	switch (matrixType)
-	{
-	default: // Matix Type 1 (Colum major)
-		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
-		break;
+    switch (matrixType)
+    {
+    default: // Matix Type 1 (Colum major)
+        matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG);
+        break;
 
-	case 2: // Matix Type 2 (Row major)
-		matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
-		break;
+    case 2: // Matix Type 2 (Row major)
+        matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
+        break;
 
-	case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU)
-		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
-		break;
+    case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU)
+        matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
+        break;
 
-	case 4: // Matix Type 4 (MicroMatrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
-		matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
-		break;
-	}
+    case 4: // Matix Type 4 (MicroMatrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
+        matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
+        break;
+    }
 
-	ColorTemperature userColorTemp = GetUserColorTemp();
-	LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
+    ColorTemperature userColorTemp = GetUserColorTemp();
+    LEDColorCorrection userLEDCorrection = GetUserColorCorrection();
 
-	// Matrix Color Correction
-	if (userLEDCorrection != UncorrectedColor)
-	{
-		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
-	}
-	else if (userColorTemp != UncorrectedTemperature)
-	{
-		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
-	}
-	else
-	{
-		int *rgbArray = GetUserCutomCorrection();
-		FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
-	}
+    // Matrix Color Correction
+    if (userLEDCorrection != UncorrectedColor)
+    {
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
+    }
+    else if (userColorTemp != UncorrectedTemperature)
+    {
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
+    }
+    else
+    {
+        int *rgbArray = GetUserCutomCorrection();
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
+    }
 
-	matrix->begin();
-	matrix->setTextWrap(false);
-	matrix->setBrightness(currentMatrixBrightness);
-	matrix->clear();
+    matrix->begin();
+    matrix->setTextWrap(false);
+    matrix->setBrightness(currentMatrixBrightness);
+    matrix->clear();
 
-	// Bootscreen
-	if (bootScreenAktiv)
-	{
-		ShowBootAnimation();
-	}
+    // Bootscreen
+    if (bootScreenAktiv)
+    {
+        ShowBootAnimation();
+    }
 
-	// Hostname
-	if (hostname.isEmpty())
-	{
-		hostname = "PixelIt";
-	}
-	WiFi.hostname(hostname);
+    // Hostname
+    if (hostname.isEmpty())
+    {
+        hostname = "PixelIt";
+    }
+    WiFi.hostname(hostname);
 
-	wifiManager.setAPCallback(EnteredHotspotCallback);
-	wifiManager.setMinimumSignalQuality();
-	// Config menue timeout 180 seconds.
-	wifiManager.setConfigPortalTimeout(180);
+    wifiManager.setAPCallback(EnteredHotspotCallback);
+    wifiManager.setMinimumSignalQuality();
+    // Config menue timeout 180 seconds.
+    wifiManager.setConfigPortalTimeout(180);
 
-	if (!wifiManager.autoConnect("PIXELIT"))
-	{
-		Log(F("Setup"), F("Wifi failed to connect and hit timeout"));
-		delay(3000);
-		// Reset and try again, or maybe put it to deep sleep
-		ESP.restart();
-		delay(5000);
-	}
+    if (!wifiManager.autoConnect("PIXELIT"))
+    {
+        Log(F("Setup"), F("Wifi failed to connect and hit timeout"));
+        delay(3000);
+        // Reset and try again, or maybe put it to deep sleep
+        ESP.restart();
+        delay(5000);
+    }
 
-	Log(F("Setup"), F("Wifi connected...yeey :)"));
+    Log(F("Setup"), F("Wifi connected...yeey :)"));
 
-	Log(F("Setup"), F("Local IP"));
-	Log(F("Setup"), WiFi.localIP().toString());
-	Log(F("Setup"), WiFi.gatewayIP().toString());
-	Log(F("Setup"), WiFi.subnetMask().toString());
+    Log(F("Setup"), F("Local IP"));
+    Log(F("Setup"), WiFi.localIP().toString());
+    Log(F("Setup"), WiFi.gatewayIP().toString());
+    Log(F("Setup"), WiFi.subnetMask().toString());
 
-	Log(F("Setup"), F("Starting UDP"));
-	udp.begin(2390);
-	// Log(F("Setup"), "Local port: " + String(udp.localPort()));
+    Log(F("Setup"), F("Starting UDP"));
+    udp.begin(2390);
+    // Log(F("Setup"), "Local port: " + String(udp.localPort()));
 
-	httpUpdater.setup(&server);
+    httpUpdater.setup(&server);
 
-	server.on(F("/api/screen"), HTTP_POST, HandleScreen);
-	server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
-	server.on(F("/api/brightness"), HTTP_GET, HandleGetBrightness);
-	server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legacy
-	server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
-	server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
-	server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
-	// server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
-	server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
-	server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
-	server.on(F("/api/wifireset"), HTTP_POST, HandelWifiConfigReset);
-	server.on(F("/api/factoryreset"), HTTP_POST, HandleFactoryReset);
-	server.on(F("/"), HTTP_GET, HandleGetMainPage);
-	server.onNotFound(HandleNotFound);
+    server.on(F("/api/screen"), HTTP_POST, HandleScreen);
+    server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
+    server.on(F("/api/brightness"), HTTP_GET, HandleGetBrightness);
+    server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legacy
+    server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
+    server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
+    server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
+    // server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
+    server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
+    server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
+    server.on(F("/api/wifireset"), HTTP_POST, HandelWifiConfigReset);
+    server.on(F("/api/factoryreset"), HTTP_POST, HandleFactoryReset);
+    server.on(F("/"), HTTP_GET, HandleGetMainPage);
+    server.onNotFound(HandleNotFound);
 
-	server.begin();
+    server.begin();
 
-	webSocket.begin();
-	webSocket.onEvent(webSocketEvent);
+    webSocket.begin();
+    webSocket.onEvent(webSocketEvent);
 
-	Log(F("Setup"), F("Webserver started"));
+    Log(F("Setup"), F("Webserver started"));
 
-	if (mqttAktiv == true)
-	{
-		client.setServer(mqttServer.c_str(), mqttPort);
-		client.setCallback(callback);
-		client.setBufferSize(8000);
-		Log(F("Setup"), F("MQTT started"));
-	}
+    if (mqttAktiv == true)
+    {
+        client.setServer(mqttServer.c_str(), mqttPort);
+        client.setCallback(callback);
+        client.setBufferSize(8000);
+        Log(F("Setup"), F("MQTT started"));
+    }
 
-	softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
+    softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
 
-	softSerial->begin(9600);
-	Log(F("Setup"), F("Software Serial started"));
+    softSerial->begin(9600);
+    Log(F("Setup"), F("Software Serial started"));
 
-	mp3Player.begin(*softSerial);
-	Log(F("Setup"), F("DFPlayer started"));
-	mp3Player.volume(initialVolume);
+    mp3Player.begin(*softSerial);
+    Log(F("Setup"), F("DFPlayer started"));
+    mp3Player.volume(initialVolume);
+}
+
+void displayUpdateScreen()
+{
+    Log(F("UpdateScreen"), F("Display UpdateScreen..."));
+
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+
+    BuildUpdateScreenJSON(root);
+
+    if (root.success())
+    {
+        CreateFrames(root, CHECKUPDATESCREEN_DURATION);
+    }
+    else
+    {
+        Log(F("UpdateScreen"), F("Failed to Build UpdateScreen JSON"));
+    }
+}
+
+void checkUpdate()
+{
+    Log(F("CheckUpdate"), F("Checking..."));
+    HttpClient httpClient = HttpClient(wifiClientHTTP, CHECKUPDATE_SERVER_HOST, CHECKUPDATE_SERVER_PORT);
+    httpClient.sendHeader("User-Agent", "PixelIt");
+    httpClient.setTimeout(1500);
+    httpClient.get(CHECKUPDATE_SERVER_PATH);
+    int statusCode = httpClient.responseStatusCode();
+    String response = httpClient.responseBody();
+
+    // Serial.print("Status code: ");
+    // Serial.println(statusCode);
+    // Serial.print("Response: ");
+    // Serial.println(response);
+
+    if (statusCode == 200)
+    {
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject &root = jsonBuffer.parseObject(response);
+        if (root.containsKey("version"))
+        {
+            lastReleaseVersion = root["version"].as<String>();
+            if (!lastReleaseVersion.equals(VERSION))
+            {
+                Log(F("CheckUpdate"), F("New FW available"));
+            }
+            else
+            {
+                Log(F("CheckUpdate"), F("No new FW available"));
+            }
+        }
+    }
+    else
+    {
+        Log(F("CheckUpdate"), "Error. HTTP Code: " + statusCode);
+    }
 }
 
 void loop()
 {
-	server.handleClient();
-	webSocket.loop();
+    server.handleClient();
+    webSocket.loop();
 
-	// Reset GPIO based on the array, as far as something is present in the array.
-	for (int i = 0; i < SET_GPIO_SIZE; i++)
-	{
-		if (setGPIOReset[i].gpio != -1)
-		{
-			if (setGPIOReset[i].resetMillis <= millis())
-			{
-				Log(F("ResetSetGPIO"), "Pos: " + String(i) + ", GPIO: " + String(setGPIOReset[i].gpio) + ", Value: false");
-				digitalWrite(setGPIOReset[i].gpio, false);
-				setGPIOReset[i].gpio = -1;
-				setGPIOReset[i].resetMillis = -1;
-			}
-		}
-	}
+    // Reset GPIO based on the array, as far as something is present in the array.
+    for (int i = 0; i < SET_GPIO_SIZE; i++)
+    {
+        if (setGPIOReset[i].gpio != -1)
+        {
+            if (setGPIOReset[i].resetMillis <= millis())
+            {
+                Log(F("ResetSetGPIO"), "Pos: " + String(i) + ", GPIO: " + String(setGPIOReset[i].gpio) + ", Value: false");
+                digitalWrite(setGPIOReset[i].gpio, false);
+                setGPIOReset[i].gpio = -1;
+                setGPIOReset[i].resetMillis = -1;
+            }
+        }
+    }
 
-	// Send Telemetry data
-	if (sendTelemetry == true && (sendTelemetryPrevMillis == 0 || millis() - sendTelemetryPrevMillis >= TELEMETRY_DELAY))
-	{
-		sendTelemetryPrevMillis = millis();
-		SendTelemetry();
-	}
+    // Check and display if new FW version is available.
+    if (checkUpdateScreen == true)
+    {
 
-	if (mqttAktiv == true)
-	{
-		if (!client.connected())
-		{
-			// MQTT connect
-			if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
-			{
-				mqttLastReconnectAttempt = millis();
+        // Check new FW Version first time after 30.5 seconds
+        if ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL)
+        {
+            checkUpdatePrevMillis = millis();
+            checkUpdate();
+        }
 
-				// try to reconnect
-				if (MQTTreconnect())
-				{
-					mqttLastReconnectAttempt = 0;
-				}
-			}
-		}
-		else
-		{
-			client.loop();
-		}
-	}
+        // Display new FW Version
+        if (millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
+        {
+            checkUpdateScreenPrevMillis = millis();
+            if (!lastReleaseVersion.equals(VERSION))
+            {
+                displayUpdateScreen();
+            }
+        }
+    }
 
-	// Check buttons
-	for (uint button = 0; button < 3; button++)
-	{
-		if (btnEnabled[button])
-		{
-			if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
-			{
-				btnState[button] = btnState_PressedNew;
-			}
-			if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
-			{
-				btnState[button] = btnState_Released;
-				HandleAndSendButtonPress(button, false);
-			}
-			if (btnState[button] == btnState_PressedNew)
-			{
-				btnState[button] = btnState_PressedBefore;
-				HandleAndSendButtonPress(button, true);
-			}
-		}
-	}
+    // Send Telemetry data first time after 30.3 seconds
+    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
+    {
+        sendTelemetryPrevMillis = millis();
+        SendTelemetry();
+    }
 
-	// Clock Auto Fallback
-	if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
-	{
-		forceClock = false;
-		scrollTextAktivLoop = false;
-		animateBMPAktivLoop = false;
+    if (mqttAktiv == true)
+    {
+        if (!client.connected())
+        {
+            // MQTT connect
+            if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
+            {
+                mqttLastReconnectAttempt = millis();
 
-		int performWipe = 0;
+                // try to reconnect
+                if (MQTTreconnect())
+                {
+                    mqttLastReconnectAttempt = 0;
+                }
+            }
+        }
+        else
+        {
+            client.loop();
+        }
+    }
 
-		switch (clockAutoFallbackAnimation)
-		{
-		case 1:
-		case 2:
-		case 3:
-			performWipe = clockAutoFallbackAnimation;
-			break;
-		case 4:
-			performWipe = (millis() % 3) + 1;
-			break;
-		default:;
-		}
+    // Check buttons
+    for (uint button = 0; button < 3; button++)
+    {
+        if (btnEnabled[button])
+        {
+            if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
+            {
+                btnState[button] = btnState_PressedNew;
+            }
+            if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
+            {
+                btnState[button] = btnState_Released;
+                HandleAndSendButtonPress(button, false);
+            }
+            if (btnState[button] == btnState_PressedNew)
+            {
+                btnState[button] = btnState_PressedBefore;
+                HandleAndSendButtonPress(button, true);
+            }
+        }
+    }
 
-		if (performWipe == 1)
-		{
-			FadeOut();
-		}
-		else if (performWipe == 2)
-		{
-			ColoredBarWipe();
-		}
-		else if (performWipe == 3)
-		{
-			ZigZagWipe(clockColorR, clockColorG, clockColorB);
-		}
-		clockAktiv = true;
-		clockCounterClock = 0;
-		clockCounterDate = 0;
-		DrawClock(true);
+    // Clock Auto Fallback
+    if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
+    {
+        forceClock = false;
+        scrollTextAktivLoop = false;
+        animateBMPAktivLoop = false;
 
-		if (performWipe != 0)
-		{
-			FadeIn();
-		}
-	}
+        int performWipe = 0;
 
-	if (clockAktiv && now() != clockLastUpdate)
-	{
-		if (timeStatus() == timeNotSet && ntpTimeOut <= millis())
-		{
-			if (ntpRetryCounter >= NTP_MAX_RETRYS)
-			{
-				ntpTimeOut = (millis() + (NTP_TIMEOUT_SEC * 1000));
-				ntpRetryCounter = 0;
-				Log(F("Sync TimeServer"), "sync timeout for " + String(NTP_TIMEOUT_SEC) + " seconds!");
-			}
-			else
-			{
-				Log(F("Sync TimeServer"), ntpServer + " waiting for sync");
-				setSyncProvider(getNtpTime);
-			}
-		}
-		clockLastUpdate = now();
-		DrawClock(false);
-	}
+        switch (clockAutoFallbackAnimation)
+        {
+        case 1:
+        case 2:
+        case 3:
+            performWipe = clockAutoFallbackAnimation;
+            break;
+        case 4:
+            performWipe = (millis() % 3) + 1;
+            break;
+        default:;
+        }
 
-	if (millis() - sendLuxPrevMillis >= 1000)
-	{
-		sendLuxPrevMillis = millis();
+        if (performWipe == 1)
+        {
+            FadeOut();
+        }
+        else if (performWipe == 2)
+        {
+            ColoredBarWipe();
+        }
+        else if (performWipe == 3)
+        {
+            ZigZagWipe(clockColorR, clockColorG, clockColorB);
+        }
+        clockAktiv = true;
+        clockCounterClock = 0;
+        clockCounterDate = 0;
+        DrawClock(true);
 
-		if (luxSensor == LuxSensor_BH1750)
-		{
-			currentLux = bh1750->readLightLevel() + luxOffset;
-		}
-		else if (luxSensor == LuxSensor_Max44009)
-		{
-			currentLux = max44009->getLux() + luxOffset;
-		}
-		else
-		{
-			currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
-		}
+        if (performWipe != 0)
+        {
+            FadeIn();
+        }
+    }
 
-		SendLDR(false);
+    if (clockAktiv && now() != clockLastUpdate)
+    {
+        if (timeStatus() == timeNotSet && ntpTimeOut <= millis())
+        {
+            if (ntpRetryCounter >= NTP_MAX_RETRYS)
+            {
+                ntpTimeOut = (millis() + (NTP_TIMEOUT_SEC * 1000));
+                ntpRetryCounter = 0;
+                Log(F("Sync TimeServer"), "sync timeout for " + String(NTP_TIMEOUT_SEC) + " seconds!");
+            }
+            else
+            {
+                Log(F("Sync TimeServer"), ntpServer + " waiting for sync");
+                setSyncProvider(getNtpTime);
+            }
+        }
+        clockLastUpdate = now();
+        DrawClock(false);
+    }
 
-		if (!sleepMode && matrixBrightnessAutomatic)
-		{
-			float newBrightness = map(currentLux, mbaLuxMin, mbaLuxMax, mbaDimMin, mbaDimMax);
-			// Max brightness 255
-			if (newBrightness > 255)
-			{
-				newBrightness = 255;
-			}
-			// Min brightness 0
-			if (newBrightness < 0)
-			{
-				newBrightness = 0;
-			}
+    if (millis() - sendLuxPrevMillis >= 1000)
+    {
+        sendLuxPrevMillis = millis();
 
-			if (newBrightness != currentMatrixBrightness)
-			{
-				SetCurrentMatrixBrightness(newBrightness);
-				Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness));
-			}
-		}
-	}
+        if (luxSensor == LuxSensor_BH1750)
+        {
+            currentLux = bh1750->readLightLevel() + luxOffset;
+        }
+        else if (luxSensor == LuxSensor_Max44009)
+        {
+            currentLux = max44009->getLux() + luxOffset;
+        }
+        else
+        {
+            currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
+        }
 
-	if (millis() - sendSensorPrevMillis >= 3000)
-	{
-		sendSensorPrevMillis = millis();
-		SendSensor(false);
-	}
+        SendLDR(false);
 
-	if (millis() - sendInfoPrevMillis >= 3000)
-	{
-		sendInfoPrevMillis = millis();
-		SendMatrixInfo(false);
-		// SendMp3PlayerInfo(false);
-	}
+        if (!sleepMode && matrixBrightnessAutomatic)
+        {
+            float newBrightness = map(currentLux, mbaLuxMin, mbaLuxMax, mbaDimMin, mbaDimMax);
+            // Max brightness 255
+            if (newBrightness > 255)
+            {
+                newBrightness = 255;
+            }
+            // Min brightness 0
+            if (newBrightness < 0)
+            {
+                newBrightness = 0;
+            }
 
-	if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
-	{
-		animateBMPPrevMillis = millis();
-		AnimateBMP(true);
-	}
+            if (newBrightness != currentMatrixBrightness)
+            {
+                SetCurrentMatrixBrightness(newBrightness);
+                Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness));
+            }
+        }
+    }
 
-	if (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay)
-	{
-		scrollTextPrevMillis = millis();
-		ScrollText(false);
-	}
+    if (millis() - sendSensorPrevMillis >= 3000)
+    {
+        sendSensorPrevMillis = millis();
+        SendSensor(false);
+    }
+
+    if (millis() - sendInfoPrevMillis >= 3000)
+    {
+        sendInfoPrevMillis = millis();
+        SendMatrixInfo(false);
+        // SendMp3PlayerInfo(false);
+    }
+
+    if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
+    {
+        animateBMPPrevMillis = millis();
+        AnimateBMP(true);
+    }
+
+    if (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay)
+    {
+        scrollTextPrevMillis = millis();
+        ScrollText(false);
+    }
 }
 
 void SendMatrixInfo(bool force)
 {
-	if (force)
-	{
-		oldGetMatrixInfo = "";
-	}
+    if (force)
+    {
+        oldGetMatrixInfo = "";
+    }
 
-	String matrixInfo;
+    String matrixInfo;
 
-	// Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
-	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
-	{
-		matrixInfo = GetMatrixInfo();
-	}
-	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
-	{
-		client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
-	}
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && oldGetMatrixInfo != matrixInfo)
-	{
-		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
-		}
-	}
+    // Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
+    if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
+    {
+        matrixInfo = GetMatrixInfo();
+    }
+    // Prüfen ob über MQTT versendet werden muss
+    if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
+    {
+        client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+    }
+    // Prüfen ob über Websocket versendet werden muss
+    if (webSocket.connectedClients() > 0 && oldGetMatrixInfo != matrixInfo)
+    {
+        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+        }
+    }
 
-	oldGetMatrixInfo = matrixInfo;
+    oldGetMatrixInfo = matrixInfo;
 }
 
 void SendLDR(bool force)
 {
-	if (force)
-	{
-		oldGetLuxSensor = "";
-	}
+    if (force)
+    {
+        oldGetLuxSensor = "";
+    }
 
-	String luxSensor;
+    String luxSensor;
 
-	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
-	{
-		luxSensor = GetLuxSensor();
-	}
-	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
-	{
-		client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
-	}
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && oldGetLuxSensor != luxSensor)
-	{
-		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			webSocket.sendTXT(i, "{\"sensor\":" + luxSensor + "}");
-		}
-	}
+    // Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
+    if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
+    {
+        luxSensor = GetLuxSensor();
+    }
+    // Prüfen ob über MQTT versendet werden muss
+    if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
+    {
+        client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+    }
+    // Prüfen ob über Websocket versendet werden muss
+    if (webSocket.connectedClients() > 0 && oldGetLuxSensor != luxSensor)
+    {
+        for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            webSocket.sendTXT(i, "{\"sensor\":" + luxSensor + "}");
+        }
+    }
 
-	oldGetLuxSensor = luxSensor;
+    oldGetLuxSensor = luxSensor;
 }
 
 void SendSensor(bool force)
 {
-	if (force)
-	{
-		oldGetSensor = "";
-	}
+    if (force)
+    {
+        oldGetSensor = "";
+    }
 
-	String Sensor;
+    String Sensor;
 
-	// Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
-	if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
-	{
-		Sensor = GetSensor();
-	}
-	// Prüfen ob über MQTT versendet werden muss
-	if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
-	{
-		client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
-		client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
-	}
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0 && oldGetSensor != Sensor)
-	{
-		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			webSocket.sendTXT(i, "{\"sensor\":" + Sensor + "}");
-		}
-	}
+    // Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
+    if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
+    {
+        Sensor = GetSensor();
+    }
+    // Prüfen ob über MQTT versendet werden muss
+    if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
+    {
+        client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
+        client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
+    }
+    // Prüfen ob über Websocket versendet werden muss
+    if (webSocket.connectedClients() > 0 && oldGetSensor != Sensor)
+    {
+        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            webSocket.sendTXT(i, "{\"sensor\":" + Sensor + "}");
+        }
+    }
 
-	oldGetSensor = Sensor;
+    oldGetSensor = Sensor;
 }
 
 void SendConfig()
 {
-	if (webSocket.connectedClients() > 0)
-	{
-		for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			String config = GetConfig();
-			webSocket.sendTXT(i, "{\"config\":" + config + "}");
-		}
-	}
+    if (webSocket.connectedClients() > 0)
+    {
+        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            String config = GetConfig();
+            webSocket.sendTXT(i, "{\"config\":" + config + "}");
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -3556,69 +3699,69 @@ byte packetBuffer[NTP_PACKET_SIZE];
 
 time_t getNtpTime()
 {
-	while (udp.parsePacket() > 0)
-		;
-	sendNTPpacket(ntpServer);
-	uint32_t beginWait = millis();
-	while (millis() - beginWait < 1500)
-	{
-		int size = udp.parsePacket();
-		if (size >= NTP_PACKET_SIZE)
-		{
-			udp.read(packetBuffer, NTP_PACKET_SIZE);
-			time_t secsSince1900;
+    while (udp.parsePacket() > 0)
+        ;
+    sendNTPpacket(ntpServer);
+    uint32_t beginWait = millis();
+    while (millis() - beginWait < 1500)
+    {
+        int size = udp.parsePacket();
+        if (size >= NTP_PACKET_SIZE)
+        {
+            udp.read(packetBuffer, NTP_PACKET_SIZE);
+            time_t secsSince1900;
 
-			secsSince1900 = (time_t)packetBuffer[40] << 24;
-			secsSince1900 |= (time_t)packetBuffer[41] << 16;
-			secsSince1900 |= (time_t)packetBuffer[42] << 8;
-			secsSince1900 |= (time_t)packetBuffer[43];
-			time_t secsSince1970 = secsSince1900 - 2208988800UL;
-			float totalOffset = clockTimeZone;
-			if (clockDayLightSaving)
-			{
-				totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
-			}
-			return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
-			ntpRetryCounter = 0;
-		}
-		yield();
-	}
-	ntpRetryCounter++;
-	return 0;
+            secsSince1900 = (time_t)packetBuffer[40] << 24;
+            secsSince1900 |= (time_t)packetBuffer[41] << 16;
+            secsSince1900 |= (time_t)packetBuffer[42] << 8;
+            secsSince1900 |= (time_t)packetBuffer[43];
+            time_t secsSince1970 = secsSince1900 - 2208988800UL;
+            float totalOffset = clockTimeZone;
+            if (clockDayLightSaving)
+            {
+                totalOffset = (clockTimeZone + DSToffset(secsSince1970, clockTimeZone));
+            }
+            return secsSince1970 + (time_t)(totalOffset * SECS_PER_HOUR);
+            ntpRetryCounter = 0;
+        }
+        yield();
+    }
+    ntpRetryCounter++;
+    return 0;
 }
 void sendNTPpacket(String &address)
 {
-	memset(packetBuffer, 0, NTP_PACKET_SIZE);
+    memset(packetBuffer, 0, NTP_PACKET_SIZE);
 
-	packetBuffer[0] = 0b11100011;
-	packetBuffer[1] = 0;
-	packetBuffer[2] = 6;
-	packetBuffer[3] = 0xEC;
+    packetBuffer[0] = 0b11100011;
+    packetBuffer[1] = 0;
+    packetBuffer[2] = 6;
+    packetBuffer[3] = 0xEC;
 
-	packetBuffer[12] = 49;
-	packetBuffer[13] = 0x4E;
-	packetBuffer[14] = 49;
-	packetBuffer[15] = 52;
+    packetBuffer[12] = 49;
+    packetBuffer[13] = 0x4E;
+    packetBuffer[14] = 49;
+    packetBuffer[15] = 52;
 
-	udp.beginPacket(address.c_str(), 123);
-	udp.write(packetBuffer, NTP_PACKET_SIZE);
-	udp.endPacket();
+    udp.beginPacket(address.c_str(), 123);
+    udp.write(packetBuffer, NTP_PACKET_SIZE);
+    udp.endPacket();
 }
 
 void Log(String function, String message)
 {
 
-	String timeStamp = IntFormat(year()) + "-" + IntFormat(month()) + "-" + IntFormat(day()) + "T" + IntFormat(hour()) + ":" + IntFormat(minute()) + ":" + IntFormat(second());
+    String timeStamp = IntFormat(year()) + "-" + IntFormat(month()) + "-" + IntFormat(day()) + "T" + IntFormat(hour()) + ":" + IntFormat(minute()) + ":" + IntFormat(second());
 
-	Serial.println("[" + timeStamp + "] " + function + ": " + message);
+    Serial.println("[" + timeStamp + "] " + function + ": " + message);
 
-	// Prüfen ob über Websocket versendet werden muss
-	if (webSocket.connectedClients() > 0)
-	{
-		for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
-		{
-			String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
-			webSocket.sendTXT(i, payload);
-		}
-	}
+    // Prüfen ob über Websocket versendet werden muss
+    if (webSocket.connectedClients() > 0)
+    {
+        for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            String payload = "{\"log\":{\"timeStamp\":\"" + timeStamp + "\",\"function\":\"" + function + "\",\"message\":\"" + message + "\"}}";
+            webSocket.sendTXT(i, payload);
+        }
+    }
 }
