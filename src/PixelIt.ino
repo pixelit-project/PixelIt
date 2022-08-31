@@ -3382,6 +3382,7 @@ void loop()
     }
 
     // Check and display if new FW version is available.
+    // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
     if (checkUpdateScreen == true)
     {
 
@@ -3404,6 +3405,7 @@ void loop()
     }
 
     // Send Telemetry data first time after 30.3 seconds
+    // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
     if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
