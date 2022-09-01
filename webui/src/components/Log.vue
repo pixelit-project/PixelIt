@@ -6,7 +6,7 @@
 
 <script>
 export default {
-    name: "Log",
+    name: 'Log',
     props: {
         log: {
             type: String,

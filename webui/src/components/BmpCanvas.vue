@@ -19,12 +19,12 @@ export default {
         },
     },
     directives: {
-        insertbmp: function(canvasElement, binding) {
+        insertbmp: function (canvasElement, binding) {
             let bmpArrayString = binding.value.rgB565Array;
             const sizeX = binding.value.sizeX;
             const sizeY = binding.value.sizeY;
 
-            if (bmpArrayString.endsWith(",")) {
+            if (bmpArrayString.endsWith(',')) {
                 bmpArrayString = bmpArrayString.slice(0, -1);
             }
 
@@ -50,7 +50,7 @@ export default {
             }
 
             function drawCanvas(bmp) {
-                const ctx = canvasElement.getContext("2d");
+                const ctx = canvasElement.getContext('2d');
                 const canvasWidth = canvasElement.width;
                 const canvasHeight = canvasElement.height;
                 const size = canvasWidth / sizeX;
@@ -82,6 +82,6 @@ function RGB565IntToRGB(color) {
 
 function RGBToHEX(red, green, blue) {
     const rgb = blue | (green << 8) | (red << 16);
-    return "#" + (0x1000000 + rgb).toString(16).slice(1);
+    return '#' + (0x1000000 + rgb).toString(16).slice(1);
 }
 </script>

@@ -32,16 +32,16 @@
 </template>
 
 <script>
-import BmpCanvas from "../components/BmpCanvas";
-import BmpDialog from "../components/BmpDialog";
+import BmpCanvas from '../components/BmpCanvas';
+import BmpDialog from '../components/BmpDialog';
 export default {
-    name: "Home",
+    name: 'Home',
     created: function () {
         getBMPsFromAPI(this.$store.state);
     },
     data: function () {
         return {
-            message: "",
+            message: '',
         };
     },
     components: {
@@ -50,7 +50,7 @@ export default {
     },
     methods: {
         sendBitmap(rgB565Array, sizeX) {
-            if (rgB565Array.endsWith(",")) {
+            if (rgB565Array.endsWith(',')) {
                 rgB565Array = rgB565Array.slice(0, -1);
             }
             if (sizeX == 8) {
@@ -93,7 +93,7 @@ export default {
 
 async function getBMPsFromAPI(state) {
     try {
-        state.bmpsFromAPI = await (await fetch("https://pixelit.bastelbunker.de/api/GetBMPAll")).json();
+        state.bmpsFromAPI = await (await fetch('https://pixelit.bastelbunker.de/api/GetBMPAll')).json();
     } catch (error) {
         console.log(`getBMPsFromAPI: error (${error})`);
         state.bmpsFromAPI = [];

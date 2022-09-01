@@ -32,7 +32,7 @@ export default {
     },
     methods: {
         gotToURL(url) {
-            window.open(url, "_blank");
+            window.open(url, '_blank');
         },
     },
 };

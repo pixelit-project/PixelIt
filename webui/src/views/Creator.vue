@@ -48,16 +48,16 @@
     </v-container>
 </template>
 <script>
-import Art from "../components/Art.vue";
+import Art from '../components/Art.vue';
 export default {
     data() {
         return {
-            colors: "#F44336",
+            colors: '#F44336',
             pixelMode: 0,
             active8x8Background: {},
             active8x32Background: {},
-            array8x8String: "",
-            array8x32String: "",
+            array8x8String: '',
+            array8x32String: '',
             livedraw: false,
         };
     },
@@ -67,25 +67,25 @@ export default {
     methods: {
         onclick(id, color) {
             if (this.pixelMode == 0) {
-                this.active8x8Background[id] = color.replace("#", "");
-                this.array8x8String = "[";
+                this.active8x8Background[id] = color.replace('#', '');
+                this.array8x8String = '[';
 
                 for (const hex of Object.values(this.active8x8Background)) {
-                    this.array8x8String += rgb888ToRgb565(hexToRgb(hex)) + ",";
+                    this.array8x8String += rgb888ToRgb565(hexToRgb(hex)) + ',';
                 }
 
                 this.array8x8String = this.array8x8String.slice(0, -1);
-                this.array8x8String += "]";
+                this.array8x8String += ']';
             } else {
-                this.active8x32Background[id] = color.replace("#", "");
-                this.array8x32String = "[";
+                this.active8x32Background[id] = color.replace('#', '');
+                this.array8x32String = '[';
 
                 for (const hex of Object.values(this.active8x32Background)) {
-                    this.array8x32String += rgb888ToRgb565(hexToRgb(hex)) + ",";
+                    this.array8x32String += rgb888ToRgb565(hexToRgb(hex)) + ',';
                 }
 
                 this.array8x32String = this.array8x32String.slice(0, -1);
-                this.array8x32String += "]";
+                this.array8x32String += ']';
             }
 
             if (this.livedraw) {
@@ -117,7 +117,7 @@ function rgb888ToRgb565(rgbArray) {
 
 function hexToRgb(hex) {
     const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
         return r + r + g + g + b + b;
     });
 

@@ -9,7 +9,8 @@
                     <hr />
                     <br />
                     <div class="text-center updateMessage" v-if="newVersionAvailable">
-                        <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a> <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
+                        <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a>
+                        <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
                     </div>
                     <ListInfo :items="systemItems" />
                 </v-card>
@@ -57,12 +58,12 @@
 </template>
 
 <script>
-import Log from "../components/Log";
-import ListInfo from "../components/ListInfo";
-import UserMap from "../components/UserMap";
+import Log from '../components/Log';
+import ListInfo from '../components/ListInfo';
+import UserMap from '../components/UserMap';
 
 export default {
-    name: "Home",
+    name: 'Home',
     components: {
         Log,
         ListInfo,
@@ -79,7 +80,7 @@ export default {
             return this.$store.state.buttonData;
         },
         log() {
-            return this.$store.state.logData.join("\n");
+            return this.$store.state.logData.join('\n');
         },
         newVersionAvailable() {
             return this.$store.state.newVersionAvailable;

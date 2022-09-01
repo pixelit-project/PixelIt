@@ -81,9 +81,9 @@
 </template>
 
 <script>
-import ButtonCondition from "../components/ButtonCondition";
+import ButtonCondition from '../components/ButtonCondition';
 export default {
-    name: "SensorsButtons",
+    name: 'SensorsButtons',
     data: () => ({
         isValid: true,
     }),

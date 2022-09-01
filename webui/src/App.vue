@@ -25,11 +25,11 @@
 </template>
 
 <script>
-import NavLinks from "./components/NavLinks";
+import NavLinks from './components/NavLinks';
 export default {
     created: function () {
         // Get style cookie
-        this.$vuetify.theme.dark = this.$cookies.get("theme_dark") ? this.$cookies.get("theme_dark") === "true" : true;
+        this.$vuetify.theme.dark = this.$cookies.get('theme_dark') ? this.$cookies.get('theme_dark') === 'true' : true;
         getCurrentGitReleaseData(this.$store.state);
         // Check again every 15 minutes
         setInterval(() => {
@@ -42,6 +42,15 @@ export default {
         setInterval(() => {
             getUserMapData(this.$store.state);
         }, 1000 * 60 * 15);
+
+        // sendTelemetry aktive?
+        if (this.$store.state.configData || this.$store.state.configData.sendTelemetry) {
+            sendTelemetry(this.$store.state);
+            // Send again every 12 houres
+            setInterval(() => {
+                sendTelemetry(this.$store.state);
+            }, 1000 * 60 * 60 * 12);
+        }
     },
     components: {
         NavLinks,
@@ -63,16 +72,16 @@ export default {
     methods: {
         changeTheme() {
             this.$vuetify.theme.dark = !this.$vuetify.theme.dark;
-            this.$cookies.set("theme_dark", this.$vuetify.theme.dark);
+            this.$cookies.set('theme_dark', this.$vuetify.theme.dark);
         },
     },
     watch: {
-        "$store.state.gitVersion": function (newVal) {
+        '$store.state.gitVersion': function (newVal) {
             if (this.$store.state.version) {
                 this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
             }
         },
-        "$store.state.version": function (newVal) {
+        '$store.state.version': function (newVal) {
             if (this.$store.state.gitVersion) {
                 this.$store.state.newVersionAvailable = newVal != this.$store.state.gitVersion;
             }
@@ -82,7 +91,7 @@ export default {
 
 async function getCurrentGitReleaseData(state) {
     try {
-        state.gitReleases = await (await fetch("https://pixelit.bastelbunker.de/api/releases")).json();
+        state.gitReleases = await (await fetch('https://pixelit.bastelbunker.de/api/releases')).json();
         state.gitVersion = state.gitReleases[0].version;
         state.gitDownloadUrl = state.gitReleases[0].downloadURL;
     } catch (error) {
@@ -90,9 +99,19 @@ async function getCurrentGitReleaseData(state) {
     }
 }
 
+async function sendTelemetry(state) {
+    setTimeout(() => {
+        if (state.telemetryData != '') {
+            fetch('https://pixelit.bastelbunker.de/api/telemetry', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: state.telemetryData });
+        } else {
+            sendTelemetry(state);
+        }
+    }, 1000);
+}
+
 async function getUserMapData(state) {
     try {
-        state.userMapData = await (await fetch("https://pixelit.bastelbunker.de/api/usermapdata")).json();
+        state.userMapData = await (await fetch('https://pixelit.bastelbunker.de/api/usermapdata')).json();
     } catch (error) {
         console.log(`getUserMapData: error (${error})`);
     }

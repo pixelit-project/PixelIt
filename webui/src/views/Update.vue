@@ -43,10 +43,10 @@
 </template>
 
 <script>
-import DownloadStats from "../components/DownloadStats";
-import ButtonCondition from "../components/ButtonCondition";
+import DownloadStats from '../components/DownloadStats';
+import ButtonCondition from '../components/ButtonCondition';
 export default {
-    name: "Update",
+    name: 'Update',
     components: { DownloadStats, ButtonCondition },
     data() {
         return {
@@ -68,15 +68,11 @@ export default {
             return this.$store.state.gitReleases;
         },
         inputFWCheck() {
-            return this.firmwareFile != null 
-              &&  this.firmwareFile != undefined
-              &&  this.firmwareFile != '';
+            return this.firmwareFile != null && this.firmwareFile != undefined && this.firmwareFile != '';
         },
         inputFSCheck() {
-            return this.filesystemFile != null 
-              &&  this.filesystemFile != undefined
-              &&  this.filesystemFile != '';
-        }
+            return this.filesystemFile != null && this.filesystemFile != undefined && this.filesystemFile != '';
+        },
     },
     methods: {
         async uploadFirmware() {
@@ -84,11 +80,11 @@ export default {
                 return;
             }
             const formData = new FormData();
-            formData.append("firmware", this.firmwareFile);
+            formData.append('firmware', this.firmwareFile);
             try {
                 this.firmwareFile = null;
                 this.$socket.close();
-                await fetch("/update", { method: "POST", body: formData });
+                await fetch('/update', { method: 'POST', body: formData });
             } catch (e) {
                 e;
             }
@@ -98,11 +94,11 @@ export default {
                 return;
             }
             const formData = new FormData();
-            formData.append("filesystem", this.filesystemFile);
+            formData.append('filesystem', this.filesystemFile);
             try {
                 this.filesystemFile = null;
                 this.$socket.close();
-                await fetch("/update", { method: "POST", body: formData });
+                await fetch('/update', { method: 'POST', body: formData });
             } catch (e) {
                 e;
             }

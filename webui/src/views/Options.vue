@@ -150,18 +150,18 @@
 </template>
 
 <script>
-import ColorPickerTextfield from "../components/ColorPickerTextfield";
-import ButtonCondition from "../components/ButtonCondition";
-import ButtonConfirm from "../components/ButtonConfirm";
-import { PrismEditor } from "vue-prism-editor";
-import "vue-prism-editor/dist/prismeditor.min.css";
-import { highlight, languages } from "prismjs/components/prism-core";
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-json";
-import "prismjs/themes/prism-tomorrow.css";
+import ColorPickerTextfield from '../components/ColorPickerTextfield';
+import ButtonCondition from '../components/ButtonCondition';
+import ButtonConfirm from '../components/ButtonConfirm';
+import { PrismEditor } from 'vue-prism-editor';
+import 'vue-prism-editor/dist/prismeditor.min.css';
+import { highlight, languages } from 'prismjs/components/prism-core';
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-json';
+import 'prismjs/themes/prism-tomorrow.css';
 
 export default {
-    name: "Options",
+    name: 'Options',
     data: () => ({
         isValid: true,
     }),
@@ -201,7 +201,7 @@ export default {
         },
         telemetryData() {
             return this.$store.state.telemetryData;
-        }
+        },
     },
     methods: {
         save() {
@@ -224,7 +224,7 @@ export default {
         },
     },
     watch: {
-        "$store.state.configData.clock24Hours": function (newVal) {
+        '$store.state.configData.clock24Hours': function (newVal) {
             if (newVal == false) {
                 this.$store.state.configData.clockWithSeconds = newVal;
             }

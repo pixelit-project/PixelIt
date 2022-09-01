@@ -50,16 +50,16 @@
 </template>
 
 <script>
-import ButtonCondition from "../components/ButtonCondition";
-import { PrismEditor } from "vue-prism-editor";
-import "vue-prism-editor/dist/prismeditor.min.css";
-import { highlight, languages } from "prismjs/components/prism-core";
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-json";
-import "prismjs/themes/prism-tomorrow.css";
+import ButtonCondition from '../components/ButtonCondition';
+import { PrismEditor } from 'vue-prism-editor';
+import 'vue-prism-editor/dist/prismeditor.min.css';
+import { highlight, languages } from 'prismjs/components/prism-core';
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-json';
+import 'prismjs/themes/prism-tomorrow.css';
 
 export default {
-    name: "TestArea",
+    name: 'TestArea',
     components: { ButtonCondition, PrismEditor },
     computed: {
         testarea() {
@@ -81,8 +81,8 @@ export default {
                 setScreen: {
                     text: {
                         textString: this.testarea.text,
-                        scrollText: "auto",
-                        hexColor: "#FFFFFF",
+                        scrollText: 'auto',
+                        hexColor: '#FFFFFF',
                         position: {
                             x: 0,
                             y: 1,

@@ -17,24 +17,22 @@
                 <BmpCanvas class="float-right" :bmp="bmp" height="80" :width="bmp.sizeX == 8 ? '80' : '160'" />
                 <p></p>
                 Added by: {{ bmp.username }}<br />
-                Added on: {{ bmp.dateTime.split("T")[0] }}<br />
-                Animated: {{ bmp.animated ? "Yes" : "No" }}<br />
+                Added on: {{ bmp.dateTime.split('T')[0] }}<br />
+                Animated: {{ bmp.animated ? 'Yes' : 'No' }}<br />
                 <br />
                 <v-textarea filled outlined v-model="bmp.rgB565Array" readonly rows="8"></v-textarea>
             </v-card-text>
             <v-divider></v-divider>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn color="primary" text @click="dialog = false">
-                    close
-                </v-btn>
+                <v-btn color="primary" text @click="dialog = false"> close </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
 </template>
 
 <script>
-import BmpCanvas from "./BmpCanvas";
+import BmpCanvas from './BmpCanvas';
 export default {
     props: {
         bmp: {
@@ -45,7 +43,7 @@ export default {
     components: {
         BmpCanvas,
     },
-    data: function() {
+    data: function () {
         return {
             dialog: false,
         };

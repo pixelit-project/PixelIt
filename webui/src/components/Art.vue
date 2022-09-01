@@ -4,7 +4,7 @@
     </div>
 </template>
 <script>
-import Pixel from "./Pixel.vue";
+import Pixel from './Pixel.vue';
 export default {
     computed: {
         color() {
@@ -34,23 +34,23 @@ export default {
         },
         getWidth() {
             if (this.pixelCount == 64) {
-                return "322px";
+                return '322px';
             } else {
-                return "802px";
+                return '802px';
             }
         },
         getHeight() {
             if (this.pixelCount == 64) {
-                return "322px";
+                return '322px';
             } else {
-                return "202px";
+                return '202px';
             }
         },
         getPixelDimensions() {
             if (this.pixelCount == 64) {
-                return "40";
+                return '40';
             } else {
-                return "25";
+                return '25';
             }
         },
     },

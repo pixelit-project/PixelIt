@@ -5,7 +5,7 @@
 export default {
     data() {
         return {
-            activeBackground: "#000",
+            activeBackground: '#000',
         };
     },
     created() {
@@ -32,14 +32,14 @@ export default {
     methods: {
         changeColor() {
             if (this.activeBackground == this.coloring) {
-                this.activeBackground = "#000";
+                this.activeBackground = '#000';
             } else {
                 this.activeBackground = this.coloring;
             }
             this.func(this.id, this.activeBackground);
         },
         getPixel() {
-            return this.pixelDimensions + "px";
+            return this.pixelDimensions + 'px';
         },
     },
 };
