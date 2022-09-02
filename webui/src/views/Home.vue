@@ -49,8 +49,8 @@
                         <h2>Usermap</h2>
                     </v-card-title>
                     <hr />
-                    <br />
-                    <UserMap :coords="userMapData" />
+                    <p></p>
+                    <UserMap :coords="userMapData" height="500px" />
                 </v-card>
             </v-col>
         </v-row>

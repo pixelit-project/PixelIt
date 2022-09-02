@@ -1,5 +1,5 @@
 <template>
-    <l-map style="height: 400px" :zoom="zoom" :center="center">
+    <l-map :style="style" :zoom="zoom" :center="center">
         <l-tile-layer :url="url" :attribution="attribution"></l-tile-layer>
         <v-marker-cluster>
             <l-marker v-for="(item, index) in coords" :key="'marker-' + index" :lat-lng="item"> </l-marker>
@@ -26,6 +26,10 @@ export default {
             type: Array,
             required: true,
         },
+        height: {
+            type: String,
+            required: true,
+        },
     },
     components: {
         LMap,
@@ -39,6 +43,7 @@ export default {
             attribution: '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a> contributors',
             zoom: 2,
             center: [51.505, -0.159],
+            style: `height: ${this.height}`,
         };
     },
 };
