@@ -87,6 +87,7 @@ Thanks to these great people for supporting this project.
     - Send telemetry data is enabled by default, but can be disabled at any time in the WebUI under Options.  
 - (o0shojo0o) added UserMap to WebUI
 - (foorschtbar) search and display of new FW versions
+- (foorschtbar) new boot animation :eyes:
 
 ### 1.1.0 (2022-08-16)
 
