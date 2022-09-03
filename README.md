@@ -81,7 +81,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 1.2.0 (2022-09-03)
 
 - (o0shojo0o) added send Telemetry data
     - Send telemetry data is enabled by default, but can be disabled at any time in the WebUI under Options.  
