@@ -30,17 +30,17 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
-        <a href="https://github.com/miccgn">
-            <img src="https://avatars.githubusercontent.com/u/71180164?v=4" width="100;" alt="miccgn"/>
-            <br />
-            <sub><b>Miccgn</b></sub>
-        </a>
-    </td>
-    <td align="center">
         <a href="https://github.com/foorschtbar">
             <img src="https://avatars.githubusercontent.com/u/10727275?v=4" width="100;" alt="foorschtbar"/>
             <br />
             <sub><b>Fab!an</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/miccgn">
+            <img src="https://avatars.githubusercontent.com/u/71180164?v=4" width="100;" alt="miccgn"/>
+            <br />
+            <sub><b>Miccgn</b></sub>
         </a>
     </td>
     <td align="center">
