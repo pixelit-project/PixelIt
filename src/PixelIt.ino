@@ -1775,7 +1775,7 @@ void SendTelemetry()
 
 String GetTelemetry()
 {
-    const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU", "MicroMatrix"};
+    const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU (Column major)", "MicroMatrix", "Tiled 4x 8x8 CJMCU (Row major)"};
     const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
     const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
 
