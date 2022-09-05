@@ -2,14 +2,16 @@
     <v-app>
         <!-- Sidebar -->
         <v-navigation-drawer v-model="drawer" app>
-            <v-img max-height="100" src="./assets/logo.png" contain></v-img>
+            <v-img class="mt-3" max-height="100" src="./assets/logo.png" contain></v-img>
             <nav-links :items="getNavLinks" />
         </v-navigation-drawer>
         <!-- Bar -->
         <v-app-bar app>
             <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
             <v-toolbar-title> <b>PixelIt</b> the Matrix Display </v-toolbar-title>
-            <v-spacer><p v-if="!sockedIsConnected" class="text-center message">Reconnecting... please wait</p></v-spacer>
+            <v-spacer>
+                <p v-if="!sockedIsConnected" class="text-center message">Reconnecting... please wait</p>
+            </v-spacer>
             <v-icon v-if="sockedIsConnected" color="green" title="Connected">mdi-lan-connect</v-icon>
             <v-icon v-else color="red" title="Disconnected">mdi-lan-disconnect</v-icon>
             <v-btn icon @click="changeTheme" title="Change theme">

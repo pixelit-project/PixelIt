@@ -137,8 +137,12 @@ export default new Vuex.Store({
             value: 2
         },
         {
-            text: "Type 3 - Tiled 4x 8x8 CJMCU",
+            text: "Type 3 - Tiled 4x 8x8 CJMCU (Column major)",
             value: 3
+            },
+        {
+            text: "Type 5 - Tiled 4x 8x8 CJMCU (Row major)",
+            value: 5
         },
         {
             text: "Type 4 - MicroMatrix ᵇʸ ᶠᵒᵒʳˢᶜʰᵗᵇᵃʳ",

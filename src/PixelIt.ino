@@ -3192,12 +3192,16 @@ void setup()
         matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
         break;
 
-    case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU)
-        matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
+    case 3: // Matix Type 3 (Tiled 4x 8x8 CJMCU, Column major)
+        matrix = new FastLED_NeoMatrix(leds, 32, 8, NEO_MATRIX_BOTTOM + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_PROGRESSIVE);
         break;
 
     case 4: // Matix Type 4 (MicroMatrix by foorschtbar) See: https://github.com/foorschtbar/Sk6805EC15-Matrix
         matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG);
+        break;
+
+    case 5: // Matix Type 5 (Tiled 4x 8x8 CJMCU, Row major)
+        matrix = new FastLED_NeoMatrix(leds, 8, 8, 4, 1, NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_ROWS + NEO_MATRIX_PROGRESSIVE);
         break;
     }
 
