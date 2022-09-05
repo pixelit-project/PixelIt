@@ -84,6 +84,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 
 - (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
+- (o0shojo0o) added new icons to UserMap
 
 ### 1.2.0 (2022-09-03)
 
