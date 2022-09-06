@@ -1,5 +1,5 @@
 <template>
-    <div class="pixel" :style="{ background: activeBackground, height: getPixel(), width: getPixel() }" @click="changeColor"></div>
+    <div class="pixel" :id="id" :style="{ background: activeBackground, height: getPixel(), width: getPixel() }" @click="changeColor"></div>
 </template>
 <script>
 export default {

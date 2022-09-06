@@ -1,6 +1,6 @@
 <template>
     <div id="art" :style="{ width: getWidth(), height: getHeight() }">
-        <Pixel :coloring="color" :id="n" :func="func" :pixelDimensions="getPixelDimensions()" v-for="n in getPixelCount()" :key="n" />
+        <Pixel :coloring="color" :id="p" :func="func" :pixelDimensions="getPixelDimensions()" v-for="p in getPixelCount()" :key="p" />
     </div>
 </template>
 <script>
@@ -58,8 +58,6 @@ export default {
 </script>
 <style scoped>
 #art {
-    /* width: 322px;*/
-    /* height: 322px; */
     border: 1px solid rgb(90, 90, 90);
 }
 </style>

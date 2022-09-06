@@ -90,7 +90,6 @@ export default new Vuex.Store({
             icon: "mdi-tray-arrow-up",
             page: "/update"
         },
-        //{ title: "Pixel Gallery", icon: "mdi-image-outline", url: "https://pixelit.bastelbunker.de/PixelGallery", target: "_blank" },
         {
             title: "Pixel Gallery",
             icon: "mdi-image-outline",
@@ -102,7 +101,11 @@ export default new Vuex.Store({
             url: "https://pixelit.bastelbunker.de/PixelCreator",
             target: "_blank"
         },
-        //{ title: "Pixel Creator", icon: "mdi-pencil-box-outline", page: "/creator" },
+        // {
+        //     title: "Pixel Creator",
+        //     icon: "mdi-pencil-box-outline",
+        //     page: "/creator"
+        // },
         {
             title: "Forum",
             icon: "mdi-forum-outline",
@@ -139,7 +142,7 @@ export default new Vuex.Store({
         {
             text: "Type 3 - Tiled 4x 8x8 CJMCU (Column major)",
             value: 3
-            },
+        },
         {
             text: "Type 5 - Tiled 4x 8x8 CJMCU (Row major)",
             value: 5

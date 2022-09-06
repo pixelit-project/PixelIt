@@ -16,7 +16,7 @@
             </v-col>
         </v-row>
         <v-row v-if="pixelMode == 0">
-            <v-col cols="12" lg="3" offset-lg="3">
+            <v-col cols="12" lg="4" offset-lg="2">
                 <v-card class="pa-3" elevation="4">
                     <Art :colors="colors" pixelCount="64" :func="onclick" />
                     <p></p>
@@ -24,14 +24,14 @@
                     <v-switch v-model="livedraw" label="Live draw" hide-details dense></v-switch>
                 </v-card>
             </v-col>
-            <v-col cols="12" lg="3">
+            <v-col cols="12" lg="4">
                 <v-card class="pa-3" elevation="4">
                     <v-color-picker v-model="colors" mode="hexa" dot-size="20" show-swatches swatches-max-height="240"></v-color-picker>
                 </v-card>
             </v-col>
         </v-row>
         <v-row v-if="pixelMode == 1">
-            <v-col cols="12" lg="7" offset-lg="1">
+            <v-col cols="12" lg="8" offset-lg="0">
                 <v-card class="pa-3" elevation="4">
                     <Art :colors="colors" pixelCount="256" :func="onclick" />
                     <p></p>
@@ -39,7 +39,7 @@
                     <v-switch v-model="livedraw" label="Live draw" :disabled="!sockedIsConnected" hide-details dense></v-switch>
                 </v-card>
             </v-col>
-            <v-col cols="12" lg="3">
+            <v-col cols="12" lg="4">
                 <v-card class="pa-3" elevation="4">
                     <v-color-picker v-model="colors" mode="hexa" dot-size="20" show-swatches swatches-max-height="250"></v-color-picker>
                 </v-card>
@@ -66,6 +66,18 @@ export default {
     },
     methods: {
         onclick(id, color) {
+            if (Object.keys(this.active8x32Background).length < 256) {
+                for (let i = 1; i < 256; i++) {
+                    this.active8x32Background[i] = '000';
+                }
+            }
+
+            if (Object.keys(this.active8x8Background).length < 64) {
+                for (let i = 1; i < 64; i++) {
+                    this.active8x8Background[i] = '000';
+                }
+            }
+
             if (this.pixelMode == 0) {
                 this.active8x8Background[id] = color.replace('#', '');
                 this.array8x8String = '[';
@@ -89,13 +101,32 @@ export default {
             }
 
             if (this.livedraw) {
-                this.$socket.sendObj({
-                    setScreen: {
+                let screen;
+                if (this.pixelMode == 0) {
+                    screen = {
                         bitmapAnimation: {
-                            data: JSON.parse(`[${this.arrayString}]`),
+                            data: JSON.parse(`[${this.array8x8String}]`),
                             animationDelay: 200,
                         },
-                    },
+                    };
+                } else {
+                    screen = {
+                        bitmap: {
+                            data: JSON.parse(this.array8x32String),
+                            position: {
+                                x: 0,
+                                y: 0,
+                            },
+                            size: {
+                                width: 32,
+                                height: 8,
+                            },
+                        },
+                    };
+                }
+
+                this.$socket.sendObj({
+                    setScreen: screen,
                 });
             }
         },
