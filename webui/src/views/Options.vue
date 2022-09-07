@@ -24,7 +24,7 @@
                         <v-text-field v-model="config.scrollTextDefaultDelay" type="number" label="Scrolltext delay" hint="larger number is slower" suffix="milliseconds" :rules="[rules.required, rules.min0]"></v-text-field>
                         <v-text-field v-model="config.hostname" label="Hostname"></v-text-field>
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
-                        <v-switch v-model="config.bootScreenAktiv" label="Bootsceen active" hide-details dense></v-switch>
+                        <v-switch v-model="config.bootScreenAktiv" label="Bootscreen active" hide-details dense></v-switch>
                         <v-switch v-model="config.checkUpdateScreen" label="Check and show new available firmware on the PixelIt " hide-details dense></v-switch>
                     </v-card>
                     <br />
@@ -75,7 +75,7 @@
                         <v-switch v-model="config.clockDayLightSaving" label="Daylight saving" dense hide-details></v-switch>
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
                         <v-switch v-model="config.clockFatFont" label="Big clock font" persistent-hint dense hide-details></v-switch>
-                        <v-switch v-model="config.clockWithSeconds" label="Clock with sek" :disabled="!config.clock24Hours || config.clockFatFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockWithSeconds" label="Clock with seconds" :disabled="!config.clock24Hours || config.clockFatFont" dense hide-details></v-switch>
                         <v-switch v-model="config.clockDrawWeekDays" label="Clock with Weekdays" :disabled="config.clockFatFont" dense hide-details></v-switch>
                         <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense hide-details></v-switch>
                         <v-switch v-model="config.clockBlinkAnimated" label="Flashing time separator" dense hide-details></v-switch>
@@ -98,7 +98,7 @@
                         <v-text-field v-model="config.mqttServer" label="Server" hint="domain or ip address" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
                         <v-text-field v-model="config.mqttPort" label="Port" type="number" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required, rules.portRange] : []"></v-text-field>
                         <v-text-field v-model="config.mqttUser" label="User" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
-                        <v-text-field v-model="config.mqttPassword" label="Passsword" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
+                        <v-text-field v-model="config.mqttPassword" label="Password" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
                         <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
                     </v-card>
                     <br />
