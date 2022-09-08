@@ -66,14 +66,6 @@ Thanks to these great people for supporting this project.
     </td></tr>
 <tr>
     <td align="center">
-        <a href="https://github.com/fmunozs">
-            <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
-            <br />
-            <sub><b>Fernando Muñoz</b></sub>
-        </a>
-    </td></tr>
-<tr>
-    <td align="center">
         <a href="https://github.com/hermannbach">
             <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
             <br />
