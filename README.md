@@ -71,8 +71,6 @@ Thanks to these great people for supporting this project.
             <br />
             <sub><b>Fernando Muñoz</b></sub>
         </a>
-    </td></tr>
-<tr>
     <td align="center">
         <a href="https://github.com/hermannbach">
             <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
@@ -100,6 +98,7 @@ Thanks to these great people for supporting this project.
 
 - (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
 - (o0shojo0o) added new icons to UserMap
+- (fmunozs) added proper "folder" icon and swap names with "file"
 
 ### 1.2.0 (2022-09-03)
 
