@@ -256,11 +256,12 @@ const uint8_t PixelItBitmaps[] PROGMEM = {
     0x20, 0xF0, 0xF8, 0xF0, 0x20,       // [193 | 225 | 0xE1] Arrow right → (0xE28692)
     0x70, 0x70, 0xF8, 0x70, 0x20,       // [194 | 226 | 0xE2] Arrow down ↓ (0xE28693)
     0x20, 0x20, 0xF8, 0x70, 0x50,       // [195 | 227 | 0xE3] Star ★ (0XE29885)
-    0xC0, 0xA0, 0x90, 0x90, 0xF0,       // [196 | 228 | 0xE4] File 📁 (0xF09F9381)
+    0xC0, 0xA0, 0x90, 0x90, 0xF0,       // [196 | 228 | 0xE4] File 📄 (0xF09F9384)
     0x50, 0xF8, 0xF8, 0x70, 0x20,       // [197 | 229 | 0xE5] Heart ♥ (0xE299A5)
     0x70, 0x70, 0xF8, 0x70, 0x20, 0xF8, // [198 | 230 | 0xE6] Download ↧ (0xE286A7)
     0x00, 0x38, 0xCC, 0xFC, 0x48,       // [199 | 231 | 0xE7] Car 🚗 (0xF09F9A97)
-    0x50, 0x50, 0x20, 0x88, 0x70        // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    0x50, 0x50, 0x20, 0x88, 0x70,       // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    0xE0, 0xFC, 0x84, 0x84, 0xFC        // [201 | 233 | 0xE9] Folder 📁 (0xF09F9381)
 };
 
 // {offset, width, height, advance cursor, x offset, y offset}
@@ -465,14 +466,15 @@ const GFXglyph PixelItGlyphs[] PROGMEM = {
     {870, 8, 5, 6, 0, -5}, // [193 | 225 | 0xE1] Arrow right → (0xE28692)
     {875, 8, 5, 6, 0, -5}, // [194 | 226 | 0xE2] Arrow down ↓ (0xE28693)
     {880, 8, 5, 6, 0, -5}, // [195 | 227 | 0xE3] Star ★ (0XE29885)
-    {885, 8, 5, 5, 0, -5}, // [196 | 228 | 0xE4] File 📁 (0xF09F9381)
+    {885, 8, 5, 5, 0, -5}, // [196 | 228 | 0xE4] File 📄 (0xF09F9384)
     {890, 8, 5, 6, 0, -5}, // [197 | 229 | 0xE5] Heart ♥ (0xE299A5)
     {895, 8, 6, 6, 0, -5}, // [198 | 230 | 0xE6] Download ↧ (0xE286A7)
     {901, 8, 5, 7, 0, -5}, // [199 | 231 | 0xE7] Car 🚗 (0xF09F9A97)
-    {906, 8, 5, 6, 0, -5}  // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    {906, 8, 5, 6, 0, -5}, // [200 | 232 | 0xE8] Smiley 😀 (0xF09F9880)
+    {911, 8, 5, 7, 0, -5}  // [201 | 233 | 0xE9] Folder 📁 (0xF09F9381)
 };
 
-const GFXfont PixelItFont PROGMEM = {(uint8_t *)PixelItBitmaps, (GFXglyph *)PixelItGlyphs, 0x20, 0xE8, 6};
+const GFXfont PixelItFont PROGMEM = {(uint8_t *)PixelItBitmaps, (GFXglyph *)PixelItGlyphs, 0x20, 0xE9, 6};
 
 const uint8_t FatPixels_Bitmaps[] PROGMEM = {
     0x00, 0x80, 0x77, 0xF7, 0xBD, 0xEF, 0xEE, 0x7F, 0xB6, 0xDB, 0x77, 0xF6,

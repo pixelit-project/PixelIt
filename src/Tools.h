@@ -119,7 +119,7 @@ byte Utf8ToAscii(byte ascii)
 	case 0XE29885: // Star ★
 		result = 0xE3;
 		break;
-	case 0xF09F9381: // File 📁
+	case 0xF09F9384: // File 📄  
 		result = 0xE4;
 		break;
 	case 0xE299A5: // Heart ♥
@@ -134,6 +134,9 @@ byte Utf8ToAscii(byte ascii)
 	case 0xF09F9880: // Smiley 😀
 		result = 0xE8;
 		break;
+	case 0xF09F9381: // Folder 📁
+		result = 0xE9;
+		break;			
 	}
 
 	// Legal UTF-8 Byte Sequences
