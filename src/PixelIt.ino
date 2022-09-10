@@ -3243,6 +3243,8 @@ void setup()
 
     wifiManager.setAPCallback(EnteredHotspotCallback);
     wifiManager.setMinimumSignalQuality();
+    // Timout for the wifi connection until the hotspot is set up
+    wifiManager.setTimeout(30);
     // Config menue timeout 180 seconds.
     wifiManager.setConfigPortalTimeout(180);
 

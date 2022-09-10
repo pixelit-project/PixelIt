@@ -9,8 +9,8 @@
 
 <script>
 import L from 'leaflet';
-import { LMap, LTileLayer, LMarker } from 'vue2-leaflet';
 import { Icon } from 'leaflet';
+import { LMap, LTileLayer, LMarker } from 'vue2-leaflet';
 import Vue2LeafletMarkerCluster from 'vue2-leaflet-markercluster';
 
 delete Icon.Default.prototype._getIconUrl;
@@ -59,7 +59,7 @@ export default {
                 iconSize: [20, 30],
                 iconAnchor: [8, 32],
             }),
-            options: { maxClusterRadius: 35 },
+            options: { maxClusterRadius: 33 },
         };
     },
 };

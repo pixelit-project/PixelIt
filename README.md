@@ -93,6 +93,7 @@ Thanks to these great people for supporting this project.
 - (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
 - (o0shojo0o) added new icons to UserMap
 - (fmunozs) added proper "folder" icon and swap names with "file"
+- (o0shojo0o) increase the timout for the wifi connection to 30 seconds
 
 ### 1.2.0 (2022-09-03)
 
