@@ -2437,7 +2437,8 @@ boolean MQTTreconnect()
             "\"uniq_id\":\"#DEVICEID##SENSORID#\","
             "\"dev_cla\":\"timestamp\","
             "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
             "}"));
         configPayloadTemplate.replace(" ", "");
         configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
@@ -2456,8 +2457,9 @@ boolean MQTTreconnect()
 
                 payload = configPayloadTemplate;
                 payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
-                payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
-                payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
+                payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
+                payload.replace(F("#STATETOPIC#"), String(F("buttons")));
+                payload.replace(F("#VALUENAME#"), String(btnAPINames[n]));
                 client.publish(topic.c_str(), payload.c_str(), true);
             }
         }
