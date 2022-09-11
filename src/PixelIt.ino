@@ -2435,7 +2435,6 @@ boolean MQTTreconnect()
             "\"pl_avail\":\"connected\","
             "\"pl_not_avail\":\"disconnected\","
             "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"dev_cla\":\"timestamp\","
             "\"name\":\"#SENSORNAME#\","
             "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
             "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
