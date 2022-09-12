@@ -2456,7 +2456,7 @@ boolean MQTTreconnect()
                 payload = configPayloadTemplate;
                 payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
                 payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
-                payload.replace(F("#STATETOPIC#"), String(F("buttons/button") + String(n)));
+                payload.replace(F("#STATETOPIC#"), String(F("buttons/button")) + String(n));
                 client.publish(topic.c_str(), payload.c_str(), true);
             }
         }
