@@ -880,7 +880,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected())
     {
-        client.publish((mqttMasterTopic + "buttons").c_str(), String("{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}").c_str(), true);
+        client.publish((mqttMasterTopic + "buttons/button" + button).c_str(), String(state ? "true" : "false"), true);
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0)
@@ -2436,8 +2436,7 @@ boolean MQTTreconnect()
             "\"pl_not_avail\":\"disconnected\","
             "\"uniq_id\":\"#DEVICEID##SENSORID#\","
             "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
+            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
             "}"));
         configPayloadTemplate.replace(" ", "");
         configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
@@ -2457,8 +2456,7 @@ boolean MQTTreconnect()
                 payload = configPayloadTemplate;
                 payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
                 payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
-                payload.replace(F("#STATETOPIC#"), String(F("buttons")));
-                payload.replace(F("#VALUENAME#"), String(btnAPINames[n]));
+                payload.replace(F("#STATETOPIC#"), String(F("buttons/button") + String(n)));
                 client.publish(topic.c_str(), payload.c_str(), true);
             }
         }
