@@ -880,7 +880,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected())
     {
-        client.publish((mqttMasterTopic + "buttons/button" + button).c_str(), String(state ? "true" : "false"), true);
+        client.publish((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0)
