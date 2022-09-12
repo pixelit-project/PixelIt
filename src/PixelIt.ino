@@ -2436,6 +2436,9 @@ boolean MQTTreconnect()
             "\"pl_not_avail\":\"disconnected\","
             "\"uniq_id\":\"#DEVICEID##SENSORID#\","
             "\"name\":\"#SENSORNAME#\","
+            "\"ic\":\"mdi:gesture-tap-button\","
+            "\"pl_on\":\"true\","
+            "\"pl_off\":\"false\","
             "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
             "}"));
         configPayloadTemplate.replace(" ", "");
@@ -2450,7 +2453,7 @@ boolean MQTTreconnect()
             if (btnEnabled[n])
             {
                 topic = configTopicTemplate;
-                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#COMPONENT#"), F("binary_sensor"));
                 topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
 
                 payload = configPayloadTemplate;
