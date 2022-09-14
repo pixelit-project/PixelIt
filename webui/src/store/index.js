@@ -390,29 +390,30 @@ export default new Vuex.Store({
         },
         // default handler called for all methods
         SOCKET_ONMESSAGE(state, message) {
-            //console.log(message);
+            console.log(state);
+            console.log(message);
             // Log
             if (message.log) {
                 addToLogData(message.log, state);
             }
             // Sensor
-            else if (message.sensor) {
+            if (message.sensor) {
                 addToSensorData(message.sensor, state);
             }
             // Buttons
-            else if (message.buttons) {
+            if (message.buttons) {
                 addToButtonData(message.buttons, state);
             }
             // Config
-            else if (message.config) {
+            if (message.config) {
                 addToConfigData(message.config, state);
             }
             // SystemInfo
-            else if (message.sysinfo) {
+            if (message.sysinfo) {
                 addToSysInfoData(message.sysinfo, state);
             }
             // SystemInfo
-            else if (message.telemetry) {
+            if (message.telemetry) {
                 addToTelemetryData(message.telemetry, state);
             }
         },
@@ -598,12 +599,12 @@ function getDisplayValue(key, value) {
             break;
         case "temperature":
             if (typeof value == "number") {
-                value = value.toFixed(1) + " °C";
+                value = Math.round(value * 10) / 10 + " °C";
             }
             break;
         case "humidity":
             if (typeof value == "number") {
-                value = value.toFixed(1) + " %";
+                value = Math.round(value) + " %";
             }
             break;
         case "pressure":

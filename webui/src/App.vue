@@ -46,7 +46,7 @@ export default {
         }, 1000 * 60 * 15);
 
         // sendTelemetry aktive?
-        if (this.$store.state.configData || this.$store.state.configData.sendTelemetry) {
+        if (this.$store.state.configData && this.$store.state.configData.sendTelemetry == true) {
             sendTelemetry(this.$store.state);
             // Send again every 12 houres
             setInterval(() => {

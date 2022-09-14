@@ -88,7 +88,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 2.0.0 (2022-09-14)
 
 **!!! Breaking changes !!!**
 - (pplucky) fix Home Assistant MQTT discovery for buttons [more](https://github.com/pixelit-project/PixelIt/pull/209)

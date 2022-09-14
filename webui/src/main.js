@@ -9,22 +9,31 @@ import VueCookies from 'vue-cookies'
 import VueNativeSock from 'vue-native-websocket'
 import VueSpinners from 'vue-spinners'
 import 'leaflet/dist/leaflet.css'
-
+import demoJSON from '../public/demoData/demo.json'
 
 let url;
 if (location.host.includes(":")) {
-  url = "192.168.3.40";
+  url = '192.168.3.40';
 } else {
   url = location.host;
 }
 
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
-Vue.use(VueNativeSock, `ws://${url}:81`, {
-  store: store,
-  reconnection: true,
-  format: 'json'
-});
+
+// Demo mode
+if (location.host.includes('.github.io')) {
+  store.commit('SOCKET_ONMESSAGE', demoJSON);
+}
+// Prod mode
+else {
+  Vue.use(VueNativeSock, `ws://${url}:81`, {
+    store: store,
+    reconnection: true,
+    format: 'json'
+  });
+}
+
 Vue.$cookies.config('10y');
 Vue.config.productionTip = false;
 new Vue({
