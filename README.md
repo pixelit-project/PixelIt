@@ -90,6 +90,8 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
+**!!! Breaking changes !!!**
+- (pplucky) fix Home Assistant MQTT discovery for buttons [more](https://github.com/pixelit-project/PixelIt/pull/209)
 - (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
 - (o0shojo0o) added new icons to UserMap
 - (fmunozs) added proper "folder" icon and swap names with "file"
