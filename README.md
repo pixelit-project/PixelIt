@@ -44,17 +44,17 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
-        <a href="https://github.com/fmunozs">
-            <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
-            <br />
-            <sub><b>Fernando Muñoz</b></sub>
-        </a>
-    </td>
-    <td align="center">
         <a href="https://github.com/pplucky">
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
             <sub><b>Pplucky</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/fmunozs">
+            <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
+            <br />
+            <sub><b>Fernando Muñoz</b></sub>
         </a>
     </td>
     <td align="center">
