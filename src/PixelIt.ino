@@ -880,7 +880,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected())
     {
-        client.publish((mqttMasterTopic + "buttons").c_str(), String("{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}").c_str(), true);
+        client.publish((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0)
@@ -2435,8 +2435,10 @@ boolean MQTTreconnect()
             "\"pl_avail\":\"connected\","
             "\"pl_not_avail\":\"disconnected\","
             "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"dev_cla\":\"timestamp\","
             "\"name\":\"#SENSORNAME#\","
+            "\"ic\":\"mdi:gesture-tap-button\","
+            "\"pl_on\":\"true\","
+            "\"pl_off\":\"false\","
             "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
             "}"));
         configPayloadTemplate.replace(" ", "");
@@ -2451,13 +2453,13 @@ boolean MQTTreconnect()
             if (btnEnabled[n])
             {
                 topic = configTopicTemplate;
-                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#COMPONENT#"), F("binary_sensor"));
                 topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
 
                 payload = configPayloadTemplate;
                 payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
-                payload.replace(F("#SENSORNAME#"), String(F("Button")) + String(n));
-                payload.replace(F("#STATETOPIC#"), String(F("button")) + String(n));
+                payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
+                payload.replace(F("#STATETOPIC#"), String(F("buttons/button")) + String(n));
                 client.publish(topic.c_str(), payload.c_str(), true);
             }
         }
