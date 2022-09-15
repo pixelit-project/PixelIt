@@ -25,6 +25,7 @@
                         <v-text-field v-model="config.hostname" label="Hostname"></v-text-field>
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
                         <v-switch v-model="config.bootScreenAktiv" label="Bootscreen active" hide-details dense></v-switch>
+                        <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>
                         <v-switch v-model="config.checkUpdateScreen" label="Check and show new available firmware on the PixelIt " hide-details dense></v-switch>
                     </v-card>
                     <br />

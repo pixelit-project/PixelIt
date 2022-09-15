@@ -10,13 +10,14 @@
             <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
             <v-toolbar-title> <b>PixelIt</b> the Matrix Display </v-toolbar-title>
             <v-spacer>
-                <p v-if="!sockedIsConnected" class="text-center message">Reconnecting... please wait</p>
+                <p v-if="!sockedIsConnected && !isDemoMode" class="text-center message">Reconnecting... please wait</p>
             </v-spacer>
-            <v-icon v-if="sockedIsConnected" color="green" title="Connected">mdi-lan-connect</v-icon>
-            <v-icon v-else color="red" title="Disconnected">mdi-lan-disconnect</v-icon>
+            <v-icon v-if="sockedIsConnected" color="green" :title="`Connected to ${this.$socket.url}`">mdi-lan-connect </v-icon>
+            <v-icon v-if="isDemoMode" color="green" :title="`Connected to demo data source`">mdi-lan-connect</v-icon>
+            <v-icon v-if="!sockedIsConnected && !isDemoMode" color="red" :title="`Disconnected from ${this.$socket.url}`">mdi-lan-disconnect</v-icon>
             <v-btn icon @click="changeTheme" title="Change theme">
-                <v-icon v-if="darkModeActive">mdi-brightness-5</v-icon>
-                <v-icon v-else>mdi-brightness-7</v-icon>
+                <v-icon v-if="darkModeActive">mdi-brightness-4</v-icon>
+                <v-icon v-else>mdi-brightness-4</v-icon>
             </v-btn>
         </v-app-bar>
         <!-- Content -->
@@ -67,6 +68,9 @@ export default {
         sockedIsConnected() {
             return this.$store.state.socket.isConnected;
         },
+        isDemoMode() {
+            return this.$demoMode;
+        },
         getNavLinks() {
             return this.$store.state.navLinks;
         },
@@ -104,7 +108,11 @@ async function getCurrentGitReleaseData(state) {
 async function sendTelemetry(state) {
     setTimeout(() => {
         if (state.telemetryData != '') {
-            fetch('https://pixelit.bastelbunker.de/api/telemetry', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: state.telemetryData });
+            fetch('https://pixelit.bastelbunker.de/api/telemetry', {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                body: state.telemetryData,
+            });
         } else {
             sendTelemetry(state);
         }
