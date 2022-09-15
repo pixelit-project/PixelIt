@@ -12,8 +12,8 @@ import 'leaflet/dist/leaflet.css'
 import demoJSON from '../public/demoData/demo.json'
 
 let url;
-if (location.host.includes(":")) {
-  url = '192.168.3.40';
+if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
+  url = process.env.VUE_APP_PIXELIT_HOST;
 } else {
   url = location.host;
 }
