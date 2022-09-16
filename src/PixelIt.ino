@@ -52,7 +52,7 @@
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "2.0.0"
+#define VERSION "2.0.0_BootSound"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -220,6 +220,7 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
+bool bootSound = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
 unsigned long lastScreenMessageMillis = 0;
@@ -365,6 +366,7 @@ void SaveConfig()
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
     json["bootScreenAktiv"] = bootScreenAktiv;
+    json["bootSound"] = bootSound;
     json["mqttAktiv"] = mqttAktiv;
     json["mqttUser"] = mqttUser;
     json["mqttPassword"] = mqttPassword;
@@ -606,6 +608,11 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("bootScreenAktiv"))
     {
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
+    }
+
+    if (json.containsKey("bootSound"))
+    {
+        bootSound = json["bootSound"].as<bool>();
     }
 
     if (json.containsKey("mqttAktiv"))
@@ -3073,6 +3080,19 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
     // return OrigDayofWeek + (-1 * diff);
 }
 
+void initDFPlayer()
+{
+    if (!mp3Player.begin(*softSerial))
+    {
+        Log(F("DFPlayer"), F("DFPlayer not found"));
+    }
+    else
+    {
+        Log(F("DFPlayer"), F("DFPlayer started"));
+        mp3Player.volume(initialVolume);
+    }
+}
+
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 void setup()
@@ -3230,6 +3250,20 @@ void setup()
     matrix->setBrightness(currentMatrixBrightness);
     matrix->clear();
 
+    softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
+
+    softSerial->begin(9600);
+    Log(F("Setup"), F("Software Serial started"));
+
+    // Play sound on boot
+    if (bootSound)
+    {
+        delay(1000); // is needed for the dfplayer to startup
+        initDFPlayer();
+        delay(10);
+        mp3Player.play(1);
+    }
+
     // Bootscreen
     if (bootScreenAktiv)
     {
@@ -3302,14 +3336,10 @@ void setup()
         Log(F("Setup"), F("MQTT started"));
     }
 
-    softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
-
-    softSerial->begin(9600);
-    Log(F("Setup"), F("Software Serial started"));
-
-    mp3Player.begin(*softSerial);
-    Log(F("Setup"), F("DFPlayer started"));
-    mp3Player.volume(initialVolume);
+    if (!bootSound)
+    {
+        initDFPlayer();
+    }
 }
 
 void displayUpdateScreen()

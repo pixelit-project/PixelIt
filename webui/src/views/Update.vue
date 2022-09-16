@@ -84,7 +84,7 @@ export default {
             try {
                 this.firmwareFile = null;
                 this.$socket.close();
-                await fetch('/update', { method: 'POST', body: formData });
+                await fetch(`http://${this.$pixelitHost}/update`, { method: 'POST', body: formData });
             } catch (e) {
                 e;
             }
@@ -98,7 +98,7 @@ export default {
             try {
                 this.filesystemFile = null;
                 this.$socket.close();
-                await fetch('/update', { method: 'POST', body: formData });
+                await fetch(`http://${this.$pixelitHost}/update`, { method: 'POST', body: formData });
             } catch (e) {
                 e;
             }
