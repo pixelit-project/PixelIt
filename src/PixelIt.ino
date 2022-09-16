@@ -3080,6 +3080,19 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
     // return OrigDayofWeek + (-1 * diff);
 }
 
+void initDFPlayer()
+{
+    if (!mp3Player.begin(*softSerial))
+    {
+        Log(F("DFPlayer"), F("DFPlayer not found"));
+    }
+    else
+    {
+        Log(F("DFPlayer"), F("DFPlayer started"));
+        mp3Player.volume(initialVolume);
+    }
+}
+
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 void setup()
@@ -3242,13 +3255,12 @@ void setup()
     softSerial->begin(9600);
     Log(F("Setup"), F("Software Serial started"));
 
-    mp3Player.begin(*softSerial);
-    Log(F("Setup"), F("DFPlayer started"));
-    mp3Player.volume(initialVolume);
-
     // Play sound on boot
     if (bootSound)
     {
+        delay(1000); // is needed for the dfplayer to startup
+        initDFPlayer();
+        delay(10);
         mp3Player.play(1);
     }
 
@@ -3322,6 +3334,11 @@ void setup()
         client.setCallback(callback);
         client.setBufferSize(8000);
         Log(F("Setup"), F("MQTT started"));
+    }
+
+    if (!bootSound)
+    {
+        initDFPlayer();
     }
 }
 
