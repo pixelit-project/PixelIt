@@ -33,27 +33,25 @@ export default {
     created: function () {
         // Get style cookie
         this.$vuetify.theme.dark = this.$cookies.get('theme_dark') ? this.$cookies.get('theme_dark') === 'true' : true;
+
         getCurrentGitReleaseData(this.$store.state);
+        getUserMapData(this.$store.state);
+        sendTelemetry(this.$store.state);
+
         // Check again every 15 minutes
         setInterval(() => {
             getCurrentGitReleaseData(this.$store.state);
         }, 1000 * 60 * 15);
-
-        getUserMapData(this.$store.state);
 
         // Check again every 15 minutes
         setInterval(() => {
             getUserMapData(this.$store.state);
         }, 1000 * 60 * 15);
 
-        // sendTelemetry aktive?
-        if (this.$store.state.configData && this.$store.state.configData.sendTelemetry == true) {
+        // Send again every 12 houres
+        setInterval(() => {
             sendTelemetry(this.$store.state);
-            // Send again every 12 houres
-            setInterval(() => {
-                sendTelemetry(this.$store.state);
-            }, 1000 * 60 * 60 * 12);
-        }
+        }, 1000 * 60 * 60 * 12);
     },
     components: {
         NavLinks,
@@ -107,7 +105,12 @@ async function getCurrentGitReleaseData(state) {
 
 async function sendTelemetry(state) {
     setTimeout(() => {
-        if (state.telemetryData != '') {
+        if (state.configData != {} && state.telemetryData != '') {
+            // if sendTelemetry disabled force return!
+            if (state.configData.sendTelemetry == false) {
+                return;
+            }
+            // send telemetry
             fetch('https://pixelit.bastelbunker.de/api/telemetry', {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
