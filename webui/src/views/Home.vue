@@ -8,7 +8,7 @@
                     </v-card-title>
                     <hr />
                     <br />
-                    <div class="text-center updateMessage" v-if="newVersionAvailable">
+                    <div class="text-center updateMessage" v-if="newVersionAvailable && !isDemoMode">
                         <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a>
                         <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
                     </div>
@@ -93,6 +93,9 @@ export default {
         },
         userMapData() {
             return this.$store.state.userMapData;
+        },
+        isDemoMode() {
+            return this.$demoMode;
         },
     },
 };
