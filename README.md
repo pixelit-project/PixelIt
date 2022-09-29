@@ -90,7 +90,7 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### 2.1.0 (2022-09-29)
+### 2.1.1 (2022-09-29)
 
 - (foorschtbar) added Play a sound file on boot of PixelIt 🔊
 
