@@ -11,37 +11,35 @@ import VueSpinners from 'vue-spinners';
 import 'leaflet/dist/leaflet.css';
 import demoJSON from '../public/demoData/demo.json';
 
-if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
-    Vue.prototype.$pixelitHost = process.env.VUE_APP_PIXELIT_HOST;
-} else {
-    Vue.prototype.$pixelitHost = location.host;
-}
+// if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
+//     Vue.prototype.$pixelitHost = process.env.VUE_APP_PIXELIT_HOST;
+// } else {
+//     Vue.prototype.$pixelitHost = location.host;
+// }
 
-if (process.env.VUE_APP_DEMO_MODE !== undefined && process.env.VUE_APP_DEMO_MODE == 'true') {
-    Vue.prototype.$demoMode = true;
-} else {
-    Vue.prototype.$demoMode = false;
-}
+// if (process.env.VUE_APP_DEMO_MODE !== undefined && process.env.VUE_APP_DEMO_MODE == 'true') {
+//     Vue.prototype.$demoMode = true;
+// } else {
+//     Vue.prototype.$demoMode = false;
+// }
 
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
 
-console.log(process.env.VUE_APP_DEMO_MODE);
-
 // Demo mode
-if (location.host.includes('.github.io') || Vue.prototype.$demoMode) {
+if (location.host.includes('.github.io')) {
     store.commit('SOCKET_ONMESSAGE', demoJSON);
+    Vue.prototype.$demoMode = true;
 }
 // Prod mode
 else {
-    Vue.use(VueNativeSock, `ws://${Vue.prototype.$pixelitHost}:81`, {
+    Vue.use(VueNativeSock, `ws://${location.host}:81`, {
         store: store,
         reconnection: true,
         format: 'json',
     });
+    Vue.prototype.$demoMode = false;
 }
-
-console.log();
 
 Vue.$cookies.config('10y');
 Vue.config.productionTip = false;
