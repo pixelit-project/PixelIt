@@ -11,23 +11,17 @@ import VueSpinners from 'vue-spinners';
 import 'leaflet/dist/leaflet.css';
 import demoJSON from '../public/demoData/demo.json';
 
-// if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
-//     Vue.prototype.$pixelitHost = process.env.VUE_APP_PIXELIT_HOST;
-// } else {
-//     Vue.prototype.$pixelitHost = location.host;
-// }
-
-// if (process.env.VUE_APP_DEMO_MODE !== undefined && process.env.VUE_APP_DEMO_MODE == 'true') {
-//     Vue.prototype.$demoMode = true;
-// } else {
-//     Vue.prototype.$demoMode = false;
-// }
+if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
+    Vue.prototype.$pixelitHost = process.env.VUE_APP_PIXELIT_HOST;
+} else {
+    Vue.prototype.$pixelitHost = location.host;
+}
 
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
 
 // Demo mode
-if (location.host.includes('.github.io')) {
+if (location.host.includes('.github.io') || (process.env.VUE_APP_DEMO_MODE !== undefined && process.env.VUE_APP_DEMO_MODE == 'true')) {
     store.commit('SOCKET_ONMESSAGE', demoJSON);
     Vue.prototype.$demoMode = true;
 }
