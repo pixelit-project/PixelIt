@@ -75,6 +75,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/d4rkd3v1l">
+            <img src="https://avatars.githubusercontent.com/u/13336238?v=4" width="100;" alt="d4rkd3v1l"/>
+            <br />
+            <sub><b>Martin Straub</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/hamster65">
             <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
             <br />
