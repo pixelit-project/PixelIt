@@ -91,7 +91,7 @@ Thanks to these great people for supporting this project.
 -->
 ### **WORK IN PROGRESS**
 
-- (d4rkd3v1l) any "clock" json parameters are now optional (#222)
+- (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
 ### 2.1.2 (2022-09-29)
 
