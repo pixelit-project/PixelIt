@@ -89,6 +89,9 @@ Thanks to these great people for supporting this project.
 <!--
 ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+- (d4rkd3v1l) any "clock" json parameters are now optional (#222)
 
 ### 2.1.2 (2022-09-29)
 
