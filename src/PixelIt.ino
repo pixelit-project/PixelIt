@@ -1299,51 +1299,69 @@ void CreateFrames(JsonObject &json, int forceDuration)
         // Clock
         if (json.containsKey("clock"))
         {
-            logMessage += F("InternalClock Control, ");
-            if (json["clock"]["show"])
+            logMessage += F("InternalClock Control, Params: ");
+            scrollTextAktivLoop = false;
+            animateBMPAktivLoop = false;
+            clockAktiv = true;
+
+            clockCounterClock = 0;
+            clockCounterDate = 0;
+
+            bool isSwitchAktivSet = json["clock"]["switchAktiv"].is<bool>();
+            if (isSwitchAktivSet)
             {
-                scrollTextAktivLoop = false;
-                animateBMPAktivLoop = false;
-                clockAktiv = true;
-
-                clockCounterClock = 0;
-                clockCounterDate = 0;
-
+                logMessage += F("clockSwitchAktiv, ");
                 clockSwitchAktiv = json["clock"]["switchAktiv"];
-
-                if (clockSwitchAktiv == true)
-                {
-                    clockSwitchSec = json["clock"]["switchSec"];
-                }
-
-                clockWithSeconds = json["clock"]["withSeconds"];
-                if (json["clock"]["blinkAnimated"] != NULL)
-                {
-                    clockBlinkAnimated = json["clock"]["blinkAnimated"];
-                }
-
-                if (json["clock"]["fatFont"] != NULL)
-                {
-                    clockFatFont = json["clock"]["fatFont"];
-                }
-
-                if (json["clock"]["drawWeekDays"] != NULL)
-                {
-                    clockDrawWeekDays = json["clock"]["drawWeekDays"];
-                }
-
-                if (json["clock"]["color"]["r"].as<char *>() != NULL)
-                {
-                    clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
-                    clockColorG = json["clock"]["color"]["g"].as<uint8_t>();
-                    clockColorB = json["clock"]["color"]["b"].as<uint8_t>();
-                }
-                else if (json["clock"]["hexColor"].as<char *>() != NULL)
-                {
-                    ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
-                }
-                DrawClock(true);
             }
+
+            bool isClockSwitchSecSet = json["clock"]["switchSec"] != NULL;
+            if (clockSwitchAktiv && isClockSwitchSecSet)
+            {
+                logMessage += F("clockSwitchSec, ");
+                clockSwitchSec = json["clock"]["switchSec"];
+            }
+
+            bool isClockWithSecondsSet = json["clock"]["withSeconds"].is<bool>();
+            if (isClockWithSecondsSet)
+            {
+                logMessage += F("withSeconds, ");
+                clockWithSeconds = json["clock"]["withSeconds"];
+            }
+
+            bool isClockBlinkAnimatedSet = json["clock"]["blinkAnimated"].is<bool>();
+            if (isClockBlinkAnimatedSet)
+            {
+                logMessage += F("blinkAnimated, ");
+                clockBlinkAnimated = json["clock"]["blinkAnimated"];
+            }
+
+            bool isFatFontSet = json["clock"]["fatFont"].is<bool>();
+            if (isFatFontSet)
+            {
+                logMessage += F("fatFont, ");
+                clockFatFont = json["clock"]["fatFont"];
+            }
+
+            bool isDrawWeekDaysSet = json["clock"]["drawWeekDays"].is<bool>();
+            if (isDrawWeekDaysSet)
+            {
+                logMessage += F("drawWeekDays, ");
+                clockDrawWeekDays = json["clock"]["drawWeekDays"];
+            }
+
+            if (json["clock"]["color"]["r"].as<char *>() != NULL)
+            {
+                logMessage += F("color, ");
+                clockColorR = json["clock"]["color"]["r"].as<uint8_t>();
+                clockColorG = json["clock"]["color"]["g"].as<uint8_t>();
+                clockColorB = json["clock"]["color"]["b"].as<uint8_t>();
+            }
+            else if (json["clock"]["hexColor"].as<char *>() != NULL)
+            {
+                logMessage += F("hexColor, ");
+                ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
+            }
+            DrawClock(true);
         }
 
         if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("bitmapAnimation") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars"))
