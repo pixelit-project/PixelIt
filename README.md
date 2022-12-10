@@ -98,6 +98,7 @@ Thanks to these great people for supporting this project.
 -->
 ### **WORK IN PROGRESS**
 
+- (foorschtbar) Support for NodeMCU v2
 - (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
 ### 2.1.2 (2022-09-29)
