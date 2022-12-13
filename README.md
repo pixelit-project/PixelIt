@@ -10,12 +10,12 @@ also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/
 
 If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/).
 
-- [Documentation](https://pixelit-project.github.io/)
-- [Blog](https://www.bastelbunker.de/pixel-it/)
-- [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery)
-- [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
-- [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
-- [Discord Channel ![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
+-   [Documentation](https://pixelit-project.github.io/)
+-   [Blog](https://www.bastelbunker.de/pixel-it/)
+-   [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery)
+-   [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
+-   [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
+-   [Discord Channel ![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
 
 ## Contributors
 
@@ -96,35 +96,38 @@ Thanks to these great people for supporting this project.
 <!--
 ### **WORK IN PROGRESS**
 -->
+
 ### **WORK IN PROGRESS**
 
-- (foorschtbar) Support for NodeMCU v2
-- (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
+-   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PR are welcome)
+-   (foorschtbar) Support for NodeMCU v2
+-   (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
 ### 2.1.2 (2022-09-29)
 
-- (o0shojo0o) fix WebUi
+-   (o0shojo0o) fix WebUi
 
 ### 2.1.1 (2022-09-29)
 
-- (foorschtbar) added Play a sound file on boot of PixelIt 🔊
+-   (foorschtbar) added Play a sound file on boot of PixelIt 🔊
 
 ### 2.0.0 (2022-09-14)
 
 **!!! Breaking changes !!!**
-- (pplucky) fix Home Assistant MQTT discovery for buttons [more](https://github.com/pixelit-project/PixelIt/pull/209)
-- (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
-- (o0shojo0o) added new icons to UserMap
-- (fmunozs) added proper "folder" icon and swap names with "file"
-- (o0shojo0o) increase the timout for the wifi connection to 30 seconds
+
+-   (pplucky) fix Home Assistant MQTT discovery for buttons [more](https://github.com/pixelit-project/PixelIt/pull/209)
+-   (foorschtbar) readded support for tiled 4x 8x8 CJMCU Matrix in column major order
+-   (o0shojo0o) added new icons to UserMap
+-   (fmunozs) added proper "folder" icon and swap names with "file"
+-   (o0shojo0o) increase the timout for the wifi connection to 30 seconds
 
 ### 1.2.0 (2022-09-03)
 
-- (o0shojo0o) added send Telemetry data
-    - Send telemetry data is enabled by default, but can be disabled at any time in the WebUI under Options.  
-- (o0shojo0o) added UserMap to WebUI
-- (foorschtbar) search and display of new FW versions
-- (foorschtbar) new boot animation :eyes:
+-   (o0shojo0o) added send Telemetry data
+    -   Send telemetry data is enabled by default, but can be disabled at any time in the WebUI under Options.
+-   (o0shojo0o) added UserMap to WebUI
+-   (foorschtbar) search and display of new FW versions
+-   (foorschtbar) new boot animation :eyes:
 
 ### 1.1.0 (2022-08-16)
 
@@ -132,8 +135,10 @@ Thanks to these great people for supporting this project.
 -   (o0shojo0o) added option to disable the weekdays on the clock over API / WebUi
 
 ### 1.0.0 (2022-07-22)
+
 **!!! Breaking changes !!!**
--   (o0shojo0o) reworked the output of the buttons via API and MQTT to get the "press" and "release" event (press = true, release = false). Example: `{"buttons":{"rightButton":true}}` 
+
+-   (o0shojo0o) reworked the output of the buttons via API and MQTT to get the "press" and "release" event (press = true, release = false). Example: `{"buttons":{"rightButton":true}}`
 
 ### 0.4.0 (2022-07-04)
 
