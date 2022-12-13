@@ -75,7 +75,7 @@ String mqttMasterTopic = "Haus/PixelIt/";
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
 const int MQTT_RECONNECT_INTERVAL = 15000;
-//#define MQTT_MAX_PACKET_SIZE 8000
+// #define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
 #define LDR_PIN A0
@@ -3268,7 +3268,7 @@ void setup()
     matrix->setBrightness(currentMatrixBrightness);
     matrix->clear();
 
-    softSerial = new SoftwareSerial(TranslatePin(dfpRXPin), TranslatePin(dfpTXPin));
+    softSerial = new SoftwareSerial(TranslatePin(dfpTXPin), TranslatePin(dfpRXPin));
 
     softSerial->begin(9600);
     Log(F("Setup"), F("Software Serial started"));

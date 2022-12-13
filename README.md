@@ -99,7 +99,8 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
--   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PR are welcome)
+-   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PRs are welcome!)
+-   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. [Breaking change! No migration takes place! You need to swap the pins in your config!]
 -   (foorschtbar) Support for NodeMCU v2
 -   (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
