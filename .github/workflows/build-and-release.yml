@@ -20,8 +20,8 @@ jobs:
       - name: Install dependencies 🔧
         run: npm install
 
-      - name: Build 🏗️
-        run: npm run build
+      - name: Build WebUI 🏗️
+        run: npm run build-on-pipeline
 
       - name: Upload build artifacts 💾
         uses: actions/upload-artifact@v3
