@@ -2,6 +2,9 @@ name: Build, Release & Deploy
 
 on:
   [push]
+
+env:
+  prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'testing') }}
       
 jobs:
   build-webui:
@@ -92,7 +95,7 @@ jobs:
       - name: Display structure of downloaded files 🔍
         run: ls -R
 
-      - name: Upload binaries to release 🚀
+      - name: Upload binaries as release 🚀
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -100,7 +103,7 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
-          prerelease: ${{ endsWith(github.ref, 'beta') }}
+          prerelease: ${{ env.prerelease }}
 
   deploy-webui-gh-pages:
     runs-on: ubuntu-latest
