@@ -84,7 +84,11 @@ export default {
             try {
                 this.firmwareFile = null;
                 this.$socket.close();
-                await fetch(`http://${this.$pixelitHost}/update`, { method: 'POST', body: formData });
+                if (this.$pixelitHost == undefined || this.$pixelitHost == null || this.$pixelitHost == '') {
+                    alert('No Pixelit Host defined!');
+                } else {
+                    await fetch('http://' + this.$pixelitHost + '/update', { method: 'POST', body: formData });
+                }
             } catch (e) {
                 e;
             }
@@ -98,7 +102,11 @@ export default {
             try {
                 this.filesystemFile = null;
                 this.$socket.close();
-                await fetch(`http://${this.$pixelitHost}/update`, { method: 'POST', body: formData });
+                if (this.$pixelitHost == undefined || this.$pixelitHost == null || this.$pixelitHost == '') {
+                    alert('No Pixelit Host defined!');
+                } else {
+                    await fetch('http://' + this.$pixelitHost + '/update', { method: 'POST', body: formData });
+                }
             } catch (e) {
                 e;
             }
