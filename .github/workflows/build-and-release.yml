@@ -100,6 +100,7 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
+          prerelease: endsWith(github.ref, 'beta')
 
   deploy-webui-gh-pages:
     runs-on: ubuntu-latest
