@@ -15,13 +15,13 @@ jobs:
       - name: Use Node.js 💾
         uses: actions/setup-node@v1
         with:
-          node-version: 16.x
+          node-version: 19.x
 
       - name: Install dependencies 🔧
         run: npm install
 
       - name: Build WebUI 🏗️
-        run: npm run build-on-pipeline
+        run: npm run build
 
       - name: Upload build artifacts 💾
         uses: actions/upload-artifact@v3
