@@ -74,7 +74,7 @@ jobs:
           pip install --upgrade platformio
 
       - name: Run PlatformIO build on selected platforms 🏗️
-        run: platformio run -e d1_mini -e ESP8266 -e nodemcuv2
+        run: platformio run -e d1_mini -e ESP8266 -e wemos_d1_mini32 -e nodemcuv2
 
       - name: Upload build artifacts 💾
         uses: actions/upload-artifact@v3
