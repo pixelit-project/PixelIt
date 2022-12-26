@@ -52,7 +52,7 @@
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "2.2-beta-2"
+#define VERSION "2.2-beta-ONEWIRE"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -3205,18 +3205,32 @@ void setup()
             }
             else
             {
-                delete bme680;
+                Log(F("Setup"), F("No BMP280, BME280 or BME 680 sensor found"));
                 // AM2320 needs a delay to be reliably initialized
-                delay(800);
-                dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-                if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+                delete bme680;
+
+                // continue only if:
+                //  - LDR is being used. This means: no light sensor in I²C bus.
+                //  - SDA and SCL use different pin than onewire
+
+                // Otherwise, we already found a light sensor on I²C. If we would start a probe for OneWire on the same pin now, I²C will be disfunctional.
+                if (luxSensor == LuxSensor_LDR || (onewirePin != SDAPin && onewirePin != SCLPin))
                 {
-                    Log(F("Setup"), F("DHT started"));
-                    tempSensor = TempSensor_DHT;
+                    delay(800);
+                    dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
+                    if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+                    {
+                        Log(F("Setup"), F("DHT started"));
+                        tempSensor = TempSensor_DHT;
+                    }
+                    else
+                    {
+                        Log(F("Setup"), F("No DHT Sensor found"));
+                    }
                 }
                 else
                 {
-                    Log(F("Setup"), F("No BMP280, BME280, BME 680 or DHT Sensor found"));
+                    Log(F("Setup"), F("Not probing DHT sensor: light sensor already found on same pin as DHT."));
                 }
             }
         }
