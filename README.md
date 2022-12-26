@@ -87,6 +87,13 @@ Thanks to these great people for supporting this project.
             <br />
             <sub><b>Hamster65</b></sub>
         </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/rliegmann">
+            <img src="https://avatars.githubusercontent.com/u/16445478?v=4" width="100;" alt="rliegmann"/>
+            <br />
+            <sub><b>rliegmann</b></sub>
+        </a>
     </td></tr>
 </table>
 <!-- readme: contributors -end -->
