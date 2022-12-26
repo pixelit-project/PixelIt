@@ -92,7 +92,7 @@ Thanks to these great people for supporting this project.
         <a href="https://github.com/rliegmann">
             <img src="https://avatars.githubusercontent.com/u/16445478?v=4" width="100;" alt="rliegmann"/>
             <br />
-            <sub><b>rliegmann</b></sub>
+            <sub><b>Rliegmann</b></sub>
         </a>
     </td></tr>
 </table>
