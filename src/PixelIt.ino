@@ -2247,7 +2247,10 @@ void DrawClock(bool fromJSON)
                     DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
                     DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
                     matrix->drawLine(0, 7, 33, 7, 0);
-                    DrawWeekDay();
+                    if (clockDrawWeekDays)
+                    {
+                        DrawWeekDay();
+                    }
                     matrix->show();
                     delay(35);
                 }
