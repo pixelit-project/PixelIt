@@ -1,23 +1,8 @@
-#if defined(ESP8266)
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <ESP8266WiFi.h>
-#include <LittleFS.h>
-
-#elif defined(ESP32)
 #include <WebServer.h>
 #include <HTTPUpdateServer.h>
 #include <WiFi.h>
 #include <FS.h>
-#endif
-
 #include <Arduino.h>
-// BME Sensor
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include <Adafruit_BMP280.h>
-#include <Adafruit_BME680.h>
 // WiFi & Web
 #include <WebSocketsServer.h>
 #include <WiFiClient.h>
@@ -31,12 +16,7 @@
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
 // Misc
-#include <BH1750.h>
-#include <Max44009.h>
 #include <LightDependentResistor.h>
-#include <DHTesp.h>
-#include <DFPlayerMini_Fast.h>
-#include <SoftwareSerial.h>
 #include "ColorConverterLib.h"
 #include <TimeLib.h>
 #include <ArduinoJson.h>
@@ -52,7 +32,7 @@
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "2.2-beta-ONEWIRE"
+#define VERSION "2.2-beta-UlanziTC001"
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -64,34 +44,26 @@ public:
     ulong resetMillis;
 };
 #define SET_GPIO_SIZE 4
-SetGPIO setGPIOReset[SET_GPIO_SIZE];
+SetGPIO setGPIOReset[SET_GPIO_SIZE]; 
 
 //// MQTT Config
 bool mqttAktiv = false;
 String mqttUser = "";
 String mqttPassword = "";
 String mqttServer = "";
-String mqttMasterTopic = "Haus/PixelIt/";
+String mqttMasterTopic = "House/PixelIt/";
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
 const int MQTT_RECONNECT_INTERVAL = 15000;
 // #define MQTT_MAX_PACKET_SIZE 8000
 
 //// LDR Config
-#define LDR_PIN A0
+#define LDR_PIN A7 // UlanziTC001
 
 //// GPIO Config
-#if defined(ESP8266)
-const int MATRIX_PIN = D2;
-#elif defined(ESP32)
-const int MATRIX_PIN = 27;
-#endif
+const int MATRIX_PIN = 32;  // UlanziTC001
 
-String dfpRXPin = "Pin_D7";
-String dfpTXPin = "Pin_D8";
-String onewirePin = "Pin_D1";
-String SCLPin = "Pin_D1";
-String SDAPin = "Pin_D3";
+
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
@@ -106,8 +78,8 @@ unsigned int ldrSmoothing = 0;
 #define CHECKUPDATE_SERVER_PATH "/api/lastversion"
 #define CHECKUPDATE_SERVER_PORT 80
 
-String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
-bool btnEnabled[] = {false, false, false};
+String btnPin[] = {"Pin_D4", "Pin_D5", "Pin_D6"}; // UlanziTC001 workaround to tweak WebUI
+bool btnEnabled[] = {false, true, true}; 
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
 enum btnStates
@@ -133,27 +105,11 @@ enum btnActions
     btnAction_MP3PlayNext = 5,
 };
 
-btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
+btnActions btnAction[] = {btnAction_DoNothing, btnAction_ToggleSleepMode, btnAction_GotoClock};
 
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
-#if defined(ESP8266)
-bool isESP8266 = true;
-#else
-bool isESP8266 = false;
-#endif
-
-#if defined(ESP32)
-TwoWire twowire(BME280_ADDRESS_ALTERNATE);
-#else
-TwoWire twowire;
-#endif
-Adafruit_BME280 *bme280;
-Adafruit_BMP280 *bmp280;
-Adafruit_BME680 *bme680;
-unsigned long lastBME680read = 0;
-DHTesp dht;
 
 // TempSensor
 enum TempSensor
@@ -175,8 +131,7 @@ enum TemperatureUnit
 TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
 
 LightDependentResistor *photocell;
-BH1750 *bh1750;
-Max44009 *max44009;
+
 
 enum LuxSensor
 {
@@ -192,18 +147,12 @@ WiFiClient wifiClientHTTP;
 WiFiUDP udp;
 PubSubClient client(wifiClientMQTT);
 WiFiManager wifiManager;
-#if defined(ESP8266)
-ESP8266WebServer server(80);
-ESP8266HTTPUpdateServer httpUpdater;
-#elif defined(ESP32)
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
-#endif
+
 
 WebSocketsServer webSocket = WebSocketsServer(81);
-DFPlayerMini_Fast mp3Player;
-SoftwareSerial *softSerial;
-uint initialVolume = 10;
+
 
 // Matrix Vars
 int currentMatrixBrightness = 127;
@@ -212,7 +161,7 @@ int mbaDimMin = 20;
 int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
-int matrixType = 1;
+int matrixType = 2;   // UlanziTC001
 String note;
 String hostname;
 String matrixTempCorrection = "default";
@@ -305,8 +254,6 @@ unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
 
-// MP3Player Vars
-String OldGetMP3PlayerInfo;
 
 // Websoket Vars
 String websocketConnection[10];
@@ -332,7 +279,7 @@ void SaveConfig()
     JsonObject &json = jsonBuffer.createObject();
 
     json["version"] = VERSION;
-    json["isESP8266"] = isESP8266;
+    json["isESP8266"] = false;
     json["temperatureUnit"] = static_cast<int>(temperatureUnit);
     json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
     json["mbaDimMin"] = mbaDimMin;
@@ -379,11 +326,6 @@ void SaveConfig()
     json["pressureOffset"] = pressureOffset;
     json["gasOffset"] = gasOffset;
 
-    json["dfpRXpin"] = dfpRXPin;
-    json["dfpTXpin"] = dfpTXPin;
-    json["onewirePin"] = onewirePin;
-    json["SCLPin"] = SCLPin;
-    json["SDAPin"] = SDAPin;
     for (uint b = 0; b < 3; b++)
     {
         json["btn" + String(b) + "Pin"] = btnPin[b];
@@ -394,15 +336,12 @@ void SaveConfig()
     json["ldrDevice"] = ldrDevice;
     json["ldrPulldown"] = ldrPulldown;
     json["ldrSmoothing"] = ldrSmoothing;
-    json["initialVolume"] = initialVolume;
+    json["initialVolume"] = 1;
     json["sendTelemetry"] = sendTelemetry;
     json["checkUpdateScreen"] = checkUpdateScreen;
 
-#if defined(ESP8266)
-    File configFile = LittleFS.open("/config.json", "w");
-#elif defined(ESP32)
     File configFile = SPIFFS.open("/config.json", "w");
-#endif
+
     json.printTo(configFile);
     configFile.close();
     Log("SaveConfig", "Saved");
@@ -670,30 +609,6 @@ void SetConfigVariables(JsonObject &json)
         gasOffset = json["gasOffset"].as<float>();
     }
 
-    if (json.containsKey("dfpRXpin"))
-    {
-        dfpRXPin = json["dfpRXpin"].as<char *>();
-    }
-
-    if (json.containsKey("dfpTXpin"))
-    {
-        dfpTXPin = json["dfpTXpin"].as<char *>();
-    }
-
-    if (json.containsKey("onewirePin"))
-    {
-        onewirePin = json["onewirePin"].as<char *>();
-    }
-
-    if (json.containsKey("SCLPin"))
-    {
-        SCLPin = json["SCLPin"].as<char *>();
-    }
-
-    if (json.containsKey("SDAPin"))
-    {
-        SDAPin = json["SDAPin"].as<char *>();
-    }
 
     for (uint b = 0; b < 3; b++)
     {
@@ -728,11 +643,6 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("ldrSmoothing"))
     {
         ldrSmoothing = json["ldrSmoothing"].as<uint>();
-    }
-
-    if (json.containsKey("initialVolume"))
-    {
-        initialVolume = json["initialVolume"].as<uint>();
     }
 
     if (json.containsKey("sendTelemetry"))
@@ -830,18 +740,6 @@ void HandleGetBrightness()
     server.send(200, F("application/json"), GetBrightness());
 }
 
-void HandleGetDHTSensor() // Legancy
-{
-    server.sendHeader(F("Connection"), F("close"));
-    server.send(200, F("application/json"), GetSensor());
-}
-
-void HandleGetSensor()
-{
-    server.sendHeader(F("Connection"), F("close"));
-    server.send(200, F("application/json"), GetSensor());
-}
-
 void HandleGetButtons()
 {
     server.sendHeader(F("Connection"), F("close"));
@@ -865,11 +763,9 @@ void HandleFactoryReset()
 {
     server.sendHeader(F("Connection"), F("close"));
     server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
-#if defined(ESP8266)
-    File configFile = LittleFS.open("/config.json", "w");
-#elif defined(ESP32)
+
     File configFile = SPIFFS.open("/config.json", "w");
-#endif
+
     if (!configFile)
     {
         Log(F("Handle_factoryreset"), F("Failed to open config file for reset"));
@@ -925,28 +821,10 @@ void HandleAndSendButtonPress(uint button, bool state)
     }
     if (btnAction[button] == btnAction_GotoClock)
     {
+        ColoredBarWipe();
         forceClock = true;
     }
-    if (btnAction[button] == btnAction_MP3PlayPrevious)
-    {
-        mp3Player.playPrevious();
-    }
-    if (btnAction[button] == btnAction_MP3PlayNext)
-    {
-        mp3Player.playNext();
-    }
-    if (btnAction[button] == btnAction_MP3PlayPause)
-    {
-        if (mp3Player.isPlaying())
-        {
-            mp3Player.pause();
-        }
-        else
-        {
-            delay(200);
-            mp3Player.resume();
-        }
-    }
+
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -1145,52 +1023,6 @@ void CreateFrames(JsonObject &json, int forceDuration)
             // Set GPIO
             pinMode(gpio, OUTPUT);
             digitalWrite(gpio, json["setGpio"]["set"].as<bool>());
-        }
-    }
-
-    // Sound
-    if (json.containsKey("sound"))
-    {
-        logMessage += F("Sound, ");
-        // Volume
-        if (json["sound"]["volume"] != NULL && json["sound"]["volume"].is<int>())
-        {
-            mp3Player.volume(json["sound"]["volume"].as<int>());
-
-            // Sometimes, mp3Player gets hickups. A brief delay might help - but also might hinder scrolling.
-            // So, do it only if there are more commands to come.
-            if (json["sound"]["control"].as<String>() == "")
-            {
-                Log(F("Sound"), F("Changing volume can prevent DFPlayer from executing a control command at the same time. Better make two separate API calls."));
-                delay(200);
-            }
-        }
-        // Play
-        if (json["sound"]["control"] == "play")
-        {
-            if (json["sound"]["folder"])
-            {
-                mp3Player.playFolder(json["sound"]["folder"].as<int>(), json["sound"]["file"].as<int>());
-            }
-            else
-            {
-                mp3Player.play(json["sound"]["file"].as<int>());
-            }
-        }
-        // Stop
-        else if (json["sound"]["control"] == "pause")
-        {
-            mp3Player.pause();
-        }
-        // Play Next
-        else if (json["sound"]["control"] == "next")
-        {
-            mp3Player.playNext();
-        }
-        // Play Previous
-        else if (json["sound"]["control"] == "previous")
-        {
-            mp3Player.playPrevious();
         }
     }
 
@@ -1582,135 +1414,6 @@ String GetConfig()
     return "";
 }
 
-String GetSensor()
-{
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &root = jsonBuffer.createObject();
-    if (tempSensor == TempSensor_BME280)
-    {
-        const float currentTemp = bme280->readTemperature();
-        root["temperature"] = currentTemp + temperatureOffset;
-        root["humidity"] = bme280->readHumidity() + humidityOffset;
-        root["pressure"] = (bme280->readPressure() / 100.0F) + pressureOffset;
-        root["gas"] = "Not installed";
-
-        if (temperatureUnit == TemperatureUnit_Fahrenheit)
-        {
-            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-        }
-    }
-    else if (tempSensor == TempSensor_DHT)
-    {
-        const float currentTemp = dht.getTemperature();
-        root["temperature"] = currentTemp + temperatureOffset;
-        root["humidity"] = roundf(dht.getHumidity() + humidityOffset);
-        root["pressure"] = "Not installed";
-        root["gas"] = "Not installed";
-
-        if (temperatureUnit == TemperatureUnit_Fahrenheit)
-        {
-            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-        }
-    }
-    else if (tempSensor == TempSensor_BME680)
-    {
-        /***************************************************************************************************
-        // BME680 requires about 100ms for a read (heating the gas sensor). A blocking read can hinder
-        // animations and scrolling. Therefore, we will use asynchronous reading in most cases.
-        //
-        // First call: starts measuring sequence, returns previous values.
-        // Second call: performs read, returns current values.
-        //
-        // As long as there are more than ~200ms between the calls, there won't be blocking.
-        // PixelIt usually uses a 3000ms loop.
-        //
-        // When there's no loop (no Websock connection, no MQTT) but only HTTP API calls, this would result
-        // in only EVERY OTHER call return new values (which have been taken shortly after the previous call).
-        // This is okay when you are polling very frequently, but might be undesirable when polling every
-        // couple of minutes or so. Therefore: if previous reading is more than 20000ms old, perform
-        // read in any case, even if it might become blocking.
-        //
-        // Please note: the gas value not only depends on gas, but also on the time since last read.
-        // Frequent reads will yield higher values than infrequent reads. There will be a difference
-        // even if we switch from 6secs to 3secs! So, do not attempt to compare values of readings
-        // with an interval of 3 secs to values of readings with an interval of 60 secs!
-        */
-
-        const int elapsedSinceLastRead = millis() - lastBME680read;
-        const int remain = bme680->remainingReadingMillis();
-
-        if (remain == -1) // no current values available
-        {
-            bme680->beginReading(); // start measurement process
-            // return previous values
-            const float currentTemp = bme680->temperature;
-            root["temperature"] = currentTemp + temperatureOffset;
-            root["humidity"] = bme680->humidity + humidityOffset;
-            root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
-            root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
-            if (temperatureUnit == TemperatureUnit_Fahrenheit)
-            {
-                root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-            }
-        }
-
-        if (remain >= 0 || elapsedSinceLastRead > 20000)
-        // remain==0: measurement completed, not read yet
-        // remain>0: measurement still running, but as we already are in the next loop call, block and read
-        // elapsedSinceLastRead>20000: obviously, remain==-1. But as there haven't been loop calls recently, this seems to be an "infrequent" API call. Perform blocking read.
-        {
-            if (bme680->endReading()) // will become blocking if measurement not complete yet
-            {
-                lastBME680read = millis();
-                const float currentTemp = bme680->temperature;
-                root["temperature"] = currentTemp + temperatureOffset;
-                root["humidity"] = bme680->humidity + humidityOffset;
-                root["pressure"] = (bme680->pressure / 100.0F) + pressureOffset;
-                root["gas"] = (bme680->gas_resistance / 1000.0F) + gasOffset;
-                if (temperatureUnit == TemperatureUnit_Fahrenheit)
-                {
-                    root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-                }
-            }
-            else
-            {
-                root["humidity"] = "Error while reading";
-                root["temperature"] = "Error while reading";
-                root["pressure"] = "Error while reading";
-                root["gas"] = "Error while reading";
-            }
-        }
-    }
-    else if (tempSensor == TempSensor_BMP280)
-    {
-        const float currentTemp = bmp280->readTemperature();
-        root["temperature"] = currentTemp + temperatureOffset;
-        // root["humidity"] = bmp280->readHumidity() + humidityOffset;
-        root["humidity"] = "Not installed";
-        root["pressure"] = (bmp280->readPressure() / 100.0F) + pressureOffset;
-        root["gas"] = "Not installed";
-
-        if (temperatureUnit == TemperatureUnit_Fahrenheit)
-        {
-            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
-        }
-    }
-
-    else
-    {
-        root["humidity"] = "Not installed";
-        root["temperature"] = "Not installed";
-        root["pressure"] = "Not installed";
-        root["gas"] = "Not installed";
-    }
-
-    String json;
-    root.printTo(json);
-
-    // Log(F("Sensor readings"), F("Hum/Temp/Press/Gas:"));
-    // Log(F("Sensor readings"), json);
-    return json;
-}
 
 String GetLuxSensor()
 {
@@ -1809,7 +1512,7 @@ String GetTelemetry()
 
     root["uuid"] = sha1(GetChipID());
     root["version"] = VERSION;
-    root["type"] = isESP8266 ? "esp8266" : "esp32";
+    root["type"] = "esp32";
 
     JsonObject &matrix = root.createNestedObject("matrix");
     matrix["type"] = matrixType;
@@ -2247,10 +1950,7 @@ void DrawClock(bool fromJSON)
                     DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
                     DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
                     matrix->drawLine(0, 7, 33, 7, 0);
-                    if (clockDrawWeekDays)
-                    {
-                        DrawWeekDay();
-                    }
+                    DrawWeekDay();
                     matrix->show();
                     delay(35);
                 }
@@ -2339,11 +2039,9 @@ boolean MQTTreconnect()
         String deviceID = hostname;
         if (deviceID.isEmpty())
             deviceID = "pixelit";
-#if defined(ESP8266)
-        deviceID += ESP.getChipId();
-#elif defined(ESP32)
+
         deviceID += uint64ToString(ESP.getEfuseMac());
-#endif
+
         // Get host IP to provide URL in MQTT discovery device info
         String ip_url = "http://" + WiFi.localIP().toString();
         String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
@@ -3033,28 +2731,30 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 
 uint8_t TranslatePin(String pin)
 {
-    if (pin == "Pin_D0")
-        return D0;
-    if (pin == "Pin_D1")
-        return D1;
-    if (pin == "Pin_D2")
-        return D2;
-    if (pin == "Pin_D3")
-        return D3;
-    if (pin == "Pin_D4")
-        return D4;
-    if (pin == "Pin_D5")
-        return D5;
-    if (pin == "Pin_D6")
-        return D6;
-    if (pin == "Pin_D7")
-        return D7;
-    if (pin == "Pin_D8")
-        return D8;
-    if (pin == "Pin_27")
-        return 27;
+    if (pin == "Pin_D0")   // IDK
+        return GPIO_NUM_32; 
+    if (pin == "Pin_D1")    // UlanziTC001 SCL
+        return GPIO_NUM_22; 
+    if (pin == "Pin_D2")    //  IDK
+        return GPIO_NUM_32;
+    if (pin == "Pin_D3")    // UlanziTC001 SDA
+        return GPIO_NUM_21;
+
+    if (pin == "Pin_D4")   // UlanziTC001 Left | open issue. It should be GPIO26 on the board, however it is not a touch input and causes issues
+        return GPIO_NUM_32;
+    if (pin == "Pin_D5")   // UlanziTC001 Middle
+        return GPIO_NUM_27;
+    if (pin == "Pin_D6")   // UlanziTC001 Right
+        return GPIO_NUM_14;
+
+    if (pin == "Pin_D7")   //  IDK
+        return SPI_CLK_GPIO_NUM;
+    if (pin == "Pin_D8")   //  IDK
+        return SPI_CS0_GPIO_NUM;
+
     Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
-    return LED_BUILTIN;
+    // return LED_BUILTIN;
+    return GPIO_NUM_32;   // IDK
 }
 
 void ClearTextArea()
@@ -3101,33 +2801,21 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
     // return OrigDayofWeek + (-1 * diff);
 }
 
-void initDFPlayer()
-{
-    if (!mp3Player.begin(*softSerial))
-    {
-        Log(F("DFPlayer"), F("DFPlayer not found"));
-    }
-    else
-    {
-        Log(F("DFPlayer"), F("DFPlayer started"));
-        mp3Player.volume(initialVolume);
-    }
-}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 void setup()
 {
 
+    pinMode (15, INPUT_PULLDOWN); //UlanziTC011 - Fix high pitch tone
+
     Serial.begin(115200);
 
     // Mounting FileSystem
     Serial.println(F("Mounting file system..."));
-#if defined(ESP8266)
-    if (LittleFS.begin())
-#elif defined(ESP32)
+
     if (SPIFFS.begin())
-#endif
+
     {
         Serial.println(F("Mounted file system."));
         LoadConfig();
@@ -3151,93 +2839,7 @@ void setup()
         setGPIOReset[i].resetMillis = -1;
     }
 
-    // I2C Sensors
-    twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin));
-
-    // Init LightSensor
-    bh1750 = new BH1750();
-    if (bh1750->begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &twowire))
-    {
-        Log(F("Setup"), F("BH1750 started"));
-        luxSensor = LuxSensor_BH1750;
-    }
-    else
-    {
-        delete bh1750;
-        max44009 = new Max44009(Max44009::Boolean::False);
-        max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
-        if (max44009->isConnected())
-        {
-            Log(F("Setup"), F("Max44009/GY-049 started"));
-            luxSensor = LuxSensor_Max44009;
-        }
-        else
-        {
-            delete max44009;
-            photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
-            photocell->setPhotocellPositionOnGround(false);
-            luxSensor = LuxSensor_LDR;
-        }
-    }
-
-    // Init Temp Sensors
-    bme280 = new Adafruit_BME280();
-    if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
-    {
-        Log(F("Setup"), F("BME280 started"));
-        tempSensor = TempSensor_BME280;
-    }
-    else
-    {
-        delete bme280;
-        bmp280 = new Adafruit_BMP280(&twowire);
-        Log(F("Setup"), F("BMP280 Trying"));
-        if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
-        {
-            Log(F("Setup"), F("BMP280 started"));
-            tempSensor = TempSensor_BMP280;
-        }
-        else
-        {
-            delete bmp280;
-            bme680 = new Adafruit_BME680(&twowire);
-            if (bme680->begin())
-            {
-                Log(F("Setup"), F("BME680 started"));
-                tempSensor = TempSensor_BME680;
-            }
-            else
-            {
-                Log(F("Setup"), F("No BMP280, BME280 or BME 680 sensor found"));
-                // AM2320 needs a delay to be reliably initialized
-                delete bme680;
-
-                // continue only if:
-                //  - LDR is being used. This means: no light sensor in I²C bus.
-                //  - SDA and SCL use different pin than onewire
-
-                // Otherwise, we already found a light sensor on I²C. If we would start a probe for OneWire on the same pin now, I²C will be disfunctional.
-                if (luxSensor == LuxSensor_LDR || (onewirePin != SDAPin && onewirePin != SCLPin))
-                {
-                    delay(800);
-                    dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-                    if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
-                    {
-                        Log(F("Setup"), F("DHT started"));
-                        tempSensor = TempSensor_DHT;
-                    }
-                    else
-                    {
-                        Log(F("Setup"), F("No DHT Sensor found"));
-                    }
-                }
-                else
-                {
-                    Log(F("Setup"), F("Not probing DHT sensor: light sensor already found on same pin as DHT."));
-                }
-            }
-        }
-    }
+ 
 
     switch (matrixType)
     {
@@ -3285,24 +2887,12 @@ void setup()
     matrix->setBrightness(currentMatrixBrightness);
     matrix->clear();
 
-    softSerial = new SoftwareSerial(TranslatePin(dfpTXPin), TranslatePin(dfpRXPin));
-
-    softSerial->begin(9600);
-    Log(F("Setup"), F("Software Serial started"));
-
-    // Play sound on boot
-    if (bootSound)
-    {
-        delay(1000); // is needed for the dfplayer to startup
-        initDFPlayer();
-        delay(10);
-        mp3Player.play(1);
-    }
 
     // Bootscreen
     if (bootScreenAktiv)
     {
         ShowBootAnimation();
+        ColoredBarWipe();
     }
 
     // Hostname
@@ -3344,11 +2934,8 @@ void setup()
     server.on(F("/api/screen"), HTTP_POST, HandleScreen);
     server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
     server.on(F("/api/brightness"), HTTP_GET, HandleGetBrightness);
-    server.on(F("/api/dhtsensor"), HTTP_GET, HandleGetDHTSensor); // Legacy
-    server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
     server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
     server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
-    // server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
     server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
     server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
     server.on(F("/api/wifireset"), HTTP_POST, HandelWifiConfigReset);
@@ -3373,7 +2960,7 @@ void setup()
 
     if (!bootSound)
     {
-        initDFPlayer();
+       // initDFPlayer();
     }
 }
 
@@ -3512,11 +3099,13 @@ void loop()
     {
         if (btnEnabled[button])
         {
-            if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
+            // if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
+            if ((btnState[button] == btnState_Released) && (touchRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))  // UlanziTC001
             {
                 btnState[button] = btnState_PressedNew;
             }
-            if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
+            //if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))           
+            if ((btnState[button] == btnState_PressedBefore) && (touchRead(TranslatePin(btnPin[button])) != btnPressedLevel[button])) // UlanziTC001
             {
                 btnState[button] = btnState_Released;
                 HandleAndSendButtonPress(button, false);
@@ -3597,20 +3186,6 @@ void loop()
     if (millis() - sendLuxPrevMillis >= 1000)
     {
         sendLuxPrevMillis = millis();
-
-        if (luxSensor == LuxSensor_BH1750)
-        {
-            currentLux = bh1750->readLightLevel() + luxOffset;
-        }
-        else if (luxSensor == LuxSensor_Max44009)
-        {
-            currentLux = max44009->getLux() + luxOffset;
-        }
-        else
-        {
-            currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
-        }
-
         SendLDR(false);
 
         if (!sleepMode && matrixBrightnessAutomatic)
@@ -3735,12 +3310,11 @@ void SendSensor(bool force)
     // Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
     if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
     {
-        Sensor = GetSensor();
+
     }
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
     {
-        client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
         client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
     }
     // Prüfen ob über Websocket versendet werden muss
