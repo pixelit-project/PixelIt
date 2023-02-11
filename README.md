@@ -104,7 +104,8 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 2.2.0 (2023-02-11)
+
 -   (miccgn) Fix Show weekdays
 -   (miccgn) Fix probing onewire can break previos i2c communication
 -   (rliegmann) Bring ESP32 support back
