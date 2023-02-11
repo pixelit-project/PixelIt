@@ -1,6 +1,8 @@
 ![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
 
-# PixelIt
+# PixelIt (Ulanzi)
+
+PixelIt firmware with changes approproate for the Ulanzi Pixel Clock.
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
