@@ -2,7 +2,10 @@
 
 # PixelIt (Ulanzi)
 
+![](https://github.com/aptonline/PixelIt_Ulanzi/blob/main/ulanzi_pixel_clock.png)
+
 PixelIt firmware with changes appropriate for the Ulanzi Pixel Clock.
+
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
