@@ -34,6 +34,11 @@
 
 #define VERSION "2.2-beta-UlanziTC001"
 
+#define VBAT_PIN 36
+#define BATTV_MAX    4.2     // maximum voltage of battery
+#define BATTV_MIN    3.2     // what we regard as an empty battery
+#define BATTV_LOW    3.4     // voltage considered to be low battery
+
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
 
@@ -249,7 +254,7 @@ float gasOffset = 0.0f;
 bool sendTelemetry = true;
 unsigned long sendTelemetryPrevMillis = 0;
 unsigned long forcedScreenIsActiveUntil = 0;
-bool checkUpdateScreen = true;
+bool checkUpdateScreen = false;
 unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
@@ -813,18 +818,35 @@ void HandleAndSendButtonPress(uint button, bool state)
         else
         {
             matrix->clear();
+
+            // WORK IN PROGRESS / Ulanzi Battery Status //
+            // float batteryVoltage = getbatteryVoltage();
+            // String strBV = String(batteryVoltage,0) + " %";
+            // Log(F("Battery Level"), strBV);        
+
+            // ColoredBarWipe();
+            // DrawTextHelper(strBV, false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
             DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
             FadeIn(30, 0);
-            delay(150);
-            forceClock = true;
+            delay(300);
+
         }
     }
     if (btnAction[button] == btnAction_GotoClock)
     {
-        ColoredBarWipe();
-        forceClock = true;
+            forceClock = true;
     }
 
+}
+
+
+// needs verification / fix
+float getbatteryVoltage ()
+{
+    float battv = ((float)analogRead(VBAT_PIN) / 4095) * 3.3 * 2 * 1.05;
+    uint8_t battpc = (uint8_t)(((battv - BATTV_MIN) / (BATTV_MAX - BATTV_MIN)) * 100 / 2);    
+
+    return battpc;
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -2726,7 +2748,7 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
     if (photocell == "GL5549")
         return LightDependentResistor::GL5549;
     Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
-    return LightDependentResistor::GL5528;
+    return LightDependentResistor::GL5516;
 }
 
 uint8_t TranslatePin(String pin)
@@ -2741,7 +2763,7 @@ uint8_t TranslatePin(String pin)
         return GPIO_NUM_21;
 
     if (pin == "Pin_D4")   // UlanziTC001 Left | open issue. It should be GPIO26 on the board, however it is not a touch input and causes issues
-        return GPIO_NUM_32;
+        return GPIO_NUM_26;
     if (pin == "Pin_D5")   // UlanziTC001 Middle
         return GPIO_NUM_27;
     if (pin == "Pin_D6")   // UlanziTC001 Right
@@ -2808,6 +2830,7 @@ void setup()
 {
 
     pinMode (15, INPUT_PULLDOWN); //UlanziTC011 - Fix high pitch tone
+    pinMode(VBAT_PIN, INPUT);
 
     Serial.begin(115200);
 
@@ -2839,7 +2862,11 @@ void setup()
         setGPIOReset[i].resetMillis = -1;
     }
 
- 
+
+    // Init LightSensor
+    photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
+    photocell->setPhotocellPositionOnGround(false);
+    luxSensor = LuxSensor_LDR;
 
     switch (matrixType)
     {
@@ -3186,6 +3213,7 @@ void loop()
     if (millis() - sendLuxPrevMillis >= 1000)
     {
         sendLuxPrevMillis = millis();
+        currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
         SendLDR(false);
 
         if (!sleepMode && matrixBrightnessAutomatic)
