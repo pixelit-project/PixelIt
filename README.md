@@ -2,7 +2,7 @@
 
 # PixelIt (Ulanzi)
 
-PixelIt firmware with changes approproate for the Ulanzi Pixel Clock.
+PixelIt firmware with changes appropriate for the Ulanzi Pixel Clock.
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
