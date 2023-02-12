@@ -105,6 +105,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./*/firmware_*.bin
           tag: ${{ github.ref }}
+          release_name: ${{ github.ref_name }}
           overwrite: true
           file_glob: true
           prerelease: ${{ env.prerelease }}
