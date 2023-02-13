@@ -6,6 +6,11 @@
 
 PixelIt firmware with changes appropriate for the Ulanzi Pixel Clock.
 
+##Ulanzi ESP32-VROOM-32D Pinouts
+
+![](https://github.com/aptonline/PixelIt_Ulanzi/blob/main/ESP32-VROOM-32D-PINOUT.png)
+
+
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
