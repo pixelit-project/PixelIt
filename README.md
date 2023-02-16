@@ -10,13 +10,13 @@ This fork of the PixelIt firmware (version 2.2.0) is work in progress to bring c
 
 It is unlikely that additional features will be added to this fork as our overall aim it to (hopefully) provide what we learn about the Ulanzi back to the original project for incorporation into the firmware as a supported device.
 
-Where we can, we will documnent our findings within this repository.
+Where we can, we will document our findings within this repository.
 
 ### To Do
 
-* Write Wiki to cover off building and insalling the firmware
-* Investigate building and attaching a single fireware.bin (including bootloader, filesystem and firmware) file for GitHub distributuion
-* Document which pins the Ulanzu uses for communication
+* Write Wiki to cover off building and installing the firmware
+* Investigate building and attaching a single `firmware.bin` file (including bootloader, filesystem and firmware) for GitHub distribution
+* Document which pins the Ulanzi uses for communication
 * Fix the left button not being recognised
 * ~~Fix the constant tone generated after flashing the Ulanzi~~
 
