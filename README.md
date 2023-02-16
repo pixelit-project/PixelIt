@@ -1,17 +1,44 @@
 ![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
 
-# PixelIt (Ulanzi)
+# PixelIt for the Ulanzi Pixel Clock
 
-![](https://github.com/aptonline/PixelIt_Ulanzi/blob/main/ulanzi_pixel_clock.png)
+## Ulanzi Specfic README
 
-PixelIt firmware with changes appropriate for the Ulanzi Pixel Clock.
+![](https://raw.githubusercontent.com/aptonline/PixelIt_Ulanzi/main/ulanzi_pixel_clock.png)
 
-## Ulanzi ESP32-VROOM-32D Pinouts
+This fork of the PixelIt firmware (version 2.2.0) is work in progress to bring current PixelIt funtionality to the Ulanzi Pixel Clock.
 
-![](https://github.com/aptonline/PixelIt_Ulanzi/blob/main/ESP32-VROOM-32D-PINOUT.png)
+It is unlikely that additional features will be added to this fork as our overall aim it to (hopefully) provide what we learn about the Ulanzi back to the original project for incorporation into the firmware as a supported device.
 
+Where we can, we will documnent our findings within this repository.
 
+### To Do
 
+* Write Wiki to cover off building and insalling the firmware
+* Investigate building and attaching a single fireware.bin (including bootloader, filesystem and firmware) file for GitHub distributuion
+* Document which pins the Ulanzu uses for communication
+* Fix the left button not being recognised
+* ~~Fix the constant tone generated after flashing the Ulanzi~~
+
+### Contributors (Ulanzi)
+
+<table>
+<td><a href="https://github.com/wsbtak"><img src="https://avatars.githubusercontent.com/u/125366691?v=4" width="64;" alt="wsbtak"/><BR>@wsbtak</a></td>
+<td><a href="https://github.com/aptonline"><img src="https://avatars.githubusercontent.com/u/190136?v=4" width="64;" alt="aptonline"/><BR>@aptonline</a>
+ </td> 
+
+</table>
+ 
+### Ulanzi ESP32-VROOM-32D Pinouts
+The Ulanzi used a ESP32-VROOM-32D board as shown below.
+
+![](https://raw.githubusercontent.com/aptonline/PixelIt_Ulanzi/main/ESP32-VROOM-32D-PINOUT.png)
+
+### Pinouts
+
+Coming soon...
+
+## Orignal repository README follows
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
 The PixelIt is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
