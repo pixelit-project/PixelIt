@@ -45,7 +45,6 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 				<th>PixelIt Mapping</th>
 			</tr>
 		</thead>
-		<tbody>
 			</tr>
 				<tr>
 				<td>7</td>
