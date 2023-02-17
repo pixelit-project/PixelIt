@@ -84,7 +84,7 @@ unsigned int ldrSmoothing = 0;
 #define CHECKUPDATE_SERVER_PORT 80
 
 String btnPin[] = {"Pin_D4", "Pin_D5", "Pin_D6"}; // UlanziTC001 workaround to tweak WebUI
-bool btnEnabled[] = {false, true, true}; 
+bool btnEnabled[] = {true, true, true}; 
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
 enum btnStates
@@ -2753,16 +2753,12 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 
 uint8_t TranslatePin(String pin)
 {
-    if (pin == "Pin_D0")   // IDK
-        return GPIO_NUM_32; 
     if (pin == "Pin_D1")    // UlanziTC001 SCL
         return GPIO_NUM_22; 
-    if (pin == "Pin_D2")    //  IDK
-        return GPIO_NUM_32;
     if (pin == "Pin_D3")    // UlanziTC001 SDA
         return GPIO_NUM_21;
 
-    if (pin == "Pin_D4")   // UlanziTC001 Left | open issue. It should be GPIO26 on the board, however it is not a touch input and causes issues
+    if (pin == "Pin_D4")   // UlanziTC001 Left
         return GPIO_NUM_26;
     if (pin == "Pin_D5")   // UlanziTC001 Middle
         return GPIO_NUM_27;
@@ -2830,7 +2826,8 @@ void setup()
 {
 
     pinMode (15, INPUT_PULLDOWN); //UlanziTC011 - Fix high pitch tone
-    pinMode(VBAT_PIN, INPUT);
+    pinMode(27, INPUT_PULLUP);
+    pinMode(26, INPUT_PULLUP);
 
     Serial.begin(115200);
 
@@ -3126,13 +3123,11 @@ void loop()
     {
         if (btnEnabled[button])
         {
-            // if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
-            if ((btnState[button] == btnState_Released) && (touchRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))  // UlanziTC001
+            if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
             {
                 btnState[button] = btnState_PressedNew;
-            }
-            //if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))           
-            if ((btnState[button] == btnState_PressedBefore) && (touchRead(TranslatePin(btnPin[button])) != btnPressedLevel[button])) // UlanziTC001
+            }      
+            if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
             {
                 btnState[button] = btnState_Released;
                 HandleAndSendButtonPress(button, false);

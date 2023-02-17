@@ -18,7 +18,7 @@ Where we can, we will document our findings within this repository.
 * Investigate building and attaching a single `firmware.bin` file (including bootloader, filesystem and firmware) for GitHub distribution
 * Document which pins the Ulanzi uses for communication
 * Document API integration with [Home Assistant](https://www.home-assistant.io)
-* Fix the left button not being recognised
+* ~~Fix the left button not being recognised~~
 * ~~Fix the constant tone generated after flashing the Ulanzi~~
 
 ### Contributors (Ulanzi)
@@ -30,14 +30,48 @@ Where we can, we will document our findings within this repository.
 
 </table>
  
-### Ulanzi ESP32-VROOM-32D Pinouts
-The Ulanzi used a ESP32-VROOM-32D board as shown below.
+### Ulanzi ESP32-WROOM-32D Pinouts
+The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 
 ![](https://raw.githubusercontent.com/aptonline/PixelIt_Ulanzi/main/ESP32-VROOM-32D-PINOUT.png)
 
 ### Pinouts
-
-Coming soon...
+<table>
+		<thead>
+			<tr>
+				<th>ESP32 PIN Number</th>
+				<th>GPIO Name</th>
+				<th>Usage</th>
+				<th>PixelIt Mapping</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>11</td>
+				<td>GPIO26</td>
+				<td>Left Button</td>
+				<td>Pin_D4 (Active low)</td>
+			</tr>
+			<tr>
+				<td>12</td>
+				<td>GPIO27</td>
+				<td>Middle Button</td>
+				<td>Pin_D5 (Active low)</td>
+			</tr>
+			<tr>
+				<td>13</td>
+				<td>GPIO14</td>
+				<td>Right Button</td>
+				<td>Pin_D6 (Active low)</td>
+			</tr>
+			<tr>
+				<td>23</td>
+				<td>GPIO15</td>
+				<td>Buzzer</td>
+				<td>n/a</td>
+			</tr>
+		</tbody>
+</table>
 
 ## Orignal repository README follows
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
