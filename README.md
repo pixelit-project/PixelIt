@@ -16,7 +16,7 @@ Where we can, we will document our findings within this repository.
 
 * Write Wiki to cover off building and installing the firmware
 * Investigate building and attaching a single `firmware.bin` file (including bootloader, filesystem and firmware) for GitHub distribution
-* Document which pins the Ulanzi uses for communication
+* ~~Document which pins the Ulanzi uses for communication~~
 * Document API integration with [Home Assistant](https://www.home-assistant.io)
 * ~~Fix the left button not being recognised~~
 * ~~Fix the constant tone generated after flashing the Ulanzi~~
@@ -41,11 +41,24 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 			<tr>
 				<th>ESP32 PIN Number</th>
 				<th>GPIO Name</th>
-				<th>Usage</th>
+				<th>Usage or part</th>
 				<th>PixelIt Mapping</th>
 			</tr>
 		</thead>
 		<tbody>
+			</tr>
+				<tr>
+				<td>7</td>
+				<td>ADC7 / GPIO35</td>
+				<td>Sensor Type GL5516</td>
+				<td>n/a</td>
+			</tr>
+			<tr>
+				<td>8</td>
+				<td>GPIO32 </td>
+				<td>Matrix Type 2 / Row Major</td>
+				<td>n/a</td>
+			</tr>
 			<tr>
 				<td>11</td>
 				<td>GPIO26</td>
@@ -69,7 +82,7 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 				<td>GPIO15</td>
 				<td>Buzzer</td>
 				<td>n/a</td>
-			</tr>
+
 		</tbody>
 </table>
 
