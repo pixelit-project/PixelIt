@@ -8,7 +8,7 @@
 
 This fork of the PixelIt firmware (version 2.2.0) is work in progress to bring current PixelIt funtionality to the [Ulanzi Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?_pos=1&_sid=308c571ee&_ss=r).
 
-It is unlikely that additional features will be added to this fork as our overall aim it to (hopefully) provide what we learn about the Ulanzi back to the original project for incorporation into the firmware as a supported device.
+It is unlikely that additional features will be added to this fork as our overall aim is to (hopefully) provide what we learn about the Ulanzi back to the original project for incorporation into the firmware as a supported device.
 
 Where we can, we will document our findings within this repository.
 
