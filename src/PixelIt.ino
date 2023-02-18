@@ -34,10 +34,9 @@
 
 #define VERSION "2.2-beta-UlanziTC001"
 
-#define VBAT_PIN 36
-#define BATTV_MAX    4.2     // maximum voltage of battery
-#define BATTV_MIN    3.2     // what we regard as an empty battery
-#define BATTV_LOW    3.4     // voltage considered to be low battery
+// Ulanzi Stuff | Battery
+#define VBAT_PIN GPIO_NUM_34
+float batteryLevelPct = 0;
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -356,15 +355,9 @@ void SaveConfig()
 void LoadConfig()
 {
     // file exists, reading and loading
-#if defined(ESP8266)
-    if (LittleFS.exists("/config.json"))
-    {
-        File configFile = LittleFS.open("/config.json", "r");
-#elif defined(ESP32)
     if (SPIFFS.exists("/config.json"))
     {
         File configFile = SPIFFS.open("/config.json", "r");
-#endif
         if (configFile)
         {
             // Serial.println("opened config file");
@@ -819,34 +812,34 @@ void HandleAndSendButtonPress(uint button, bool state)
         {
             matrix->clear();
 
-            // WORK IN PROGRESS / Ulanzi Battery Status //
-            // float batteryVoltage = getbatteryVoltage();
-            // String strBV = String(batteryVoltage,0) + " %";
-            // Log(F("Battery Level"), strBV);        
-
-            // ColoredBarWipe();
-            // DrawTextHelper(strBV, false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
-            DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
+            getBatteryVoltage();  
+            DrawTextHelper(String(batteryLevelPct,0) + " %", true, true, false, false, false, false, NULL, 15, 100, 35, 0, 1);
             FadeIn(30, 0);
-            delay(300);
-
+            delay(400);
+            ColoredBarWipe();
+            forceClock = true;
         }
     }
     if (btnAction[button] == btnAction_GotoClock)
     {
             forceClock = true;
     }
-
 }
 
-
-// needs verification / fix
-float getbatteryVoltage ()
-{
-    float battv = ((float)analogRead(VBAT_PIN) / 4095) * 3.3 * 2 * 1.05;
-    uint8_t battpc = (uint8_t)(((battv - BATTV_MIN) / (BATTV_MAX - BATTV_MIN)) * 100 / 2);    
-
-    return battpc;
+// UlanziTC001 related //
+void getBatteryVoltage()
+{    
+    batteryLevelPct = map(analogRead(VBAT_PIN), 510, 660, 0, 100); 
+    if (batteryLevelPct >= 100)
+    {
+        batteryLevelPct = 100;
+    }
+    if (batteryLevelPct <= 0)
+    {
+        batteryLevelPct = 1;
+    }
+    String strBV = String(batteryLevelPct,0) + " %";
+    Log(F("Battery Level"), strBV);   
 }
 
 void callback(char *topic, byte *payload, unsigned int length)
@@ -1411,11 +1404,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
 
 String GetConfig()
 {
-#if defined(ESP8266)
-    File configFile = LittleFS.open("/config.json", "r");
-#elif defined(ESP32)
     File configFile = SPIFFS.open("/config.json", "r");
-#endif
 
     if (configFile)
     {
@@ -1481,14 +1470,7 @@ String GetMatrixInfo()
     root["freeHeap"] = ESP.getFreeHeap();
     root["currentMatrixBrightness"] = currentMatrixBrightness;
     root["wifiBSSID"] = WiFi.BSSIDstr();
-
-#if defined(ESP8266)
-    root["sketchSize"] = ESP.getSketchSize();
-    root["chipID"] = ESP.getChipId();
-#elif defined(ESP32)
     root["chipID"] = uint64ToString(ESP.getEfuseMac());
-#endif
-
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
     root["sleepMode"] = sleepMode;
 
@@ -2824,10 +2806,11 @@ int DayOfWeekFirstMonday(int OrigDayofWeek)
 /////////////////////////////////////////////////////////////////////
 void setup()
 {
-
-    pinMode (15, INPUT_PULLDOWN); //UlanziTC011 - Fix high pitch tone
-    pinMode(27, INPUT_PULLUP);
-    pinMode(26, INPUT_PULLUP);
+    // UlanziTC001 Stuff
+    pinMode (15, INPUT_PULLDOWN); //Fix high pitch tone
+    pinMode(27, INPUT_PULLUP); // Middle Button fix
+    pinMode(26, INPUT_PULLUP); // Left Button fix
+    pinMode(VBAT_PIN, INPUT);  // Battery ADC 
 
     Serial.begin(115200);
 

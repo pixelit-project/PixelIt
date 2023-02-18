@@ -20,6 +20,7 @@ Where we can, we will document our findings within this repository.
 * Document API integration with [Home Assistant](https://www.home-assistant.io)
 * ~~Fix the left button not being recognised~~
 * ~~Fix the constant tone generated after flashing the Ulanzi~~
+* ~~Add show battery percentage on wake~~
 
 ### Contributors (Ulanzi)
 
@@ -48,9 +49,16 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 			<tbody>
 			</tr>
 				<tr>
+				<td>6</td>
+				<td>ADC6 / GPIO34</td>
+				<td>Battery sensor (displays battery % on wake)</td>
+				<td>n/a</td>
+			</tr>
+			</tr>
+				<tr>
 				<td>7</td>
 				<td>ADC7 / GPIO35</td>
-				<td>Sensor Type GL5516</td>
+				<td>LDR (light) sensor (GL5516)</td>
 				<td>n/a</td>
 			</tr>
 			<tr>
@@ -62,19 +70,19 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 			<tr>
 				<td>11</td>
 				<td>GPIO26</td>
-				<td>Left Button</td>
+				<td>Left button</td>
 				<td>Pin_D4 (Active low)</td>
 			</tr>
 			<tr>
 				<td>12</td>
 				<td>GPIO27</td>
-				<td>Middle Button</td>
+				<td>Middle button</td>
 				<td>Pin_D5 (Active low)</td>
 			</tr>
 			<tr>
 				<td>13</td>
 				<td>GPIO14</td>
-				<td>Right Button</td>
+				<td>Right button</td>
 				<td>Pin_D6 (Active low)</td>
 			</tr>
 			<tr>
