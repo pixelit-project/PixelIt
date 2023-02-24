@@ -3,6 +3,9 @@
 #include <WiFi.h>
 #include <FS.h>
 #include <Arduino.h>
+// Ulanzi Sensor sht3xd 
+#include "Adafruit_SHT31.h"
+
 // WiFi & Web
 #include <WebSocketsServer.h>
 #include <WiFiClient.h>
@@ -32,7 +35,7 @@
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "2.2-beta-UlanziTC001"
+#define VERSION "2.2.0-RC1-UlanziTC001"
 
 // Ulanzi Stuff | Battery
 #define VBAT_PIN GPIO_NUM_34
@@ -67,6 +70,8 @@ const int MQTT_RECONNECT_INTERVAL = 15000;
 //// GPIO Config
 const int MATRIX_PIN = 32;  // UlanziTC001
 
+String SCLPin = "Pin_D1";
+String SDAPin = "Pin_D3";
 
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
@@ -114,8 +119,12 @@ btnActions btnAction[] = {btnAction_DoNothing, btnAction_ToggleSleepMode, btnAct
 #define NUMMATRIX (32 * 8)
 CRGB leds[NUMMATRIX];
 
+// I2C Sensors | Ulanzi Stuff | Sensor SHT31 - Thanks to @lubeda for the finding! Cheers
+TwoWire twowire = TwoWire(0);
+Adafruit_SHT31 sht31 = Adafruit_SHT31(&twowire);
 
-// TempSensor
+
+// TempSensor; added UlanziTC001 Sensor SHT31
 enum TempSensor
 {
     TempSensor_None,
@@ -123,6 +132,7 @@ enum TempSensor
     TempSensor_DHT,
     TempSensor_BME680,
     TempSensor_BMP280,
+    TempSensor_SHT31
 };
 TempSensor tempSensor = TempSensor_None;
 
@@ -330,6 +340,8 @@ void SaveConfig()
     json["pressureOffset"] = pressureOffset;
     json["gasOffset"] = gasOffset;
 
+    json["SCLPin"] = SCLPin;
+    json["SDAPin"] = SDAPin;
     for (uint b = 0; b < 3; b++)
     {
         json["btn" + String(b) + "Pin"] = btnPin[b];
@@ -607,6 +619,15 @@ void SetConfigVariables(JsonObject &json)
         gasOffset = json["gasOffset"].as<float>();
     }
 
+    if (json.containsKey("SCLPin"))
+    {
+        SCLPin = json["SCLPin"].as<char *>();
+    }
+
+    if (json.containsKey("SDAPin"))
+    {
+        SDAPin = json["SDAPin"].as<char *>();
+    }
 
     for (uint b = 0; b < 3; b++)
     {
@@ -736,6 +757,12 @@ void HandleGetBrightness()
 {
     server.sendHeader(F("Connection"), F("close"));
     server.send(200, F("application/json"), GetBrightness());
+}
+
+void HandleGetSensor()
+{
+    server.sendHeader(F("Connection"), F("close"));
+    server.send(200, F("application/json"), GetSensor());
 }
 
 void HandleGetButtons()
@@ -1425,6 +1452,41 @@ String GetConfig()
     return "";
 }
 
+String GetSensor()
+{
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    if (tempSensor == TempSensor_SHT31)
+    {
+        const float currentTemp = sht31.readTemperature();
+        const float currentHumi = sht31.readHumidity();
+        root["temperature"] = currentTemp + temperatureOffset;
+        root["humidity"] = roundf(currentHumi + humidityOffset);
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
+
+        if (temperatureUnit == TemperatureUnit_Fahrenheit)
+        {
+            root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
+        }
+    }
+
+    else
+    {
+        root["humidity"] = "Not installed";
+        root["temperature"] = "Not installed";
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
+    }
+
+    String json;
+    root.printTo(json);
+
+    // Log(F("Sensor readings"), F("Hum/Temp/Press/Gas:"));
+    // Log(F("Sensor readings"), json);
+    return json;
+}
+
 
 String GetLuxSensor()
 {
@@ -1508,7 +1570,7 @@ void SendTelemetry()
 String GetTelemetry()
 {
     const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU (Column major)", "MicroMatrix", "Tiled 4x 8x8 CJMCU (Row major)"};
-    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
+    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280", "SHT31"};  // UlanziTC001 Sensor SHT31 added
     const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
 
     DynamicJsonBuffer jsonBuffer;
@@ -2842,11 +2904,26 @@ void setup()
         setGPIOReset[i].resetMillis = -1;
     }
 
+    // I2C Sensors
+    twowire.begin(TranslatePin(SDAPin), TranslatePin(SCLPin), 60000);
 
     // Init LightSensor
     photocell = new LightDependentResistor(LDR_PIN, ldrPulldown, TranslatePhotocell(ldrDevice), 10, ldrSmoothing);
     photocell->setPhotocellPositionOnGround(false);
     luxSensor = LuxSensor_LDR;
+
+    // Init Temp Sensors || UlanziTC001 
+    Log(F("Setup"), F("SHT31 Trying"));
+    if (! sht31.begin(0x44) )
+    {  
+        Log(F("Setup"), F("Couldn't find SHT31"));
+        while (1) delay(1);
+    }
+    else {
+        Log(F("Setup"), F("SHT31 started"));
+        tempSensor = TempSensor_SHT31;
+    }
+
 
     switch (matrixType)
     {
@@ -2941,6 +3018,7 @@ void setup()
     server.on(F("/api/screen"), HTTP_POST, HandleScreen);
     server.on(F("/api/luxsensor"), HTTP_GET, HandleGetLuxSensor);
     server.on(F("/api/brightness"), HTTP_GET, HandleGetBrightness);
+    server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
     server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
     server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
     server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
@@ -3316,7 +3394,7 @@ void SendSensor(bool force)
     // Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
     if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
     {
-
+        Sensor = GetSensor();
     }
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)

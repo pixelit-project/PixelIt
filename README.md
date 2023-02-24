@@ -21,6 +21,7 @@ Where we can, we will document our findings within this repository.
 * ~~Fix the left button not being recognised~~
 * ~~Fix the constant tone generated after flashing the Ulanzi~~
 * ~~Add show battery percentage on wake~~
+* ~~Add temperature and humidity sensors~~ (thanks to [@lubeda](https://github.com/lubeda/EsphoMaTrix/issues/39) for help with this)
 
 ### Contributors (Ulanzi)
 
@@ -90,6 +91,13 @@ The Ulanzi uses a ESP32-WROOM-32D board as shown below.
 				<td>GPIO15</td>
 				<td>Buzzer</td>
 				<td>n/a</td>
+			</tr>
+			<tr>
+				<td>n/a</td>
+				<td>n/a</td>
+				<td>Temperature and Humidity Sensors (SHT3x)</td>
+				<td>I2C address 0x44</td>
+			</tr>			
 		</tbody>
 </table>
 
