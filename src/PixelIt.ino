@@ -52,7 +52,7 @@
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
 
-#define VERSION "2.2-beta-ONEWIRE"
+#define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -2247,7 +2247,10 @@ void DrawClock(bool fromJSON)
                     DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
                     DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
                     matrix->drawLine(0, 7, 33, 7, 0);
-                    DrawWeekDay();
+                    if (clockDrawWeekDays)
+                    {
+                        DrawWeekDay();
+                    }
                     matrix->show();
                     delay(35);
                 }

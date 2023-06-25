@@ -20,7 +20,7 @@ Lines = file1.readlines()
 count = 0
 # Strips the newline character
 for line in Lines:
-    match = re.search(r"^#define\s+VERSION\s+.(.*).\s*$", line)
+    match = re.search(r"^#define\s+VERSION\s+[\"'](.*)[\"'].*$", line)
     if match:
         version = match.group(1)
         file1.close
@@ -31,4 +31,4 @@ if version == "":
 
 # Rename binary according to environnement/board
 # ex: firmware_esp32dev.bin or firmware_nodemcuv2.bin
-env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}")
+env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}.bin")

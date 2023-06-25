@@ -104,8 +104,10 @@ Thanks to these great people for supporting this project.
 ### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
--   (miccgn) Fix: probing onewire can break previos i2c communication
+### 2.2.0 (2023-02-11)
+
+-   (miccgn) Fix Show weekdays
+-   (miccgn) Fix probing onewire can break previos i2c communication
 -   (rliegmann) Bring ESP32 support back
 -   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PRs are welcome!)
 -   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. [Breaking change! No migration takes place! You need to swap the pins in your config!]
