@@ -135,8 +135,11 @@ enum btnActions
 
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
 
-#define NUMMATRIX (32 * 8)
-CRGB leds[NUMMATRIX];
+#define MATRIX_WIDTH 32
+#define MATRIX_HEIGHT 8
+
+CRGB leds[MATRIX_WIDTH * MATRIX_HEIGHT];
+CRGB ledsCopy[MATRIX_WIDTH * MATRIX_HEIGHT];
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -285,6 +288,7 @@ int animateBMPFrameCount = 0;
 // Sensors Vars
 unsigned long sendLuxPrevMillis = 0;
 unsigned long sendSensorPrevMillis = 0;
+unsigned long sendLiveviewPrevMillis = 0;
 unsigned long sendInfoPrevMillis = 0;
 String oldGetMatrixInfo;
 String oldGetLuxSensor;
@@ -310,6 +314,14 @@ String OldGetMP3PlayerInfo;
 
 // Websoket Vars
 String websocketConnection[10];
+
+// Liveview buffers
+const size_t liveviewBufferSize = JSON_OBJECT_SIZE(1) +                           // root object
+                                  JSON_OBJECT_SIZE(2) +                           // width and height object
+                                  JSON_ARRAY_SIZE(MATRIX_WIDTH * MATRIX_HEIGHT) + // data array
+                                  (MATRIX_WIDTH * MATRIX_HEIGHT * 10) +           // data array elements
+                                  200;
+char liveviewBuffer[liveviewBufferSize];
 
 void SetCurrentMatrixBrightness(float newBrightness)
 {
@@ -1766,6 +1778,8 @@ String GetMatrixInfo()
 
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
     root["sleepMode"] = sleepMode;
+    root["uptime"] = millis() / 1000;
+    root["resetReason"] = ESP.getResetReason();
 
     String json;
     root.printTo(json);
@@ -1787,6 +1801,32 @@ String GetButtons()
     root.printTo(json);
 
     return json;
+}
+
+void getLiveviewJSON(size_t &prettyLength)
+{
+    memcpy(ledsCopy, leds, sizeof(leds));
+
+    const size_t maxJsonObjectSize = JSON_OBJECT_SIZE(1) +                          // root object
+                                     JSON_OBJECT_SIZE(3) +                          // width, height and data object
+                                     JSON_ARRAY_SIZE(MATRIX_WIDTH * MATRIX_HEIGHT); // data array
+
+    StaticJsonBuffer<maxJsonObjectSize> jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    JsonObject &liveview = root.createNestedObject("liveview");
+    liveview["width"] = MATRIX_WIDTH;
+    liveview["height"] = MATRIX_HEIGHT;
+    JsonArray &data = liveview.createNestedArray("data");
+    for (int y = 0; y < MATRIX_HEIGHT; y++)
+    {
+        for (int x = 0; x < MATRIX_WIDTH; x++)
+        {
+            int index = matrix->XY(x, y);
+            int color = (ledsCopy[index].r << 16) | (ledsCopy[index].g << 8) | ledsCopy[index].b;
+            data.add(color);
+        }
+    }
+    prettyLength = root.printTo(liveviewBuffer, (size_t)liveviewBufferSize);
 }
 
 void SendTelemetry()
@@ -3268,16 +3308,16 @@ void setup()
     // Matrix Color Correction
     if (userLEDCorrection != UncorrectedColor)
     {
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(userLEDCorrection);
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(userLEDCorrection);
     }
     else if (userColorTemp != UncorrectedTemperature)
     {
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setTemperature(userColorTemp);
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setTemperature(userColorTemp);
     }
     else
     {
         int *rgbArray = GetUserCutomCorrection();
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, NUMMATRIX).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
+        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
     }
 
     matrix->begin();
@@ -3641,6 +3681,12 @@ void loop()
         SendSensor(false);
     }
 
+    if (millis() - sendLiveviewPrevMillis >= 1000)
+    {
+        sendLiveviewPrevMillis = millis();
+        SendLiveview();
+    }
+
     if (millis() - sendInfoPrevMillis >= 3000)
     {
         sendInfoPrevMillis = millis();
@@ -3721,6 +3767,23 @@ void SendLDR(bool force)
     }
 
     oldGetLuxSensor = luxSensor;
+}
+
+void SendLiveview()
+{
+    Serial.printf("SendLiveview...\n");
+    size_t lenght = 0;
+    getLiveviewJSON(lenght);
+
+    yield();
+
+    if (webSocket.connectedClients() > 0)
+    {
+        for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        {
+            webSocket.sendTXT(i, liveviewBuffer, lenght);
+        }
+    }
 }
 
 void SendSensor(bool force)

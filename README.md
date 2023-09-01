@@ -100,9 +100,10 @@ Thanks to these great people for supporting this project.
 
 ## Changelog
 
-<!--
 ### **WORK IN PROGRESS**
--->
+
+-   (foorschtbar) Added Uptime and last reset reason to WebUI
+-   (foorschtbar) Added Liveview of the Matrix to WebUI
 
 ### 2.2.0 (2023-02-11)
 
