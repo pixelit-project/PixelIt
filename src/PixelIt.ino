@@ -316,11 +316,9 @@ String OldGetMP3PlayerInfo;
 String websocketConnection[10];
 
 // Liveview buffers
-const size_t liveviewBufferSize = JSON_OBJECT_SIZE(1) +                           // root object
-                                  JSON_OBJECT_SIZE(2) +                           // width and height object
-                                  JSON_ARRAY_SIZE(MATRIX_WIDTH * MATRIX_HEIGHT) + // data array
-                                  (MATRIX_WIDTH * MATRIX_HEIGHT * 10) +           // data array elements
-                                  200;
+const int liveviewPrefixLenght = 13;
+const int liveviewSuffixLenght = 2;
+const size_t liveviewBufferSize = MATRIX_HEIGHT * MATRIX_WIDTH * 6 + liveviewPrefixLenght + liveviewSuffixLenght;
 char liveviewBuffer[liveviewBufferSize];
 
 void SetCurrentMatrixBrightness(float newBrightness)
@@ -1780,6 +1778,9 @@ String GetMatrixInfo()
     root["sleepMode"] = sleepMode;
     root["uptime"] = millis() / 1000;
     root["resetReason"] = ESP.getResetReason();
+    JsonObject &matrix = root.createNestedObject("matrixsize");
+    matrix["cols"] = MATRIX_WIDTH;
+    matrix["rows"] = MATRIX_HEIGHT;
 
     String json;
     root.printTo(json);
@@ -1803,30 +1804,20 @@ String GetButtons()
     return json;
 }
 
-void getLiveviewJSON(size_t &prettyLength)
+void updateLiveviewBuffer()
 {
     memcpy(ledsCopy, leds, sizeof(leds));
+    strcpy(liveviewBuffer, "{\"liveview\":\"");
 
-    const size_t maxJsonObjectSize = JSON_OBJECT_SIZE(1) +                          // root object
-                                     JSON_OBJECT_SIZE(3) +                          // width, height and data object
-                                     JSON_ARRAY_SIZE(MATRIX_WIDTH * MATRIX_HEIGHT); // data array
-
-    StaticJsonBuffer<maxJsonObjectSize> jsonBuffer;
-    JsonObject &root = jsonBuffer.createObject();
-    JsonObject &liveview = root.createNestedObject("liveview");
-    liveview["width"] = MATRIX_WIDTH;
-    liveview["height"] = MATRIX_HEIGHT;
-    JsonArray &data = liveview.createNestedArray("data");
     for (int y = 0; y < MATRIX_HEIGHT; y++)
     {
         for (int x = 0; x < MATRIX_WIDTH; x++)
         {
             int index = matrix->XY(x, y);
-            int color = (ledsCopy[index].r << 16) | (ledsCopy[index].g << 8) | ledsCopy[index].b;
-            data.add(color);
+            sprintf(&liveviewBuffer[(y * MATRIX_WIDTH + x) * 6 + liveviewPrefixLenght], "%02X%02X%02X", ledsCopy[index].r, ledsCopy[index].g, ledsCopy[index].b);
         }
     }
-    prettyLength = root.printTo(liveviewBuffer, (size_t)liveviewBufferSize);
+    sprintf(&liveviewBuffer[MATRIX_HEIGHT * MATRIX_WIDTH * 6 + liveviewPrefixLenght], "\"}");
 }
 
 void SendTelemetry()
@@ -3681,7 +3672,7 @@ void loop()
         SendSensor(false);
     }
 
-    if (millis() - sendLiveviewPrevMillis >= 1000)
+    if (millis() - sendLiveviewPrevMillis >= 500)
     {
         sendLiveviewPrevMillis = millis();
         SendLiveview();
@@ -3771,17 +3762,13 @@ void SendLDR(bool force)
 
 void SendLiveview()
 {
-    Serial.printf("SendLiveview...\n");
-    size_t lenght = 0;
-    getLiveviewJSON(lenght);
-
-    yield();
 
     if (webSocket.connectedClients() > 0)
     {
+        updateLiveviewBuffer();
         for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, liveviewBuffer, lenght);
+            webSocket.sendTXT(i, liveviewBuffer, liveviewBufferSize);
         }
     }
 }
