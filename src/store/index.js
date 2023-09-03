@@ -1,5 +1,5 @@
-import Vue from "vue";
-import Vuex from "vuex";
+import Vue from 'vue';
+import Vuex from 'vuex';
 
 let pingInterval;
 
@@ -13,25 +13,26 @@ export default new Vuex.Store({
         },
         testarea: {
             brightness: 0,
-            json: JSON.stringify({
-                text: {
-                    textString: "Pixel it 😀",
-                    scrollText: "auto",
-                    bigFont: false,
-                    centerText: false,
-                    scrollTextDelay: 40,
-                    hexColor: "#FFFFFF",
-                    position: {
-                        x: 0,
-                        y: 1,
+            json: JSON.stringify(
+                {
+                    text: {
+                        textString: 'Pixel it 😀',
+                        scrollText: 'auto',
+                        bigFont: false,
+                        centerText: false,
+                        scrollTextDelay: 40,
+                        hexColor: '#FFFFFF',
+                        position: {
+                            x: 0,
+                            y: 1,
+                        },
                     },
                 },
-            },
                 null,
                 4
             ),
-            text: "€ ← ↑ → ↓ ★ 📁 📄 ♥ ↧ 🚗 😀",
-            image: "[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,0,65535,44373,44373,0,65535,33808,33808,0,65535,33808,33808,0,65535,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,44373,44373,44373,44373,44373,44373,33808,33808,44373,44373,44373,44373,44373,44373,33808,33808,0,0,33808,33808,0,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0]",
+            text: '€ ← ↑ → ↓ ★ 📁 📄 ♥ ↧ 🚗 😀',
+            image: '[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,0,65535,44373,44373,0,65535,33808,33808,0,65535,33808,33808,0,65535,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,65535,65535,44373,44373,65535,65535,33808,33808,65535,0,44373,44373,65535,0,33808,33808,65535,0,33808,33808,65535,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0],[33808,0,0,0,0,0,0,33808,43680,33808,0,0,0,0,33808,43680,43680,33808,44373,44373,44373,44373,33808,43680,33808,44373,44373,44373,44373,44373,44373,33808,33808,44373,44373,44373,44373,44373,44373,33808,33808,0,0,33808,33808,0,0,33808,0,33808,33808,43680,43680,33808,33808,0,0,0,33808,33808,33808,33808,0,0]',
         },
         newVersionAvailable: false,
         version: null,
@@ -43,20 +44,22 @@ export default new Vuex.Store({
         buttonData: [],
         sysInfoData: [],
         configData: {},
+        liveviewData: [],
+        matrixSize: {},
         rules: {
-            required: (value) => !!value || value == "0" || "Required.",
-            max20Chars: (value) => value.length <= 20 || "Max 20 characters",
+            required: (value) => !!value || value == '0' || 'Required.',
+            max20Chars: (value) => value.length <= 20 || 'Max 20 characters',
             email: (value) => {
                 const pattern = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                return pattern.test(value) || "Invalid e-mail.";
+                return pattern.test(value) || 'Invalid e-mail.';
             },
-            min0: (value) => value >= 0 || "Must be greater than or equal to 0",
-            max255: (value) => value <= 255 || "Must be less than or equal to 255",
-            minMinus12: (value) => value >= -12 || "Must be greater than or equal to -12",
-            max14: (value) => value <= 14 || "Must be less than or equal to 14",
-            portRange: (value) => (value > 0 && value <= 65535) || "Must be between 1 and 65535",
-            volumeRange: (value) => (value > 0 && value <= 30) || "Must be between 1 and 30",
-            noDecimals: (value) => (value % 1 === 0) || "No decimals allowed",
+            min0: (value) => value >= 0 || 'Must be greater than or equal to 0',
+            max255: (value) => value <= 255 || 'Must be less than or equal to 255',
+            minMinus12: (value) => value >= -12 || 'Must be greater than or equal to -12',
+            max14: (value) => value <= 14 || 'Must be less than or equal to 14',
+            portRange: (value) => (value > 0 && value <= 65535) || 'Must be between 1 and 65535',
+            volumeRange: (value) => (value > 0 && value <= 30) || 'Must be between 1 and 30',
+            noDecimals: (value) => value % 1 === 0 || 'No decimals allowed',
             // Can not be solved like this, we do not have access to the store.
             //   noPinDuplicates: value => ((   //dirty code, but creating an array and running a loop seems to be over-engineering
             //       this.config.DFPRXpin!=this.config.DFPTXpin && this.config.DFPRXpin!=this.config.BMESDAPin && this.config.DFPRXpin!=this.config.BMESCLPin && this.config.DFPRXpin!=this.config.DHTPin
@@ -65,177 +68,180 @@ export default new Vuex.Store({
             //   //DHT pin and BME-SCL-pin may be identical!
             //  ) || 'Pin assignment must be unique'),
         },
-        navLinks: [{
-            title: "Dashboard",
-            icon: "mdi-memory",
-            page: "/"
-        },
-        {
-            title: "Options",
-            icon: "mdi-tune-vertical",
-            page: "/options"
-        },
-        {
-            title: "Sensors & Buttons",
-            icon: "mdi-gesture-tap-button",
-            page: "/sensorsbuttons"
-        },
-        {
-            title: "Test Area",
-            icon: "mdi-cube-outline",
-            page: "/testarea"
-        },
-        {
-            title: "Update",
-            icon: "mdi-tray-arrow-up",
-            page: "/update"
-        },
-        {
-            title: "Pixel Gallery",
-            icon: "mdi-image-outline",
-            page: "/gallery"
-        },
-        {
-            title: "Pixel Creator",
-            icon: "mdi-pencil-box-outline",
-            url: "https://pixelit.bastelbunker.de/PixelCreator",
-            target: "_blank"
-        },
-        // {
-        //     title: "Pixel Creator",
-        //     icon: "mdi-pencil-box-outline",
-        //     page: "/creator"
-        // },
-        {
-            title: "Forum",
-            icon: "mdi-forum-outline",
-            url: "https://github.com/pixelit-project/PixelIt/discussions",
-            target: "_blank"
-        },
-        {
-            title: "Blog",
-            icon: "mdi-post-outline",
-            url: "https://www.bastelbunker.de/pixel-it/",
-            target: "_blank"
-        },
-        {
-            title: "Documentation",
-            icon: "mdi-book-open-page-variant-outline",
-            url: "https://pixelit-project.github.io/",
-            target: "_blank"
-        },
-        {
-            title: "GitHub",
-            icon: "mdi-github",
-            url: "https://github.com/pixelit-project/PixelIt",
-            target: "_blank"
-        },
+        navLinks: [
+            {
+                title: 'Dashboard',
+                icon: 'mdi-memory',
+                page: '/',
+            },
+            {
+                title: 'Options',
+                icon: 'mdi-tune-vertical',
+                page: '/options',
+            },
+            {
+                title: 'Sensors & Buttons',
+                icon: 'mdi-gesture-tap-button',
+                page: '/sensorsbuttons',
+            },
+            {
+                title: 'Test Area',
+                icon: 'mdi-cube-outline',
+                page: '/testarea',
+            },
+            {
+                title: 'Update',
+                icon: 'mdi-tray-arrow-up',
+                page: '/update',
+            },
+            {
+                title: 'Pixel Gallery',
+                icon: 'mdi-image-outline',
+                page: '/gallery',
+            },
+            {
+                title: 'Pixel Creator',
+                icon: 'mdi-pencil-box-outline',
+                url: 'https://pixelit.bastelbunker.de/PixelCreator',
+                target: '_blank',
+            },
+            // {
+            //     title: "Pixel Creator",
+            //     icon: "mdi-pencil-box-outline",
+            //     page: "/creator"
+            // },
+            {
+                title: 'Forum',
+                icon: 'mdi-forum-outline',
+                url: 'https://github.com/pixelit-project/PixelIt/discussions',
+                target: '_blank',
+            },
+            {
+                title: 'Blog',
+                icon: 'mdi-post-outline',
+                url: 'https://www.bastelbunker.de/pixel-it/',
+                target: '_blank',
+            },
+            {
+                title: 'Documentation',
+                icon: 'mdi-book-open-page-variant-outline',
+                url: 'https://pixelit-project.github.io/',
+                target: '_blank',
+            },
+            {
+                title: 'GitHub',
+                icon: 'mdi-github',
+                url: 'https://github.com/pixelit-project/PixelIt',
+                target: '_blank',
+            },
         ],
-        matrixTypes: [{
-            text: "Type 1 - Colum major",
-            value: 1
-        },
-        {
-            text: "Type 2 - Row major",
-            value: 2
-        },
-        {
-            text: "Type 3 - Tiled 4x 8x8 CJMCU (Column major)",
-            value: 3
-        },
-        {
-            text: "Type 5 - Tiled 4x 8x8 CJMCU (Row major)",
-            value: 5
-        },
-        {
-            text: "Type 4 - MicroMatrix ᵇʸ ᶠᵒᵒʳˢᶜʰᵗᵇᵃʳ",
-            value: 4
-        },
+        matrixTypes: [
+            {
+                text: 'Type 1 - Colum major',
+                value: 1,
+            },
+            {
+                text: 'Type 2 - Row major',
+                value: 2,
+            },
+            {
+                text: 'Type 3 - Tiled 4x 8x8 CJMCU (Column major)',
+                value: 3,
+            },
+            {
+                text: 'Type 5 - Tiled 4x 8x8 CJMCU (Row major)',
+                value: 5,
+            },
+            {
+                text: 'Type 4 - MicroMatrix ᵇʸ ᶠᵒᵒʳˢᶜʰᵗᵇᵃʳ',
+                value: 4,
+            },
         ],
-        matrixCorrection: [{
-            text: "Default",
-            value: "default"
-        },
-        {
-            text: "Typical SMD 5050",
-            value: "typicalsmd5050"
-        },
-        {
-            text: "Typical 8mm Pixel",
-            value: "typical8mmpixel"
-        },
-        {
-            text: "Tungsten 40W",
-            value: "tungsten40w"
-        },
-        {
-            text: "Tungsten 100W",
-            value: "tungsten100w"
-        },
-        {
-            text: "Halogen",
-            value: "halogen"
-        },
-        {
-            text: "Carbon Arc",
-            value: "carbonarc"
-        },
-        {
-            text: "High Noon Sun",
-            value: "highnoonsun"
-        },
-        {
-            text: "Direct Sunlight",
-            value: "directsunlight"
-        },
-        {
-            text: "Overcast Sky",
-            value: "overcastsky"
-        },
-        {
-            text: "Clear Blue Sky",
-            value: "clearbluesky"
-        },
-        {
-            text: "Warm Fluorescent",
-            value: "warmfluorescent"
-        },
-        {
-            text: "Standard Fluorescent",
-            value: "standardfluorescent"
-        },
-        {
-            text: "Cool White Fluorescent",
-            value: "coolwhitefluorescent"
-        },
-        {
-            text: "Full Spectrum Fluorescent",
-            value: "fullspectrumfluorescent"
-        },
-        {
-            text: "Grow Light Fluorescent",
-            value: "growlightfluorescent"
-        },
-        {
-            text: "Black Light Fluorescent",
-            value: "blacklightfluorescent"
-        },
-        {
-            text: "Mercury Vapor",
-            value: "mercuryvapor"
-        },
-        {
-            text: "Sodium Vapor",
-            value: "sodiumvapor"
-        },
-        {
-            text: "Metal Halide",
-            value: "metalhalide"
-        },
-        {
-            text: "High Pressure Sodium",
-            value: "highpressuresodium"
-        },
+        matrixCorrection: [
+            {
+                text: 'Default',
+                value: 'default',
+            },
+            {
+                text: 'Typical SMD 5050',
+                value: 'typicalsmd5050',
+            },
+            {
+                text: 'Typical 8mm Pixel',
+                value: 'typical8mmpixel',
+            },
+            {
+                text: 'Tungsten 40W',
+                value: 'tungsten40w',
+            },
+            {
+                text: 'Tungsten 100W',
+                value: 'tungsten100w',
+            },
+            {
+                text: 'Halogen',
+                value: 'halogen',
+            },
+            {
+                text: 'Carbon Arc',
+                value: 'carbonarc',
+            },
+            {
+                text: 'High Noon Sun',
+                value: 'highnoonsun',
+            },
+            {
+                text: 'Direct Sunlight',
+                value: 'directsunlight',
+            },
+            {
+                text: 'Overcast Sky',
+                value: 'overcastsky',
+            },
+            {
+                text: 'Clear Blue Sky',
+                value: 'clearbluesky',
+            },
+            {
+                text: 'Warm Fluorescent',
+                value: 'warmfluorescent',
+            },
+            {
+                text: 'Standard Fluorescent',
+                value: 'standardfluorescent',
+            },
+            {
+                text: 'Cool White Fluorescent',
+                value: 'coolwhitefluorescent',
+            },
+            {
+                text: 'Full Spectrum Fluorescent',
+                value: 'fullspectrumfluorescent',
+            },
+            {
+                text: 'Grow Light Fluorescent',
+                value: 'growlightfluorescent',
+            },
+            {
+                text: 'Black Light Fluorescent',
+                value: 'blacklightfluorescent',
+            },
+            {
+                text: 'Mercury Vapor',
+                value: 'mercuryvapor',
+            },
+            {
+                text: 'Sodium Vapor',
+                value: 'sodiumvapor',
+            },
+            {
+                text: 'Metal Halide',
+                value: 'metalhalide',
+            },
+            {
+                text: 'High Pressure Sodium',
+                value: 'highpressuresodium',
+            },
         ],
         // matrixColorOrder:[
         //     { text: "RGB - Red, Green, Blue", value: 0 },
@@ -245,132 +251,138 @@ export default new Vuex.Store({
         //     { text: "BRG - Blue, Red, Green", value: 4 },
         //     { text: "BGR - Blue, Green, Red", value: 5 },
         // ],
-        autoFallbackAnimation: [{
-            text: "None",
-            value: 0
-        },
-        {
-            text: "Fade",
-            value: 1
-        },
-        {
-            text: "Colored Bar Wipe",
-            value: 2
-        },
-        {
-            text: "ZigZag Wipe",
-            value: 3
-        },
-        {
-            text: "Random Wipe",
-            value: 4
-        },
+        autoFallbackAnimation: [
+            {
+                text: 'None',
+                value: 0,
+            },
+            {
+                text: 'Fade',
+                value: 1,
+            },
+            {
+                text: 'Colored Bar Wipe',
+                value: 2,
+            },
+            {
+                text: 'ZigZag Wipe',
+                value: 3,
+            },
+            {
+                text: 'Random Wipe',
+                value: 4,
+            },
         ],
-        temperatureUnits: [{
-            text: "Celsius °C",
-            value: 0
-        },
-        {
-            text: "Fahrenheit °F",
-            value: 1
-        },
+        temperatureUnits: [
+            {
+                text: 'Celsius °C',
+                value: 0,
+            },
+            {
+                text: 'Fahrenheit °F',
+                value: 1,
+            },
         ],
-        ldrDevices: [{
-            text: "GL5516",
-            value: "GL5516"
-        },
-        {
-            text: "GL5528",
-            value: "GL5528"
-        },
-        {
-            text: "GL5537_1",
-            value: "GL5537_1"
-        },
-        {
-            text: "GL5537_2",
-            value: "GL5537_2"
-        },
-        {
-            text: "GL5539",
-            value: "GL5539"
-        },
-        {
-            text: "GL5549",
-            value: "GL5549"
-        },
+        ldrDevices: [
+            {
+                text: 'GL5516',
+                value: 'GL5516',
+            },
+            {
+                text: 'GL5528',
+                value: 'GL5528',
+            },
+            {
+                text: 'GL5537_1',
+                value: 'GL5537_1',
+            },
+            {
+                text: 'GL5537_2',
+                value: 'GL5537_2',
+            },
+            {
+                text: 'GL5539',
+                value: 'GL5539',
+            },
+            {
+                text: 'GL5549',
+                value: 'GL5549',
+            },
         ],
-        pinsESP8266: [{
-            text: "Pin D0",
-            value: "Pin_D0"
-        },
-        {
-            text: "Pin D1",
-            value: "Pin_D1"
-        },
-        {
-            text: "Pin D3",
-            value: "Pin_D3"
-        },
-        {
-            text: "Pin D4",
-            value: "Pin_D4"
-        },
-        {
-            text: "Pin D5",
-            value: "Pin_D5"
-        },
-        {
-            text: "Pin D6",
-            value: "Pin_D6"
-        },
-        {
-            text: "Pin D7",
-            value: "Pin_D7"
-        },
-        {
-            text: "Pin D8",
-            value: "Pin_D8"
-        },
+        pinsESP8266: [
+            {
+                text: 'Pin D0',
+                value: 'Pin_D0',
+            },
+            {
+                text: 'Pin D1',
+                value: 'Pin_D1',
+            },
+            {
+                text: 'Pin D3',
+                value: 'Pin_D3',
+            },
+            {
+                text: 'Pin D4',
+                value: 'Pin_D4',
+            },
+            {
+                text: 'Pin D5',
+                value: 'Pin_D5',
+            },
+            {
+                text: 'Pin D6',
+                value: 'Pin_D6',
+            },
+            {
+                text: 'Pin D7',
+                value: 'Pin_D7',
+            },
+            {
+                text: 'Pin D8',
+                value: 'Pin_D8',
+            },
         ],
-        btnLowHigh: [{
-            text: "Active low",
-            value: 0
-        },
-        {
-            text: "Active high",
-            value: 1
-        },
+        btnLowHigh: [
+            {
+                text: 'Active low',
+                value: 0,
+            },
+            {
+                text: 'Active high',
+                value: 1,
+            },
         ],
-        btnActions: [{
-            text: "None (only send to MQTT and API)",
-            value: 0
-        },
-        {
-            text: "Go to Clock",
-            value: 1
-        },
-        {
-            text: "Toggle Sleep Mode",
-            value: 2
-        },
-        {
-            text: "MP3: Toggle Play/Pause",
-            value: 3
-        },
-        {
-            text: "MP3: Previous track",
-            value: 4
-        },
-        {
-            text: "MP3: Next track",
-            value: 5
-        },
+        btnActions: [
+            {
+                text: 'None (only send to MQTT and API)',
+                value: 0,
+            },
+            {
+                text: 'Go to Clock',
+                value: 1,
+            },
+            {
+                text: 'Toggle Sleep Mode',
+                value: 2,
+            },
+            {
+                text: 'MP3: Toggle Play/Pause',
+                value: 3,
+            },
+            {
+                text: 'MP3: Previous track',
+                value: 4,
+            },
+            {
+                text: 'MP3: Next track',
+                value: 5,
+            },
         ],
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
         telemetryData: '',
-        userMapData: []
+        userMapData: [],
     },
     mutations: {
         SOCKET_ONOPEN(state, event) {
@@ -390,8 +402,8 @@ export default new Vuex.Store({
         },
         // default handler called for all methods
         SOCKET_ONMESSAGE(state, message) {
-            console.log(state);
-            console.log(message);
+            // console.log(state);
+            // console.log(message);
             // Log
             if (message.log) {
                 addToLogData(message.log, state);
@@ -416,6 +428,10 @@ export default new Vuex.Store({
             if (message.telemetry) {
                 addToTelemetryData(message.telemetry, state);
             }
+            // Liveview
+            if (message.liveview) {
+                addToLiveviewData(message.liveview, state);
+            }
         },
         // mutations for reconnect methods
         SOCKET_RECONNECT(state, count) {
@@ -432,6 +448,11 @@ export default new Vuex.Store({
     modules: {},
 });
 
+function addToLiveviewData(obj, state) {
+    const regex = new RegExp(`.{1,${6}}`, 'g');
+    state.liveviewData = obj.match(regex);
+}
+
 function addToLogData(obj, state) {
     state.logData.unshift(`[${obj.timeStamp}] ${obj.function}: ${obj.message}`);
     if (state.logData.length > 100) {
@@ -447,7 +468,7 @@ function addToSensorData(obj, state) {
         } else {
             state.sensorData.push({
                 name: getDisplayName(key),
-                value: getDisplayValue(key, obj[key])
+                value: getDisplayValue(key, obj[key]),
             });
         }
     }
@@ -461,7 +482,7 @@ function addToButtonData(obj, state) {
         } else {
             state.buttonData.push({
                 name: getDisplayName(key),
-                value: getDisplayValue(key, obj[key])
+                value: getDisplayValue(key, obj[key]),
             });
         }
     }
@@ -484,85 +505,97 @@ function addToSysInfoData(obj, state) {
         } else {
             state.sysInfoData.push({
                 name: getDisplayName(key),
-                value: getDisplayValue(key, obj[key])
+                value: getDisplayValue(key, obj[key]),
             });
         }
-        if (key === "pixelitVersion") {
+        if (key === 'pixelitVersion') {
             state.version = obj[key];
+        }
+        if (key === 'matrixsize') {
+            state.matrixSize = obj[key];
         }
     }
 }
 
 function getDisplayName(key) {
     switch (key) {
-        case "lux":
-            key = "Luminance";
+        case 'lux':
+            key = 'Luminance';
             break;
-        case "temperature":
-            key = "Temperature";
+        case 'temperature':
+            key = 'Temperature';
             break;
-        case "humidity":
-            key = "Humidity";
+        case 'humidity':
+            key = 'Humidity';
             break;
-        case "gas":
-            key = "Gas";
+        case 'gas':
+            key = 'Gas';
             break;
-        case "pressure":
-            key = "Pressure";
+        case 'pressure':
+            key = 'Pressure';
             break;
-        case "pixelitVersion":
-            key = "PixelIt version";
+        case 'pixelitVersion':
+            key = 'PixelIt version';
             break;
-        case "hostname":
-            key = "Hostname";
+        case 'hostname':
+            key = 'Hostname';
             break;
-        case "note":
-            key = "Note";
+        case 'note':
+            key = 'Note';
             break;
-        case "sketchSize":
-            key = "Sketch size";
+        case 'sketchSize':
+            key = 'Sketch size';
             break;
-        case "freeSketchSpace":
-            key = "Free sketch space";
+        case 'freeSketchSpace':
+            key = 'Free sketch space';
             break;
-        case "wifiRSSI":
-            key = "Wifi RSSI";
+        case 'wifiRSSI':
+            key = 'Wifi RSSI';
             break;
-        case "wifiQuality":
-            key = "Wifi quality";
+        case 'wifiQuality':
+            key = 'Wifi quality';
             break;
-        case "wifiSSID":
-            key = "Wifi SSID";
+        case 'wifiSSID':
+            key = 'Wifi SSID';
             break;
-        case "wifiBSSID":
-            key = "Wifi BSSID";
+        case 'wifiBSSID':
+            key = 'Wifi BSSID';
             break;
-        case "ipAddress":
-            key = "IP-Address";
+        case 'ipAddress':
+            key = 'IP-Address';
             break;
-        case "freeHeap":
-            key = "Free heap";
+        case 'freeHeap':
+            key = 'Free heap';
             break;
-        case "chipID":
-            key = "ChipID";
+        case 'chipID':
+            key = 'ChipID';
             break;
-        case "cpuFreqMHz":
-            key = "CPU freq.";
+        case 'cpuFreqMHz':
+            key = 'CPU freq.';
             break;
-        case "sleepMode":
-            key = "Sleep mode";
+        case 'sleepMode':
+            key = 'Sleep mode';
             break;
-        case "currentMatrixBrightness":
-            key = "Current Brightness";
+        case 'currentMatrixBrightness':
+            key = 'Current Brightness';
             break;
-        case "leftButton":
-            key = "Left button";
+        case 'leftButton':
+            key = 'Left button';
             break;
-        case "middleButton":
-            key = "Middle button";
+        case 'middleButton':
+            key = 'Middle button';
             break;
-        case "rightButton":
-            key = "Right button";
+        case 'rightButton':
+            key = 'Right button';
+            break;
+        case 'uptime':
+            key = 'Uptime';
+            break;
+        case 'resetReason':
+            key = 'Reset reason';
+            break;
+        case 'matrixsize':
+            key = 'Matrix size';
             break;
     }
     return key;
@@ -570,65 +603,81 @@ function getDisplayName(key) {
 
 function getDisplayValue(key, value) {
     switch (key) {
-        case "lux":
-            if (typeof value == "number") {
-                value = value.toFixed(3) + " lux";
+        case 'lux':
+            if (typeof value == 'number') {
+                value = value.toFixed(3) + ' lux';
             }
             break;
-        case "note":
+        case 'note':
             if (!value.trim()) {
-                value = "---";
+                value = '---';
             }
             break;
-        case "sketchSize":
-        case "freeSketchSpace":
-        case "freeHeap":
+        case 'sketchSize':
+        case 'freeSketchSpace':
+        case 'freeHeap':
             value = humanFileSize(value, true);
             break;
-        case "wifiRSSI":
-            value += " dBm";
+        case 'wifiRSSI':
+            value += ' dBm';
             break;
-        case "wifiQuality":
-            value += " %";
+        case 'wifiQuality':
+            value += ' %';
             break;
-        case "cpuFreqMHz":
-            value += " MHz";
+        case 'cpuFreqMHz':
+            value += ' MHz';
             break;
-        case "sleepMode":
-            value = value ? "On" : "Off";
+        case 'sleepMode':
+            value = value ? 'On' : 'Off';
             break;
-        case "temperature":
-            if (typeof value == "number") {
-                value = Math.round(value * 10) / 10 + " °C";
+        case 'temperature':
+            if (typeof value == 'number') {
+                value = Math.round(value * 10) / 10 + ' °C';
             }
             break;
-        case "humidity":
-            if (typeof value == "number") {
-                value = Math.round(value) + " %";
+        case 'humidity':
+            if (typeof value == 'number') {
+                value = Math.round(value) + ' %';
             }
             break;
-        case "pressure":
-            if (typeof value == "number") {
-                value = Math.round(value) + " hPa";
+        case 'pressure':
+            if (typeof value == 'number') {
+                value = Math.round(value) + ' hPa';
             }
             break;
-        case "gas":
-            if (typeof value == "number") {
-                value = Math.round(value) + " kOhm";
+        case 'gas':
+            if (typeof value == 'number') {
+                value = Math.round(value) + ' kOhm';
             }
+            break;
+        case 'uptime':
+            value = formatUptime(value);
+            break;
+        case 'matrixsize':
+            value = value.cols + ' x ' + value.rows + ' (cols x rows)';
             break;
     }
     return value;
+}
+
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / (3600 * 24));
+    seconds -= days * 3600 * 24;
+    const hrs = Math.floor(seconds / 3600);
+    seconds -= hrs * 3600;
+    const mnts = Math.floor(seconds / 60);
+    seconds -= mnts * 60;
+    return days + 'd ' + hrs + 'h ' + mnts + 'm ' + seconds + 's';
 }
 
 function humanFileSize(bytes, si = false, dp = 1) {
     const thresh = si ? 1000 : 1024;
 
     if (Math.abs(bytes) < thresh) {
-        return bytes + " B";
+        return bytes + ' B';
     }
 
-    const units = si ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"] : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+    const units = si ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
     let u = -1;
     const r = 10 ** dp;
 
@@ -637,5 +686,5 @@ function humanFileSize(bytes, si = false, dp = 1) {
         ++u;
     } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
 
-    return bytes.toFixed(dp) + " " + units[u];
+    return bytes.toFixed(dp) + ' ' + units[u];
 }

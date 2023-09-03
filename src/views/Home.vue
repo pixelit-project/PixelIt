@@ -18,6 +18,15 @@
             <v-col cols="12" lg="3">
                 <v-card class="pa-2" elevation="4">
                     <v-card-title>
+                        <h2>Liveview</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <Liveview class="text-center" :data="liveview" :options="liveviewCanvasSettings" />
+                </v-card>
+                <br />
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
                         <h2>Sensors</h2>
                     </v-card-title>
                     <hr />
@@ -61,6 +70,7 @@
 import Log from '../components/Log';
 import ListInfo from '../components/ListInfo';
 import UserMap from '../components/UserMap';
+import Liveview from '../components/Liveview';
 
 export default {
     name: 'Home',
@@ -68,6 +78,7 @@ export default {
         Log,
         ListInfo,
         UserMap,
+        Liveview,
     },
     computed: {
         systemItems() {
@@ -96,6 +107,12 @@ export default {
         },
         isDemoMode() {
             return this.$demoMode;
+        },
+        liveview() {
+            return this.$store.state.liveviewData;
+        },
+        liveviewCanvasSettings() {
+            return this.$store.state.matrixSize;
         },
     },
 };

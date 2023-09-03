@@ -4,6 +4,15 @@
             <v-col cols="12" lg="4">
                 <v-card class="pa-2" elevation="4">
                     <v-card-title>
+                        <h2>Liveview</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <Liveview class="text-center" :data="liveview" :options="liveviewCanvasSettings" />
+                </v-card>
+                <br />
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
                         <h2>JSON String</h2>
                     </v-card-title>
                     <hr />
@@ -57,10 +66,11 @@ import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-json';
 import 'prismjs/themes/prism-tomorrow.css';
+import Liveview from '../components/Liveview';
 
 export default {
     name: 'TestArea',
-    components: { ButtonCondition, PrismEditor },
+    components: { ButtonCondition, PrismEditor, Liveview },
     computed: {
         testarea() {
             return this.$store.state.testarea;
@@ -68,16 +78,23 @@ export default {
         sockedIsConnected() {
             return this.$store.state.socket.isConnected;
         },
+        liveview() {
+            return this.$store.state.liveviewData;
+        },
+        liveviewCanvasSettings() {
+            return this.$store.state.matrixSize;
+        },
     },
     methods: {
         highlighter(code) {
             return highlight(code, languages.json);
         },
         sendJson() {
-            this.$socket.sendObj({ setScreen: JSON.parse(this.testarea.json) });
+            this.$socket.sendObj({ forcedDuration: 5000, setScreen: JSON.parse(this.testarea.json) });
         },
         sendText() {
             this.$socket.sendObj({
+                forcedDuration: 5000,
                 setScreen: {
                     text: {
                         textString: this.testarea.text,
@@ -93,6 +110,7 @@ export default {
         },
         sendBitmap() {
             this.$socket.sendObj({
+                forcedDuration: 5000,
                 setScreen: {
                     bitmapAnimation: {
                         data: JSON.parse(`[${this.testarea.image}]`),
