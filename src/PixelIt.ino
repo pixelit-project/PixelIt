@@ -47,10 +47,12 @@
 #include "Webinterface.h"
 #include "Tools.h"
 #include "UpdateScreen.h"
+#include "Liveview.h"
 #define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12   // 12 Hours
 #define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8   // 8 Hours
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
+#define SEND_LIVEVIEW_INTERVAL 2000              // 1 Seconds, 0 to disable
 
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
@@ -135,11 +137,7 @@ enum btnActions
 
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
 
-#define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 8
-
 CRGB leds[MATRIX_WIDTH * MATRIX_HEIGHT];
-CRGB ledsCopy[MATRIX_WIDTH * MATRIX_HEIGHT];
 
 #if defined(ESP8266)
 bool isESP8266 = true;
@@ -202,6 +200,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 WebServer server(80);
 HTTPUpdateServer httpUpdater;
 #endif
+Liveview liveview;
 
 WebSocketsServer webSocket = WebSocketsServer(81);
 DFPlayerMini_Fast mp3Player;
@@ -288,7 +287,6 @@ int animateBMPFrameCount = 0;
 // Sensors Vars
 unsigned long sendLuxPrevMillis = 0;
 unsigned long sendSensorPrevMillis = 0;
-unsigned long sendLiveviewPrevMillis = 0;
 unsigned long sendInfoPrevMillis = 0;
 String oldGetMatrixInfo;
 String oldGetLuxSensor;
@@ -315,11 +313,38 @@ String OldGetMP3PlayerInfo;
 // Websoket Vars
 String websocketConnection[10];
 
-// Liveview buffers
-const int liveviewPrefixLenght = 13;
-const int liveviewSuffixLenght = 2;
-const size_t liveviewBufferSize = MATRIX_HEIGHT * MATRIX_WIDTH * 6 + liveviewPrefixLenght + liveviewSuffixLenght;
-char liveviewBuffer[liveviewBufferSize];
+String ResetReason()
+{
+#if defined(ESP8266)
+    return ESP.getResetReason();
+#elif defined(ESP32)
+    switch (esp_reset_reason())
+    {
+    case ESP_RST_POWERON:
+        return "Power-on reset";
+    case ESP_RST_EXT:
+        return "External reset";
+    case ESP_RST_SW:
+        return "Software reset";
+    case ESP_RST_PANIC:
+        return "Panic (hardware or software)";
+    case ESP_RST_INT_WDT:
+        return "Internal watchdog reset";
+    case ESP_RST_TASK_WDT:
+        return "Task watchdog reset";
+    case ESP_RST_WDT:
+        return "Watchdog reset";
+    case ESP_RST_DEEPSLEEP:
+        return "Deep sleep reset";
+    case ESP_RST_BROWNOUT:
+        return "Brownout reset";
+    case ESP_RST_SDIO:
+        return "SDIO reset";
+    default:
+        return "Unknown reset reason";
+    }
+#endif
+}
 
 void SetCurrentMatrixBrightness(float newBrightness)
 {
@@ -1777,7 +1802,7 @@ String GetMatrixInfo()
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
     root["sleepMode"] = sleepMode;
     root["uptime"] = millis() / 1000;
-    root["resetReason"] = ESP.getResetReason();
+    root["resetReason"] = ResetReason();
     JsonObject &matrix = root.createNestedObject("matrixsize");
     matrix["cols"] = MATRIX_WIDTH;
     matrix["rows"] = MATRIX_HEIGHT;
@@ -1802,22 +1827,6 @@ String GetButtons()
     root.printTo(json);
 
     return json;
-}
-
-void updateLiveviewBuffer()
-{
-    memcpy(ledsCopy, leds, sizeof(leds));
-    strcpy(liveviewBuffer, "{\"liveview\":\"");
-
-    for (int y = 0; y < MATRIX_HEIGHT; y++)
-    {
-        for (int x = 0; x < MATRIX_WIDTH; x++)
-        {
-            int index = matrix->XY(x, y);
-            sprintf(&liveviewBuffer[(y * MATRIX_WIDTH + x) * 6 + liveviewPrefixLenght], "%02X%02X%02X", ledsCopy[index].r, ledsCopy[index].g, ledsCopy[index].b);
-        }
-    }
-    sprintf(&liveviewBuffer[MATRIX_HEIGHT * MATRIX_WIDTH * 6 + liveviewPrefixLenght], "\"}");
 }
 
 void SendTelemetry()
@@ -3392,6 +3401,10 @@ void setup()
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
 
+    // Liveview
+    liveview.begin(matrix, leds, SEND_LIVEVIEW_INTERVAL); // pass pointer to matrix, ledbuffer and interval
+    liveview.setCallback(sendLiveview);                   // set callback function which is called after the interval
+
     Log(F("Setup"), F("Webserver started"));
 
     if (mqttAktiv == true)
@@ -3672,11 +3685,8 @@ void loop()
         SendSensor(false);
     }
 
-    if (millis() - sendLiveviewPrevMillis >= 500)
-    {
-        sendLiveviewPrevMillis = millis();
-        SendLiveview();
-    }
+    // liveview
+    liveview.loop();
 
     if (millis() - sendInfoPrevMillis >= 3000)
     {
@@ -3759,16 +3769,13 @@ void SendLDR(bool force)
 
     oldGetLuxSensor = luxSensor;
 }
-
-void SendLiveview()
+void sendLiveview(const char *data, size_t length)
 {
-
     if (webSocket.connectedClients() > 0)
     {
-        updateLiveviewBuffer();
         for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, liveviewBuffer, liveviewBufferSize);
+            webSocket.sendTXT(i, data, length);
         }
     }
 }
