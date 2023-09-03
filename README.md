@@ -102,8 +102,9 @@ Thanks to these great people for supporting this project.
 
 ### **WORK IN PROGRESS**
 
--   (foorschtbar) Added Uptime and last reset reason to WebUI
--   (foorschtbar) Added Liveview of the Matrix to WebUI
+-   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
+-   (foorschtbar) Added uptime and last reset reason to WebUI
+-   (foorschtbar) Screens from test area are now displayed prioritized for 5 seconds
 
 ### 2.2.0 (2023-02-11)
 
