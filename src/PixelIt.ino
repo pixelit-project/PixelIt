@@ -1247,7 +1247,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         matrix->setBrightness(0);
         matrix->show();
     }
-    else if (millis() >= forcedScreenIsActiveUntil)
+    else if (millis() >= forcedScreenIsActiveUntil || forceDuration > 0)
     {
         matrix->setBrightness(currentMatrixBrightness);
 
