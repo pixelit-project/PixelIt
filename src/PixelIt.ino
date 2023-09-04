@@ -52,7 +52,7 @@
 #define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8   // 8 Hours
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
-#define SEND_LIVEVIEW_INTERVAL 500               // 0.5 Seconds, 0 to disable
+#define SEND_LIVEVIEW_INTERVAL 250               // 0.5 Seconds, 0 to disable
 
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 

@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <FastLED_NeoMatrix.h>
+#include <CRC32.h>
 
 #define _LIVEVIEW_PREFIX "{\"liveview\":\""
 #define _LIVEVIEW_SUFFIX "\"}"
@@ -24,11 +25,11 @@ protected:
     CRGB *_leds;
     uint16_t _interval;
     unsigned long _lastUpdate;
+    uint32_t _lastChecksum;
     char _liveviewBuffer[_LIVEVIEW_BUFFER_LENGHT];
 
     void (*callbackFunction)(const char *, size_t);
     void fillBuffer();
-    char *getBuffer();
 };
 
 #endif

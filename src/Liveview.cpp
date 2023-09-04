@@ -49,6 +49,13 @@ void Liveview::fillBuffer()
     // set suffix
     memcpy(&_liveviewBuffer[MATRIX_HEIGHT * MATRIX_WIDTH * 6 + _LIVEVIEW_PREFIX_LENGHT], _LIVEVIEW_SUFFIX, _LIVEVIEW_SUFFIX_LENGHT);
 
-    // rise callback
-    callbackFunction(_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT);
+    // calculate checksum
+    uint32_t newChecksum = CRC32::calculate((byte *)_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT);
+    if (_lastChecksum != newChecksum)
+    {
+        // Serial.printf("Checksum (new/old): 0x%08X/0x%08X\n", newChecksum, _lastChecksum);
+        _lastChecksum = newChecksum;
+        // rise callback
+        callbackFunction(_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT);
+    }
 }
