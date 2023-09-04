@@ -42,7 +42,7 @@ jobs:
           persist-credentials: false
 
       - name: Cache pip 💾
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -50,7 +50,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Cache PlatformIO 💾
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.platformio
           key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
