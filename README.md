@@ -89,13 +89,6 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
-        <a href="https://github.com/jekader">
-            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
-            <br />
-            <sub><b>Null</b></sub>
-        </a>
-    </td>
-    <td align="center">
         <a href="https://github.com/rliegmann">
             <img src="https://avatars.githubusercontent.com/u/16445478?v=4" width="100;" alt="rliegmann"/>
             <br />
