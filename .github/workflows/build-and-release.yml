@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: 'pixelit-project/WebUI'
 
       - name: Use Node.js 💾
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: 19.x
 
@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Cache pip 💾
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -50,13 +50,13 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Cache PlatformIO 💾
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.platformio
           key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
 
       - name: Set up Python 🐍
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
 
       - name: Download WebUI artifacts 💾
         uses: actions/download-artifact@v3
@@ -116,7 +116,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: 'pixelit-project/WebUI'
 
