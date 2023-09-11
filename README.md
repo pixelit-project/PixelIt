@@ -100,12 +100,17 @@ Thanks to these great people for supporting this project.
 
 ## Changelog
 
-### **WORK IN PROGRESS**
+<!-- ** WORK IN PROGRESS ** -->
 
--   (o0shojo0o) Added `Pixel Creator` to WebUI
+### 2.3.2 (WORK IN PROGRESS)
+
 -   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
--   (foorschtbar) Added uptime and last reset reason to WebUI
+-   (foorschtbar) Added uptime, size and last reset reason to WebUI
 -   (foorschtbar) Screens from test area are now displayed prioritized for 5 seconds
+-   (foorschtbar) Combine centerText with scrollText=auto [#96](https://github.com/pixelit-project/PixelIt/issues/96)
+-   (foorschtbar) Cleanup text drawing/scrolling code **[Breaking change: Text position is now mandatory and will not be shiffed if there is an icon!]**
+-   (foorschtbar) Prepearing support for different matrix sizes
+-   (o0shojo0o) Added native `Pixel Creator` to WebUI
 
 ### 2.2.0 (2023-02-11)
 
@@ -113,7 +118,7 @@ Thanks to these great people for supporting this project.
 -   (miccgn) Fix probing onewire can break previos i2c communication
 -   (rliegmann) Bring ESP32 support back
 -   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PRs are welcome!)
--   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. [Breaking change! No migration takes place! You need to swap the pins in your config!]
+-   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. **[Breaking change: No migration takes place! You need to swap the pins in your config!]**
 -   (foorschtbar) Support for NodeMCU v2
 -   (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
