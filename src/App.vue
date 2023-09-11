@@ -8,13 +8,14 @@
         <!-- Bar -->
         <v-app-bar app>
             <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-            <v-toolbar-title> <b>PixelIt</b> the Matrix Display </v-toolbar-title>
+            <v-toolbar-title><b>PixelIt</b> - The Matrix Display</v-toolbar-title>
             <v-spacer>
-                <p v-if="!sockedIsConnected && !isDemoMode" class="text-center message">Reconnecting... please wait</p>
+                <v-toolbar-title v-if="!sockedIsConnected && !isDemoMode" class="text-center message">Reconnecting...</v-toolbar-title>
             </v-spacer>
-            <v-icon v-if="sockedIsConnected" color="green" :title="`Connected to ${this.$socket.url}`">mdi-lan-connect </v-icon>
-            <v-icon v-if="isDemoMode" color="green" :title="`Connected to demo data source`">mdi-lan-connect</v-icon>
-            <v-icon v-if="!sockedIsConnected && !isDemoMode" color="red" :title="`Disconnected from ${this.$socket.url}`">mdi-lan-disconnect</v-icon>
+            <div  v-if="displayHostname != ''" class="hostname padded" :title="`Hostname: ${this.displayHostname}`" v-text="displayHostname"></div>
+            <v-icon v-if="sockedIsConnected" color="green" class="padded" :title="`Connected to ${this.$socket.url}`">mdi-lan-connect </v-icon>
+            <v-icon v-if="isDemoMode" color="green" class="padded" :title="`Connected to demo data source`">mdi-lan-connect</v-icon>
+            <v-icon v-if="!sockedIsConnected && !isDemoMode" color="red" class="padded" :title="`Disconnected from ${this.$socket.url}`">mdi-lan-disconnect</v-icon>
             <v-btn icon @click="changeTheme" title="Change theme">
                 <v-icon v-if="darkModeActive">mdi-brightness-4</v-icon>
                 <v-icon v-else>mdi-brightness-4</v-icon>
@@ -34,23 +35,23 @@ export default {
         // Get style cookie
         this.$vuetify.theme.dark = this.$cookies.get('theme_dark') ? this.$cookies.get('theme_dark') === 'true' : true;
 
-        getCurrentGitReleaseData(this.$store.state);
-        getUserMapData(this.$store.state);
-        sendTelemetry(this.$store.state);
+        getCurrentGitReleaseData(this);
+        getUserMapData(this);
+        sendTelemetry(this);
 
         // Check again every 15 minutes
         setInterval(() => {
-            getCurrentGitReleaseData(this.$store.state);
+            getCurrentGitReleaseData(this);
         }, 1000 * 60 * 15);
 
         // Check again every 15 minutes
         setInterval(() => {
-            getUserMapData(this.$store.state);
+            getUserMapData(this);
         }, 1000 * 60 * 15);
 
         // Send again every 12 houres
         setInterval(() => {
-            sendTelemetry(this.$store.state);
+            sendTelemetry(this);
         }, 1000 * 60 * 60 * 12);
     },
     components: {
@@ -71,6 +72,9 @@ export default {
         },
         getNavLinks() {
             return this.$store.state.navLinks;
+        },
+        displayHostname() {
+            return this.$store.state.displayHostname;
         },
     },
     methods: {
@@ -93,38 +97,38 @@ export default {
     },
 };
 
-async function getCurrentGitReleaseData(state) {
+async function getCurrentGitReleaseData(vue) {
     try {
-        state.gitReleases = await (await fetch('https://pixelit.bastelbunker.de/api/releases')).json();
-        state.gitVersion = state.gitReleases[0].version;
-        state.gitDownloadUrl = state.gitReleases[0].downloadURL;
+        vue.$store.state.gitReleases = await (await fetch(`${vue.$apiServerBaseURL}/releases`)).json();
+        vue.$store.state.gitVersion = vue.$store.state.gitReleases[0].version;
+        vue.$store.state.gitDownloadUrl = vue.$store.state.gitReleases[0].downloadURL;
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);
     }
 }
 
-async function sendTelemetry(state) {
+async function sendTelemetry(vue) {
     setTimeout(() => {
-        if (state.configData != {} && state.telemetryData != '') {
+        if (vue.$store.state.configData != {} && vue.$store.state.telemetryData != '') {
             // if sendTelemetry disabled force return!
-            if (state.configData.sendTelemetry == false) {
+            if (vue.$store.state.configData.sendTelemetry == false) {
                 return;
             }
             // send telemetry
-            fetch('https://pixelit.bastelbunker.de/api/telemetry', {
+            fetch(`${vue.$apiServerBaseURL}/telemetry`, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                body: state.telemetryData,
+                body: vue.$store.state.telemetryData,
             });
         } else {
-            sendTelemetry(state);
+            sendTelemetry(vue);
         }
     }, 1000);
 }
 
-async function getUserMapData(state) {
+async function getUserMapData(vue) {
     try {
-        state.userMapData = await (await fetch('https://pixelit.bastelbunker.de/api/usermapdata')).json();
+        vue.$store.state.userMapData = await (await fetch(`${vue.$apiServerBaseURL}/usermapdata`)).json();
     } catch (error) {
         console.log(`getUserMapData: error (${error})`);
     }
@@ -162,5 +166,18 @@ async function getUserMapData(state) {
 
 .message {
     color: orange;
+    font-size: 20px;
+}
+
+.hostname {
+    font-size: 14px;
+    text-transform: uppercase;
+    padding-right: 15px;
+}
+
+@media screen and (max-width: 600px) {
+    .hostname {
+        display: none;
+    }
 }
 </style>

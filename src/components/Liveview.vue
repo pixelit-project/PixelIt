@@ -81,7 +81,7 @@ export default {
 
 <style>
 [canvas] {
-    border: 2px solid black;
+    border: 2px solid gray;
     padding: 1px;
     border-radius: 5px;
     max-width: 100%;

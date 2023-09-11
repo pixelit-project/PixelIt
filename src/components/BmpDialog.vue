@@ -16,6 +16,7 @@
             <v-card-text>
                 <BmpCanvas class="float-right" :bmp="bmp" height="80" :width="bmp.sizeX == 8 ? '80' : '160'" />
                 <p></p>
+                Icon-ID: {{ bmp.id }}<br />
                 Added by: {{ bmp.username }}<br />
                 Added on: {{ bmp.dateTime.split('T')[0] }}<br />
                 Animated: {{ bmp.animated ? 'Yes' : 'No' }}<br />

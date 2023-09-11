@@ -41,7 +41,7 @@ export default {
                     }
                     drawCanvas(bmpArray[bmpsLoopCounter]);
                     bmpsLoopCounter++;
-                }, 200);
+                }, 250);
                 for (const bmp of bmpArray) {
                     drawCanvas(bmp);
                 }

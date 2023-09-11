@@ -34,14 +34,14 @@ export default {
         },
         getWidth() {
             if (this.pixelCount == 64) {
-                return '322px';
+                return '323px';
             } else {
-                return '802px';
+                return '803px';
             }
         },
         getHeight() {
             if (this.pixelCount == 64) {
-                return '322px';
+                return '323px';
             } else {
                 return '202px';
             }

@@ -17,6 +17,13 @@ if (process.env.VUE_APP_PIXELIT_HOST !== undefined) {
     Vue.prototype.$pixelitHost = location.host;
 }
 
+if (process.env.VUE_APP_API_SERVER !== undefined) {
+    Vue.prototype.$apiServerBaseURL = process.env.VUE_APP_API_SERVER;
+} else {
+    Vue.prototype.$apiServerBaseURL = 'https://pixelit.bastelbunker.de/api';
+}
+
+
 Vue.use(VueSpinners);
 Vue.use(VueCookies);
 
