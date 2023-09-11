@@ -229,6 +229,11 @@ unsigned long lastScreenMessageMillis = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
+bool withBMP = false;
+int bmpWidth = 8;
+int bmpHeight = 8;
+int bmpPosX = 0;
+int bmpPosY = 0;
 
 // Timerserver Vars
 String ntpServer = "de.pool.ntp.org";
@@ -265,10 +270,11 @@ bool scrollTextAktivLoop = false;
 unsigned long scrollTextPrevMillis = 0;
 uint scrollTextDefaultDelay = 100;
 uint scrollTextDelay;
-int scrollPos;
+int scrollCurPos;
 int scrollposY;
-bool scrollwithBMP;
-int scrollxPixelText;
+int scrollposX;
+int scrollxTextWidth;
+int scrollxAvailableTextSpace;
 String scrollTextString;
 
 // Animate BMP Vars
@@ -356,7 +362,7 @@ void EnteredHotspotCallback(WiFiManager *manager)
 {
     Log(F("Hotspot"), "Waiting for WiFi configuration");
     matrix->clear();
-    DrawTextHelper("HOTSPOT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+    DrawTextHelper("HOTSPOT", false, false, false, false, false, 255, 255, 255, 3, 1);
     FadeIn();
 }
 
@@ -944,7 +950,7 @@ void HandleAndSendButtonPress(uint button, bool state)
         if (sleepMode)
         {
             matrix->clear();
-            DrawTextHelper("Zzz", false, true, false, false, false, false, NULL, 0, 0, 255, 0, 1);
+            DrawTextHelper("Zzz", false, true, false, false, false, 0, 0, 255, 0, 1);
             FadeOut(30, 0);
             matrix->setBrightness(0);
             matrix->show();
@@ -952,7 +958,7 @@ void HandleAndSendButtonPress(uint button, bool state)
         else
         {
             matrix->clear();
-            DrawTextHelper("😀", false, true, false, false, false, false, NULL, 255, 200, 0, 0, 1);
+            DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
             FadeIn(30, 0);
             delay(150);
             forceClock = true;
@@ -1450,6 +1456,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             }
         }
 
+        withBMP = false;
         // Ist ein Bitmap übergeben worden?
         if (json.containsKey("bitmap"))
         {
@@ -1473,6 +1480,22 @@ void CreateFrames(JsonObject &json, int forceDuration)
         // Ist eine BitmapAnimation übergeben worden?
         if (json.containsKey("bitmapAnimation"))
         {
+            bmpPosX = 0;
+            bmpPosY = 0;
+            bmpWidth = 8;
+            bmpHeight = 8;
+            if (json["bitmapAnimation"]["position"]["x"].is<int16_t>() && json["bitmapAnimation"]["position"]["y"].is<int16_t>())
+            {
+                bmpPosX = json["bitmapAnimation"]["position"]["x"].as<int16_t>();
+                bmpPosY = json["bitmapAnimation"]["position"]["y"].as<int16_t>();
+            }
+            if (json["bitmapAnimation"]["size"]["width"].is<int16_t>() && json["bitmapAnimation"]["size"]["height"].is<int16_t>())
+            {
+                bmpWidth = json["bitmapAnimation"]["size"]["width"].as<int16_t>();
+                bmpHeight = json["bitmapAnimation"]["size"]["height"].as<int16_t>();
+            }
+            withBMP = true;
+
             logMessage += F("BitmapAnimation, ");
             // animationBmpList zurücksetzten um das ende nacher zu finden -1 (habe aktuell keine bessere Lösung)
             for (int i = 0; i < 10; i++)
@@ -1518,10 +1541,10 @@ void CreateFrames(JsonObject &json, int forceDuration)
         if (json.containsKey("text"))
         {
             logMessage += F("Text");
-            // Immer erstmal den Default Delay annehmen.
+            // Always assume the default delay first.
             scrollTextDelay = scrollTextDefaultDelay;
 
-            // Ist ScrollText auto oder true gewählt?
+            // Is ScrollText auto or true selected?
             scrollTextAktiv = ((json["text"]["scrollText"] == "auto" || ((json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"])));
 
             uint8_t r, g, b;
@@ -1536,17 +1559,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 b = json["text"]["color"]["b"].as<uint8_t>();
             }
 
-            if (json["text"]["centerText"])
-            {
-                bool withBMP = json.containsKey("bitmap") || json.containsKey("bitmapAnimation");
-
-                DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], withBMP, r, g, b);
-            }
-            // Ist ScrollText auto oder true gewählt?
-            else if (scrollTextAktiv)
+            // Is ScrollText auto or true selected?
+            if (scrollTextAktiv)
             {
 
-                bool withBMP = (json.containsKey("bitmap") || json.containsKey("bitmapAnimation"));
+                bool centerText = json["text"]["centerText"];
 
                 bool fadeInRequired = ((json.containsKey("bars") || json.containsKey("bar") || json.containsKey("bitmap") || json.containsKey("bitmapAnimation")) && fadeAnimationAktiv);
 
@@ -1558,12 +1575,17 @@ void CreateFrames(JsonObject &json, int forceDuration)
 
                 if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
                 {
-                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
+                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, fadeInRequired, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
                 }
                 else
                 {
-                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], withBMP, fadeInRequired, bmpArray, r, g, b);
+                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, fadeInRequired, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
                 }
+            }
+            // is centerText selected?
+            else if (json["text"]["centerText"])
+            {
+                DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
             }
             else
             {
@@ -1873,123 +1895,106 @@ String GetTelemetry()
     return json;
 }
 
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
 void DrawText(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-    DrawTextHelper(text, bigFont, false, false, false, false, false, NULL, colorRed, colorGreen, colorBlue, posX, posY);
+    DrawTextHelper(text, bigFont, false, false, false, false, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawTextCenter(String text, int bigFont, bool withBMP, int colorRed, int colorGreen, int colorBlue)
+void DrawTextCenter(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-    DrawTextHelper(text, bigFont, true, false, false, withBMP, false, NULL, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, true, false, false, false, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
+void DrawTextScrolled(String text, int bigFont, bool centerText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-    DrawTextHelper(text, bigFont, false, true, false, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, centerText, true, false, fadeInRequired, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawAutoTextScrolled(String text, int bigFont, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue)
+void DrawAutoTextScrolled(String text, int bigFont, bool centerText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-    DrawTextHelper(text, bigFont, false, false, true, withBMP, fadeInRequired, bmpArray, colorRed, colorGreen, colorBlue, 0, 1);
+    DrawTextHelper(text, bigFont, centerText, false, true, fadeInRequired, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool withBMP, bool fadeInRequired, uint16_t bmpArray[64], int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
 {
-    uint16_t xPixelText, xPixel;
+    uint16_t xTextWidth, xAvailableTextSpace;
     int16_t boundsx1, boundsy1;
     uint16_t boundsw, boundsh;
 
     text = Utf8ToAscii(text);
 
-    if (withBMP)
-    {
-        // Verfügbare Text Pixelanzahl in der Breite (X) mit Bild
-        xPixel = 24;
-        posX = 8;
-    }
-    else
-    {
-        // Verfügbare Text Pixelanzahl in der Breite (X) ohne Bild
-        xPixel = 32;
-    }
+    // Debug function values
+    // Serial.printf("DrawTextHelper: %s (bigFont: %s, centerText: %s, scrollText: %s, autoScrollText: %s: %s, fadeInRequired: %s)\n", text.c_str(), bigFont == 1 ? "true" : "false", centerText ? "true" : "false", scrollText ? "true" : "false", autoScrollText ? "true" : "false" ? "true" : "false", fadeInRequired ? "true" : "false");
+
+    // Available text space depends on matrix size
+    xAvailableTextSpace = MATRIX_WIDTH - posX;
 
     if (bigFont == 1)
     {
-        // Grosse Schrift setzten
+        // Set large font
         matrix->setFont();
-        xPixelText = text.length() * 6;
-        // Positions Korrektur
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
         posY = posY - 1;
     }
-    else if (bigFont == 2) // very large font, only to be used for time display / sehr große Schrift, nür für die Zeitanzeige
+    else if (bigFont == 2) // very large font, only to be used for time display / very large font, only for the time display
     {
-        // Sehr grosse Schrift setzten
+        // Set very large font
         matrix->setFont(&FatPixels);
 
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
-        xPixelText = boundsw;
+        xTextWidth = boundsw;
 
-        // Positions Korrektur
+        // Position correction
         posY = posY + 6;
     }
     else
     {
-        // Kleine Schrift setzten
+        // Set small font
         matrix->setFont(&PixelItFont);
-        xPixelText = text.length() * 4;
-        // Positions Korrektur
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw - 4;
+
+        // Position correction
         posY = posY + 5;
     }
 
-    // matrix->getTextBounds(text, 0, 0, &x1, &y1, &xPixelText, &h);
-
-    if (centerText)
+    if (centerText && xTextWidth < xAvailableTextSpace) // center text if text is smaller than available pixels
     {
-        // Kein Offset benötigt.
-        int offset = 0;
-
-        // Mit BMP berechnen
-        if (withBMP)
-        {
-            // Offset um nicht das BMP zu überschreiben
-            // + 1 weil wir der erste pixel 0 ist!!!!
-            offset = 8 + 1;
-        }
-
-        // Berechnung für das erste Pixel des Textes
-        posX = ((xPixel - xPixelText) / 2) + offset;
+        // Calculation for the first pixel of the text
+        posX = posX + ((xAvailableTextSpace - xTextWidth) / 2);
     }
 
     matrix->setCursor(posX, posY);
 
     matrix->setTextColor(matrix->Color(colorRed, colorGreen, colorBlue));
 
-    if (scrollText || (autoScrollText && xPixelText > xPixel))
+    if (scrollText || (autoScrollText && xTextWidth > xAvailableTextSpace)) // scroll text if text is larger than available pixels
     {
 
         matrix->setBrightness(currentMatrixBrightness);
 
         scrollTextString = text;
         scrollposY = posY;
-        scrollwithBMP = withBMP;
-        scrollxPixelText = xPixelText;
-        // + 8 Pixel sonst scrollt er mitten drinn los!
-        scrollPos = 33;
+        scrollposX = posX;
+        scrollxTextWidth = xTextWidth;
+        scrollxAvailableTextSpace = xAvailableTextSpace;
+        scrollCurPos = MATRIX_WIDTH + 1;
 
         scrollTextAktivLoop = true;
         scrollTextPrevMillis = millis();
         ScrollText(fadeInRequired);
     }
-    // Fall doch der Text auf denm Display passt!
-    else if (autoScrollText)
+    // In case the text on the display fits!
+    else
     {
         matrix->print(text);
-        // Hier muss geprüfter weden ob ausgefadet wurde,
-        // dann ist nämlich die Brightness zu weit unten (0),
-        // aber auch nur wenn nicht animateBMPAktivLoop aktiv ist,
-        // denn sonst hat er das schon erledigt.
+        // Here you have to check if the fade out was done,
+        // then the brightness is too low (0),
+        // but only if animateBMPAktivLoop is not active,
+        // because otherwise it's already done.
         if (fadeInRequired && !animateBMPAktivLoop)
         {
             FadeIn();
@@ -1999,38 +2004,31 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
             matrix->show();
         }
     }
-    else
-    {
-        matrix->print(text);
-    }
 }
 
 void ScrollText(bool isFadeInRequired)
 {
-    int tempxPixelText = 0;
+    int xOffset = MATRIX_WIDTH - scrollxAvailableTextSpace;
 
-    if (scrollxPixelText < 32 && !scrollwithBMP)
-    {
-        scrollxPixelText = 32;
-    }
-    else if (scrollxPixelText < 24 && scrollwithBMP)
-    {
-        scrollxPixelText = 24;
-    }
-    else if (scrollwithBMP)
-    {
-        tempxPixelText = 8;
-    }
-
-    if (scrollPos > ((scrollxPixelText - tempxPixelText) * -1))
+    if (scrollCurPos > ((scrollxTextWidth - xOffset) * -1))
     {
         matrix->clear();
-        matrix->setCursor(--scrollPos, scrollposY);
+        matrix->setCursor(--scrollCurPos, scrollposY);
         matrix->print(scrollTextString);
 
-        if (scrollwithBMP)
+        // draw black pixel under icon/blank space
+        if (xOffset > 0)
         {
-            matrix->drawRGBBitmap(0, 0, bmpArray, 8, 8);
+
+            for (int i = 0; i < xOffset; i++)
+            {
+                matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
+            }
+        }
+
+        if (withBMP)
+        {
+            matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray, bmpWidth, bmpHeight);
         }
 
         if (isFadeInRequired)
@@ -2044,8 +2042,7 @@ void ScrollText(bool isFadeInRequired)
     }
     else
     {
-        // + 8 Pixel sonst scrollt er mitten drinn los!
-        scrollPos = 33;
+        scrollCurPos = MATRIX_WIDTH;
     }
 }
 
@@ -2105,7 +2102,7 @@ void AnimateBMP(bool isShowRequired)
 
     ClearBMPArea();
 
-    matrix->drawRGBBitmap(0, 0, animationBmpList[animateBMPCounter], 8, 8);
+    matrix->drawRGBBitmap(bmpPosX, bmpPosY, animationBmpList[animateBMPCounter], bmpWidth, bmpHeight);
 
     for (int y = 0; y < 64; y++)
     {
@@ -2134,6 +2131,12 @@ void DrawSingleBitmap(JsonObject &json)
     int16_t w = json["size"]["width"].as<int16_t>();
     int16_t x = json["position"]["x"].as<int16_t>();
     int16_t y = json["position"]["y"].as<int16_t>();
+
+    bmpHeight = h;
+    bmpWidth = w;
+    bmpPosX = x;
+    bmpPosY = y;
+    withBMP = true;
 
     // Hier kann leider nicht die Funktion matrix->drawRGBBitmap() genutzt werde da diese Fehler in der Anzeige macht wenn es mehr wie 8x8 Pixel werden.
     for (int16_t j = 0; j < h; j++, y++)
@@ -2231,10 +2234,10 @@ void DrawClock(bool fromJSON)
 
             if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
-                DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+                DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
                 matrix->clear();
-                DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+                DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeIn(30);
             }
             else
@@ -2259,7 +2262,7 @@ void DrawClock(bool fromJSON)
         else if (clockFatFont)
         {
 
-            DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+            DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2277,10 +2280,10 @@ void DrawClock(bool fromJSON)
 
             if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
-                DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+                DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
                 matrix->clear();
-                DrawTextCenter(String(time), 2, false, clockColorR, clockColorG, clockColorB);
+                DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeIn(30);
             }
             else
@@ -2304,7 +2307,7 @@ void DrawClock(bool fromJSON)
         }
         else if (clockFatFont)
         {
-            DrawTextCenter(String(date), 2, false, clockColorR, clockColorG, clockColorB);
+            DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2899,33 +2902,33 @@ uint ColorWheel(byte wheelPos, int pos)
 
 void ShowBootAnimation()
 {
-    DrawTextHelper("P", false, false, false, false, false, false, NULL, 255, 51, 255, 4, 1);
+    DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, 4, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("I", false, false, false, false, false, false, NULL, 0, 255, 42, 8, 1);
+    DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, 8, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("X", false, false, false, false, false, false, NULL, 255, 25, 25, 10, 1);
+    DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, 10, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("E", false, false, false, false, false, false, NULL, 25, 255, 255, 14, 1);
+    DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, 14, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("L", false, false, false, false, false, false, NULL, 255, 221, 51, 18, 1);
+    DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, 18, 1);
     matrix->show();
 
     delay(500);
-    DrawTextHelper("I", false, false, false, false, false, false, NULL, 255, 255, 255, 22, 1);
-    DrawTextHelper("T", false, false, false, false, false, false, NULL, 255, 255, 255, 24, 1);
+    DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, 22, 1);
+    DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, 24, 1);
     matrix->show();
     delay(1000);
 
     // FadeIn(60, 10);
-    // DrawTextHelper("PIXELIT", false, false, false, false, false, false, NULL, 255, 255, 255, 3, 1);
+    // DrawTextHelper("PIXELIT", false, false, false, false, false,  255, 255, 255, 3, 1);
     // FadeIn(60, 10);
     // FadeOut(60, 10);
     // FadeIn(60, 10);
