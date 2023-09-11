@@ -1988,7 +1988,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         ScrollText(fadeInRequired);
     }
     // In case the text on the display fits!
-    else
+    else if (autoScrollText)
     {
         matrix->print(text);
         // Here you have to check if the fade out was done,
@@ -2004,6 +2004,10 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
             matrix->show();
         }
     }
+    else
+    {
+        matrix->print(text);
+    }
 }
 
 void ScrollText(bool isFadeInRequired)
@@ -2016,8 +2020,7 @@ void ScrollText(bool isFadeInRequired)
         matrix->setCursor(--scrollCurPos, scrollposY);
         matrix->print(scrollTextString);
 
-        // draw black pixel under icon/blank space
-        if (xOffset > 0)
+        // draw black pixel under icon / blank space if (xOffset > 0)
         {
 
             for (int i = 0; i < xOffset; i++)
