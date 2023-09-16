@@ -102,7 +102,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.3.2 (WORK IN PROGRESS)
+### 2.3.2 (2023-09-16)
 
 -   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
 -   (foorschtbar) Added uptime, size and last reset reason to WebUI
