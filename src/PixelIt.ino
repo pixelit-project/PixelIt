@@ -73,7 +73,7 @@ bool mqttAktiv = false;
 String mqttUser = "";
 String mqttPassword = "";
 String mqttServer = "";
-String mqttMasterTopic = "Haus/PixelIt/";
+String mqttMasterTopic = "pixelit/";
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
 const int MQTT_RECONNECT_INTERVAL = 15000;
@@ -679,6 +679,11 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("mqttMasterTopic"))
     {
         mqttMasterTopic = json["mqttMasterTopic"].as<char *>();
+        mqttMasterTopic.trim();
+        if (!mqttMasterTopic.endsWith("/"))
+        {
+            mqttMasterTopic += "/";
+        }
     }
 
     if (json.containsKey("mqttPort"))
@@ -1001,7 +1006,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(payload);
 
-        Log("MQTT_callback", "Incomming JSON (Length: " + String(json.measureLength()) + ")");
+        Log("MQTT_callback", "Incomming JSON (Topic: " + String(topic) + ", Length: " + String(json.measureLength()) + ") ");
 
         if (channel.equals("setScreen"))
         {
