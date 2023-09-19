@@ -90,7 +90,7 @@ String dfpTXPin = STR(DEFAULT_PIN_DFPTX);
 String onewirePin = STR(DEFAULT_PIN_ONEWIRE);
 String SCLPin = STR(DEFAULT_PIN_SCL);
 String SDAPin = STR(DEFAULT_PIN_SDA);
-String ldrDevice = "GL5516";
+String ldrDevice = STR(DEFAULT_LDR);
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
 float batteryLevelPct = 0;
@@ -229,10 +229,12 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
+bool bootBatteryScreen = VBAT_PIN > 0 ? true : false;
 bool bootSound = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
 unsigned long lastScreenMessageMillis = 0;
+unsigned long lastGetBatteryPercent = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -359,6 +361,20 @@ String ResetReason()
 #endif
 }
 
+void getBatteryVoltage()
+{
+    batteryLevelPct = map(analogRead(VBAT_PIN), 510, 660, 0, 100);
+    if (batteryLevelPct >= 100)
+    {
+        batteryLevelPct = 100;
+    }
+    if (batteryLevelPct <= 0)
+    {
+        batteryLevelPct = 1;
+    }
+    String strBV = String(batteryLevelPct, 0) + " %";
+}
+
 void SetCurrentMatrixBrightness(float newBrightness)
 {
     currentMatrixBrightness = newBrightness;
@@ -414,6 +430,7 @@ void SaveConfig()
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
     json["bootScreenAktiv"] = bootScreenAktiv;
+    json["bootBatteryScreen"] = bootBatteryScreen;
     json["bootSound"] = bootSound;
     json["mqttAktiv"] = mqttAktiv;
     json["mqttUser"] = mqttUser;
@@ -656,6 +673,11 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("bootScreenAktiv"))
     {
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
+    }
+
+    if (json.containsKey("bootBatteryScreen"))
+    {
+        bootBatteryScreen = json["bootBatteryScreen"].as<bool>();
     }
 
     if (json.containsKey("bootSound"))
@@ -1770,13 +1792,31 @@ String GetSensor()
             root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
         }
     }
-
+    else if (tempSensor == TempSensor_SHT31)
+    {
+        const float currentTemp = sht31.readTemperature();
+        const float currentHumi = sht31.readHumidity();
+        root["temperature"] = currentTemp + temperatureOffset;
+        root["humidity"] = roundf(currentHumi + humidityOffset);
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
+    }
     else
     {
         root["humidity"] = "Not installed";
         root["temperature"] = "Not installed";
         root["pressure"] = "Not installed";
         root["gas"] = "Not installed";
+    }
+
+    if (VBAT_PIN > 0)
+    {
+        getBatteryVoltage();
+        root["battery"] = batteryLevelPct;
+    }
+    else
+    {
+        root["battery"] = "Not installed";
     }
 
     String json;
@@ -1881,7 +1921,7 @@ void SendTelemetry()
 String GetTelemetry()
 {
     const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU (Column major)", "MicroMatrix", "Tiled 4x 8x8 CJMCU (Row major)"};
-    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
+    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280", "SHT31"};
     const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
 
     DynamicJsonBuffer jsonBuffer;
@@ -2951,6 +2991,28 @@ void ShowBootAnimation()
     // FadeIn(60, 10);
 }
 
+void ShowBatteryScreen()
+{
+    const size_t capacity = JSON_ARRAY_SIZE(64) + JSON_OBJECT_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + 350;
+    DynamicJsonBuffer jsonBuffer(capacity);
+    const char *json = "{\"bitmap\":{\"data\":[0,0,65535,65535,65535,0,0,0,0,0,65535,2016,65535,0,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,65535,65535,65535,65535,0,0],\"position\":{\"x\":0,\"y\":0},\"size\":{\"width\":8,\"height\":8}}}";
+    JsonObject &root = jsonBuffer.parseObject(json);
+    if (root.success())
+    {
+        Serial.println("parsed json");
+    }
+    else
+    {
+        Serial.println("failed to parse json");
+    }
+    getBatteryVoltage();
+    matrix->clear();
+    DrawSingleBitmap(root["bitmap"]);
+    DrawTextHelper(String(batteryLevelPct, 0) + "%", false, true, false, false, false, 255, 255, 255, 9, 1);
+    matrix->show();
+    delay(1000);
+}
+
 ColorTemperature GetUserColorTemp()
 {
     if (matrixTempCorrection == "tungsten40w")
@@ -3286,6 +3348,19 @@ void setup()
     }
 
     // Init Temp Sensors
+    Log(F("Setup"), F("SHT31 Trying"));
+    if (!sht31.begin(0x44))
+    {
+        Log(F("Setup"), F("Couldn't find SHT31"));
+        while (1)
+            delay(1);
+    }
+    else
+    {
+        Log(F("Setup"), F("SHT31 started"));
+        tempSensor = TempSensor_SHT31;
+    }
+
     bme280 = new Adafruit_BME280();
     if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
     {
@@ -3408,6 +3483,12 @@ void setup()
     if (bootScreenAktiv)
     {
         ShowBootAnimation();
+    }
+
+    // Battery
+    if (bootBatteryScreen)
+    {
+        ShowBatteryScreen();
     }
 
     // Hostname
