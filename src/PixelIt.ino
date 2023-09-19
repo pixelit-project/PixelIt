@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #if defined(ESP8266)
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -11,7 +13,6 @@
 #include <FS.h>
 #endif
 
-#include <Arduino.h>
 // BME Sensor
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -42,6 +43,8 @@
 #include <ArduinoJson.h>
 #include <ArduinoHttpClient.h>
 #include <Hash.h>
+// Ulanzi Sensor
+#include "Adafruit_SHT31.h"
 // PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
@@ -55,6 +58,9 @@
 #define SEND_LIVEVIEW_INTERVAL 250               // 0.5 Seconds, 0 to disable
 
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
+
+#define XSTR(x) #x
+#define STR(x) XSTR(x)
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -79,24 +85,15 @@ unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to
 const int MQTT_RECONNECT_INTERVAL = 15000;
 // #define MQTT_MAX_PACKET_SIZE 8000
 
-//// LDR Config
-#define LDR_PIN A0
-
-//// GPIO Config
-#if defined(ESP8266)
-const int MATRIX_PIN = D2;
-#elif defined(ESP32)
-const int MATRIX_PIN = 27;
-#endif
-
-String dfpRXPin = "Pin_D7";
-String dfpTXPin = "Pin_D8";
-String onewirePin = "Pin_D1";
-String SCLPin = "Pin_D1";
-String SDAPin = "Pin_D3";
+String dfpRXPin = STR(DEFAULT_PIN_DFPRX);
+String dfpTXPin = STR(DEFAULT_PIN_DFPTX);
+String onewirePin = STR(DEFAULT_PIN_ONEWIRE);
+String SCLPin = STR(DEFAULT_PIN_SCL);
+String SDAPin = STR(DEFAULT_PIN_SDA);
 String ldrDevice = "GL5516";
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
+float batteryLevelPct = 0;
 
 // Telemetry API
 #define TELEMETRY_SERVER_HOST "pixelit.bastelbunker.de"
@@ -108,8 +105,6 @@ unsigned int ldrSmoothing = 0;
 #define CHECKUPDATE_SERVER_PATH "/api/lastversion"
 #define CHECKUPDATE_SERVER_PORT 80
 
-String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
-bool btnEnabled[] = {false, false, false};
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
 enum btnStates
@@ -135,7 +130,15 @@ enum btnActions
     btnAction_MP3PlayNext = 5,
 };
 
+#if defined(ULANZI)
+String btnPin[] = {"GPIO_NUM_26", "GPIO_NUM_27", "GPIO_NUM_14"}; // UlanziTC001 workaround to tweak WebUI
+bool btnEnabled[] = {true, true, true};
+btnActions btnAction[] = {btnAction_DoNothing, btnAction_ToggleSleepMode, btnAction_GotoClock};
+#elif
+String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
+bool btnEnabled[] = {false, false, false};
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
+#endif
 
 CRGB leds[MATRIX_WIDTH * MATRIX_HEIGHT];
 
@@ -147,12 +150,15 @@ bool isESP8266 = false;
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
+#elif defined(ULANZI)
+TwoWire twowire = TwoWire(0);
 #else
 TwoWire twowire;
 #endif
 Adafruit_BME280 *bme280;
 Adafruit_BMP280 *bmp280;
 Adafruit_BME680 *bme680;
+Adafruit_SHT31 sht31 = Adafruit_SHT31(&twowire);
 unsigned long lastBME680read = 0;
 DHTesp dht;
 
@@ -164,6 +170,7 @@ enum TempSensor
     TempSensor_DHT,
     TempSensor_BME680,
     TempSensor_BMP280,
+    TempSensor_SHT31,
 };
 TempSensor tempSensor = TempSensor_None;
 
@@ -214,7 +221,7 @@ int mbaDimMin = 20;
 int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
-int matrixType = 1;
+int matrixType = DEFAULT_MATRIX_TYPE;
 String note;
 String hostname;
 String matrixTempCorrection = "default";
@@ -3090,6 +3097,7 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
 
 uint8_t TranslatePin(String pin)
 {
+#if defined(ESP8266)
     if (pin == "Pin_D0")
         return D0;
     if (pin == "Pin_D1")
@@ -3112,6 +3120,40 @@ uint8_t TranslatePin(String pin)
         return 27;
     Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
     return LED_BUILTIN;
+#elif defined(ESP32)
+
+    if (pin == "GPIO_NUM_14")
+        return GPIO_NUM_14;
+    if (pin == "GPIO_NUM_15")
+        return GPIO_NUM_15;
+    if (pin == "GPIO_NUM_16")
+        return GPIO_NUM_16;
+    if (pin == "GPIO_NUM_17")
+        return GPIO_NUM_17;
+    if (pin == "GPIO_NUM_18")
+        return GPIO_NUM_18;
+    if (pin == "GPIO_NUM_19")
+        return GPIO_NUM_19;
+    if (pin == "GPIO_NUM_21")
+        return GPIO_NUM_21;
+    if (pin == "GPIO_NUM_22")
+        return GPIO_NUM_22;
+    if (pin == "GPIO_NUM_23")
+        return GPIO_NUM_23;
+    if (pin == "GPIO_NUM_25")
+        return GPIO_NUM_25;
+    if (pin == "GPIO_NUM_26")
+        return GPIO_NUM_26;
+    if (pin == "GPIO_NUM_27")
+        return GPIO_NUM_27;
+    if (pin == "SPI_CLK_GPIO_NUM")
+        return SPI_CLK_GPIO_NUM;
+    if (pin == "SPI_CS0_GPIO_NUM")
+        return SPI_CS0_GPIO_NUM;
+
+    Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+    return GPIO_NUM_32; // IDK
+#endif
 }
 
 void ClearTextArea()
@@ -3175,15 +3217,21 @@ void initDFPlayer()
 /////////////////////////////////////////////////////////////////////
 void setup()
 {
+#if defined(ULANZI)
+    pinMode(15, INPUT_PULLDOWN); // Fix high pitch tone
+    pinMode(27, INPUT_PULLUP);   // Middle Button fix
+    pinMode(26, INPUT_PULLUP);   // Left Button fix
+    pinMode(VBAT_PIN, INPUT);    // Battery ADC
+#endif
 
     Serial.begin(115200);
 
     // Mounting FileSystem
     Serial.println(F("Mounting file system..."));
 #if defined(ESP8266)
-    if (LittleFS.begin())
+    if (LittleFS.begin(true))
 #elif defined(ESP32)
-    if (SPIFFS.begin())
+    if (SPIFFS.begin(true))
 #endif
     {
         Serial.println(F("Mounted file system."));
