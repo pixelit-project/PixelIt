@@ -102,6 +102,10 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 2.4.0 ** WORK IN PROGRESS **
+
+-   (foorschtbar) Added support for Ulanzi TC001 Desktop Clock
+
 ### 2.3.2 (2023-09-16)
 
 -   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
