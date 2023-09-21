@@ -93,7 +93,11 @@ String SDAPin = STR(DEFAULT_PIN_SDA);
 String ldrDevice = STR(DEFAULT_LDR);
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
-float batteryLevelPct = 0;
+
+// Bettery stuff
+float batteryLevel = 0;
+unsigned long batteryLevelPrevMillis = 0;
+const int BATTERY_LEVEL_INTERVAL = 30 * 1000;
 
 // Telemetry API
 #define TELEMETRY_SERVER_HOST "pixelit.bastelbunker.de"
@@ -363,16 +367,26 @@ String ResetReason()
 
 void getBatteryVoltage()
 {
-    batteryLevelPct = map(analogRead(VBAT_PIN), 510, 660, 0, 100);
-    if (batteryLevelPct >= 100)
+    uint16_t value = 0;
+    uint8_t numReadings = 5;
+
+    for (uint8_t i = 0; i < numReadings; i++)
     {
-        batteryLevelPct = 100;
+        value = value + analogRead(VBAT_PIN);
+
+        // 1ms pause adds more stability between reads.
+        delay(1);
     }
-    if (batteryLevelPct <= 0)
+
+    batteryLevel = map(value / numReadings, MIN_BATTERY, MAX_BATTERY, 0, 100);
+    if (batteryLevel >= 100)
     {
-        batteryLevelPct = 1;
+        batteryLevel = 100;
     }
-    String strBV = String(batteryLevelPct, 0) + " %";
+    if (batteryLevel <= 0)
+    {
+        batteryLevel = 1;
+    }
 }
 
 void SetCurrentMatrixBrightness(float newBrightness)
@@ -1811,8 +1825,7 @@ String GetSensor()
 
     if (VBAT_PIN > 0)
     {
-        getBatteryVoltage();
-        root["battery"] = batteryLevelPct;
+        root["battery"] = batteryLevel;
     }
     else
     {
@@ -3008,7 +3021,7 @@ void ShowBatteryScreen()
     getBatteryVoltage();
     matrix->clear();
     DrawSingleBitmap(root["bitmap"]);
-    DrawTextHelper(String(batteryLevelPct, 0) + "%", false, true, false, false, false, 255, 255, 255, 9, 1);
+    DrawTextHelper(String(batteryLevel, 0) + "%", false, true, false, false, false, 255, 255, 255, 9, 1);
     matrix->show();
     delay(1000);
 }
@@ -3628,6 +3641,13 @@ void loop()
 {
     server.handleClient();
     webSocket.loop();
+
+    // Update Battery level
+    if (millis() - batteryLevelPrevMillis >= BATTERY_LEVEL_INTERVAL)
+    {
+        batteryLevelPrevMillis = millis();
+        getBatteryVoltage();
+    }
 
     // Reset GPIO based on the array, as far as something is present in the array.
     for (int i = 0; i < SET_GPIO_SIZE; i++)
