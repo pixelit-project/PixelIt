@@ -2979,38 +2979,30 @@ uint ColorWheel(byte wheelPos, int pos)
 
 void ShowBootAnimation()
 {
-    DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, 4, 1);
+    DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, (MATRIX_WIDTH / 2) - 12, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, 8, 1);
+    DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, (MATRIX_WIDTH / 2) - 8, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, 10, 1);
+    DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, (MATRIX_WIDTH / 2) - 6, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, 14, 1);
+    DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, (MATRIX_WIDTH / 2) - 2, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, 18, 1);
+    DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, (MATRIX_WIDTH / 2) + 2, 1);
     matrix->show();
 
     delay(500);
-    DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, 22, 1);
-    DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, 24, 1);
+    DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 6, 1);
+    DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 8, 1);
     matrix->show();
     delay(1000);
-
-    // FadeIn(60, 10);
-    // DrawTextHelper("PIXELIT", false, false, false, false, false,  255, 255, 255, 3, 1);
-    // FadeIn(60, 10);
-    // FadeOut(60, 10);
-    // FadeIn(60, 10);
-    // FadeOut(60, 10);
-    // FadeIn(60, 10);
 }
 
 ColorTemperature GetUserColorTemp()
