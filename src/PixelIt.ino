@@ -48,11 +48,11 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
-#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12   // 12 Hours
-#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8   // 8 Hours
-#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
-#define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
-#define SEND_LIVEVIEW_INTERVAL 250               // 0.5 Seconds, 0 to disable
+#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12    // 12 Hours
+#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8    // 8 Hours
+#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30 // 30 Minutes
+#define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
+#define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
@@ -1466,7 +1466,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         {
             withBMP = false;
         }
-        
+
         // Ist ein Bitmap übergeben worden?
         if (json.containsKey("bitmap"))
         {
