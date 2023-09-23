@@ -201,6 +201,8 @@ WebServer server(80);
 HTTPUpdateServer httpUpdater;
 #endif
 Liveview liveview;
+// Store last frame (serializated)
+String currentScreenJsonBuffer;
 
 WebSocketsServer webSocket = WebSocketsServer(81);
 DFPlayerMini_Fast mp3Player;
@@ -925,6 +927,36 @@ void HandleFactoryReset()
     EraseWifiCredentials();
 }
 
+void SleepScreen(bool startSleep, bool forceClockOnWake)
+{
+    if (startSleep)
+    {
+        Log(F("SleepScreen"), F("Sleeping..."));
+        matrix->clear();
+        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 6, 1);
+        matrix->show();
+        delay(200);
+        DrawTextHelper("Z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 1, 1);
+        matrix->show();
+        delay(200);
+        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) + 4, 1);
+        matrix->show();
+        delay(500);
+        FadeOut(30, 0);
+        matrix->setBrightness(0);
+        matrix->show();
+    }
+    else
+    {
+        Log(F("SleepScreen"), F("Waking up..."));
+        matrix->clear();
+        // DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
+        // FadeIn(30, 0);
+        // delay(150);
+        forceClock = forceClockOnWake;
+    }
+}
+
 void HandleAndSendButtonPress(uint button, bool state)
 {
     btnLastPublishState[button] = state;
@@ -952,22 +984,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     if (btnAction[button] == btnAction_ToggleSleepMode)
     {
         sleepMode = !sleepMode;
-        if (sleepMode)
-        {
-            matrix->clear();
-            DrawTextHelper("Zzz", false, true, false, false, false, 0, 0, 255, 0, 1);
-            FadeOut(30, 0);
-            matrix->setBrightness(0);
-            matrix->show();
-        }
-        else
-        {
-            matrix->clear();
-            DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
-            FadeIn(30, 0);
-            delay(150);
-            forceClock = true;
-        }
+        SleepScreen(sleepMode, true);
     }
     if (btnAction[button] == btnAction_GotoClock)
     {
@@ -1135,6 +1152,39 @@ void CreateFrames(JsonObject &json)
 void CreateFrames(JsonObject &json, int forceDuration)
 {
 
+    if (json.containsKey("sleepMode"))
+    {
+
+        Serial.printf("SleepMode: %s\n", json["sleepMode"].as<bool>() ? "true" : "false");
+
+        // Update internal sleep state
+        bool newSleepMode = json["sleepMode"].as<bool>();
+
+        if (newSleepMode == sleepMode)
+        {
+            // Nothing to do
+            return;
+        }
+        else
+        {
+            // Update sleep mode
+            sleepMode = newSleepMode;
+        }
+
+        // Display sleepscreen
+        SleepScreen(sleepMode, false);
+
+        // Restore last frame if sleep mode is disabled
+        if (sleepMode == false)
+        {
+            DynamicJsonBuffer jsonBuffer;
+            JsonObject &tmpJson = jsonBuffer.parseObject(currentScreenJsonBuffer);
+            CreateFrames(tmpJson);
+        }
+
+        return;
+    }
+
     String logMessage = F("JSON contains ");
 
     // Ist eine Display Helligkeit übergeben worden?
@@ -1246,19 +1296,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
     }
 
-    // SleepMode
-    if (json.containsKey("sleepMode"))
-    {
-        logMessage += F("SleepMode Control, ");
-        sleepMode = json["sleepMode"];
-    }
-    // SleepMode
-    if (sleepMode)
-    {
-        matrix->setBrightness(0);
-        matrix->show();
-    }
-    else if (millis() >= forcedScreenIsActiveUntil || forceDuration > 0)
+    if (!sleepMode && (millis() >= forcedScreenIsActiveUntil || forceDuration > 0))
     {
         matrix->setBrightness(currentMatrixBrightness);
 
@@ -1467,6 +1505,22 @@ void CreateFrames(JsonObject &json, int forceDuration)
             withBMP = false;
         }
 
+        // Restore withBMP from (stored) message
+        if (json.containsKey("withBMPRestore"))
+        {
+            withBMP = json["withBMPRestore"];
+            if (withBMP == true)
+            {
+                matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray, bmpWidth, bmpHeight);
+            }
+        }
+
+        // Restore a animateBMPAktivLoop from (stored) message
+        if (json.containsKey("animateBMPAktivLoopRestore"))
+        {
+            animateBMPAktivLoop = json["animateBMPAktivLoopRestore"];
+        }
+
         // Ist ein Bitmap übergeben worden?
         if (json.containsKey("bitmap"))
         {
@@ -1625,6 +1679,19 @@ void CreateFrames(JsonObject &json, int forceDuration)
     if (forceDuration > 0 && (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation")))
     {
         forcedScreenIsActiveUntil = millis() + forceDuration;
+    }
+
+    if (!json.containsKey("sleepMode"))
+    {
+        // Store last frame
+
+        json.remove("bitmap");
+        json.remove("bitmaps");
+        json.remove("bitmapAnimation");
+        json["withBMPRestore"] = withBMP;
+        json["animateBMPAktivLoopRestore"] = animateBMPAktivLoop;
+        currentScreenJsonBuffer = "";
+        json.printTo(currentScreenJsonBuffer);
     }
 }
 
@@ -2031,12 +2098,9 @@ void ScrollText(bool isFadeInRequired)
         matrix->print(scrollTextString);
 
         // draw black pixel under icon / blank space if (xOffset > 0)
+        for (int i = 0; i < xOffset; i++)
         {
-
-            for (int i = 0; i < xOffset; i++)
-            {
-                matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
-            }
+            matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
         }
 
         if (withBMP)
@@ -3538,7 +3602,10 @@ void loop()
             checkUpdateScreenPrevMillis = millis();
             if (!lastReleaseVersion.equals(VERSION))
             {
-                displayUpdateScreen();
+                if (!sleepMode)
+                {
+                    displayUpdateScreen();
+                }
             }
         }
     }
@@ -3717,13 +3784,13 @@ void loop()
         // SendMp3PlayerInfo(false);
     }
 
-    if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
+    if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
     {
         animateBMPPrevMillis = millis();
         AnimateBMP(true);
     }
 
-    if (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay)
+    if (!sleepMode && (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay))
     {
         scrollTextPrevMillis = millis();
         ScrollText(false);
