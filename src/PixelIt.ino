@@ -1461,7 +1461,12 @@ void CreateFrames(JsonObject &json, int forceDuration)
             }
         }
 
-        withBMP = false;
+        // clear withBMP only if no sleepMode is in the same message
+        if (!json.containsKey("sleepMode"))
+        {
+            withBMP = false;
+        }
+        
         // Ist ein Bitmap übergeben worden?
         if (json.containsKey("bitmap"))
         {
