@@ -1,21 +1,21 @@
 ![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
 
-# PixelIt
+# PixelIt - The Matrix Display
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
-The PixelIt is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
+The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
-If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/).
+If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
 
--   [Documentation](https://pixelit-project.github.io/)
--   [Blog](https://www.bastelbunker.de/pixel-it/)
--   [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery)
--   [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
--   [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
--   [Discord Channel ![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
+-   :memo: [Documentation](https://pixelit-project.github.io/)
+-   :page_facing_up: [Blog](https://www.bastelbunker.de/pixel-it/)
+-   :green_heart: [PixelIt Icon Gallery](https://pixelit.bastelbunker.de/PixelGallery)
+-   :bulb: [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
+-   :fire: [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
+-   :fire:[Discord Channel ![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
 
 ## Contributors
 
@@ -101,6 +101,12 @@ Thanks to these great people for supporting this project.
 ## Changelog
 
 <!-- ** WORK IN PROGRESS ** -->
+
+### 2.4.0 ** WORK IN PROGRESS **
+
+-   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Alpha**, see [develop branche](https://github.com/pixelit-project/PixelIt/tree/develop)) :tada:
+-   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
+-   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
 
 ### 2.3.2 (2023-09-16)
 
@@ -429,3 +435,7 @@ Thanks to these great people for supporting this project.
 
 -   (o0shojo0o) add MQTT Support
 -   (o0shojo0o) add animated 8x8 icons (max. 6 frames)
+
+## Disclaimer
+
+\* This link and some others in the documentation are affiliate links. We would be happy if you use this link, but of course you don't have to.
