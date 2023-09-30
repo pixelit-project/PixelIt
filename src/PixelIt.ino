@@ -94,10 +94,18 @@ String ldrDevice = STR(DEFAULT_LDR);
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
 
-// Bettery stuff
+// Battery stuff
 float batteryLevel = 0;
 unsigned long batteryLevelPrevMillis = 0;
 const int BATTERY_LEVEL_INTERVAL = 30 * 1000;
+
+#ifndef MIN_BATTERY
+#define MIN_BATTERY 0
+#endif
+
+#ifndef MAX_BATTERY
+#define MAX_BATTERY 100
+#endif
 
 // Telemetry API
 #define TELEMETRY_SERVER_HOST "pixelit.bastelbunker.de"
@@ -138,7 +146,7 @@ enum btnActions
 String btnPin[] = {"GPIO_NUM_26", "GPIO_NUM_27", "GPIO_NUM_14"}; // UlanziTC001 workaround to tweak WebUI
 bool btnEnabled[] = {true, true, true};
 btnActions btnAction[] = {btnAction_DoNothing, btnAction_ToggleSleepMode, btnAction_GotoClock};
-#elif
+#else
 String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
 bool btnEnabled[] = {false, false, false};
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
@@ -377,7 +385,7 @@ void getBatteryVoltage()
         // 1ms pause adds more stability between reads.
         delay(1);
     }
-
+    
     batteryLevel = map(value / numReadings, MIN_BATTERY, MAX_BATTERY, 0, 100);
     if (batteryLevel >= 100)
     {
@@ -3304,7 +3312,7 @@ void setup()
     // Mounting FileSystem
     Serial.println(F("Mounting file system..."));
 #if defined(ESP8266)
-    if (LittleFS.begin(true))
+    if (LittleFS.begin())
 #elif defined(ESP32)
     if (SPIFFS.begin(true))
 #endif
