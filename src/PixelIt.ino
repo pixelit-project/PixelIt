@@ -51,11 +51,11 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
-#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12   // 12 Hours
-#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8   // 8 Hours
-#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 5 // 5 Minutes
-#define CHECKUPDATESCREEN_DURATION 1000 * 5      // 5 Seconds
-#define SEND_LIVEVIEW_INTERVAL 250               // 0.5 Seconds, 0 to disable
+#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12    // 12 Hours
+#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8    // 8 Hours
+#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30 // 30 Minutes
+#define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
+#define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
@@ -220,6 +220,8 @@ WebServer server(80);
 HTTPUpdateServer httpUpdater;
 #endif
 Liveview liveview;
+// Store last frame (serializated)
+String currentScreenJsonBuffer;
 
 WebSocketsServer webSocket = WebSocketsServer(81);
 DFPlayerMini_Fast mp3Player;
@@ -385,7 +387,7 @@ void getBatteryVoltage()
         // 1ms pause adds more stability between reads.
         delay(1);
     }
-    
+
     batteryLevel = map(value / numReadings, MIN_BATTERY, MAX_BATTERY, 0, 100);
     if (batteryLevel >= 100)
     {
@@ -976,6 +978,36 @@ void HandleFactoryReset()
     EraseWifiCredentials();
 }
 
+void SleepScreen(bool startSleep, bool forceClockOnWake)
+{
+    if (startSleep)
+    {
+        Log(F("SleepScreen"), F("Sleeping..."));
+        matrix->clear();
+        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 6, 1);
+        matrix->show();
+        delay(200);
+        DrawTextHelper("Z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 1, 1);
+        matrix->show();
+        delay(200);
+        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) + 4, 1);
+        matrix->show();
+        delay(500);
+        FadeOut(30, 0);
+        matrix->setBrightness(0);
+        matrix->show();
+    }
+    else
+    {
+        Log(F("SleepScreen"), F("Waking up..."));
+        matrix->clear();
+        // DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
+        // FadeIn(30, 0);
+        // delay(150);
+        forceClock = forceClockOnWake;
+    }
+}
+
 void HandleAndSendButtonPress(uint button, bool state)
 {
     btnLastPublishState[button] = state;
@@ -1003,22 +1035,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     if (btnAction[button] == btnAction_ToggleSleepMode)
     {
         sleepMode = !sleepMode;
-        if (sleepMode)
-        {
-            matrix->clear();
-            DrawTextHelper("Zzz", false, true, false, false, false, 0, 0, 255, 0, 1);
-            FadeOut(30, 0);
-            matrix->setBrightness(0);
-            matrix->show();
-        }
-        else
-        {
-            matrix->clear();
-            DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
-            FadeIn(30, 0);
-            delay(150);
-            forceClock = true;
-        }
+        SleepScreen(sleepMode, true);
     }
     if (btnAction[button] == btnAction_GotoClock)
     {
@@ -1186,6 +1203,39 @@ void CreateFrames(JsonObject &json)
 void CreateFrames(JsonObject &json, int forceDuration)
 {
 
+    if (json.containsKey("sleepMode"))
+    {
+
+        Serial.printf("SleepMode: %s\n", json["sleepMode"].as<bool>() ? "true" : "false");
+
+        // Update internal sleep state
+        bool newSleepMode = json["sleepMode"].as<bool>();
+
+        if (newSleepMode == sleepMode)
+        {
+            // Nothing to do
+            return;
+        }
+        else
+        {
+            // Update sleep mode
+            sleepMode = newSleepMode;
+        }
+
+        // Display sleepscreen
+        SleepScreen(sleepMode, false);
+
+        // Restore last frame if sleep mode is disabled
+        if (sleepMode == false)
+        {
+            DynamicJsonBuffer jsonBuffer;
+            JsonObject &tmpJson = jsonBuffer.parseObject(currentScreenJsonBuffer);
+            CreateFrames(tmpJson);
+        }
+
+        return;
+    }
+
     String logMessage = F("JSON contains ");
 
     // Ist eine Display Helligkeit übergeben worden?
@@ -1297,19 +1347,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
     }
 
-    // SleepMode
-    if (json.containsKey("sleepMode"))
-    {
-        logMessage += F("SleepMode Control, ");
-        sleepMode = json["sleepMode"];
-    }
-    // SleepMode
-    if (sleepMode)
-    {
-        matrix->setBrightness(0);
-        matrix->show();
-    }
-    else if (millis() >= forcedScreenIsActiveUntil || forceDuration > 0)
+    if (!sleepMode && (millis() >= forcedScreenIsActiveUntil || forceDuration > 0))
     {
         matrix->setBrightness(currentMatrixBrightness);
 
@@ -1512,7 +1550,28 @@ void CreateFrames(JsonObject &json, int forceDuration)
             }
         }
 
-        withBMP = false;
+        // clear withBMP only if no sleepMode is in the same message
+        if (!json.containsKey("sleepMode"))
+        {
+            withBMP = false;
+        }
+
+        // Restore withBMP from (stored) message
+        if (json.containsKey("withBMPRestore"))
+        {
+            withBMP = json["withBMPRestore"];
+            if (withBMP == true)
+            {
+                matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray, bmpWidth, bmpHeight);
+            }
+        }
+
+        // Restore a animateBMPAktivLoop from (stored) message
+        if (json.containsKey("animateBMPAktivLoopRestore"))
+        {
+            animateBMPAktivLoop = json["animateBMPAktivLoopRestore"];
+        }
+
         // Ist ein Bitmap übergeben worden?
         if (json.containsKey("bitmap"))
         {
@@ -1671,6 +1730,19 @@ void CreateFrames(JsonObject &json, int forceDuration)
     if (forceDuration > 0 && (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation")))
     {
         forcedScreenIsActiveUntil = millis() + forceDuration;
+    }
+
+    if (!json.containsKey("sleepMode"))
+    {
+        // Store last frame
+
+        json.remove("bitmap");
+        json.remove("bitmaps");
+        json.remove("bitmapAnimation");
+        json["withBMPRestore"] = withBMP;
+        json["animateBMPAktivLoopRestore"] = animateBMPAktivLoop;
+        currentScreenJsonBuffer = "";
+        json.printTo(currentScreenJsonBuffer);
     }
 }
 
@@ -2094,12 +2166,9 @@ void ScrollText(bool isFadeInRequired)
         matrix->print(scrollTextString);
 
         // draw black pixel under icon / blank space if (xOffset > 0)
+        for (int i = 0; i < xOffset; i++)
         {
-
-            for (int i = 0; i < xOffset; i++)
-            {
-                matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
-            }
+            matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
         }
 
         if (withBMP)
@@ -2978,38 +3047,30 @@ uint ColorWheel(byte wheelPos, int pos)
 
 void ShowBootAnimation()
 {
-    DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, 4, 1);
+    DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, (MATRIX_WIDTH / 2) - 12, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, 8, 1);
+    DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, (MATRIX_WIDTH / 2) - 8, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, 10, 1);
+    DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, (MATRIX_WIDTH / 2) - 6, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, 14, 1);
+    DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, (MATRIX_WIDTH / 2) - 2, 1);
     matrix->show();
 
     delay(200);
-    DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, 18, 1);
+    DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, (MATRIX_WIDTH / 2) + 2, 1);
     matrix->show();
 
     delay(500);
-    DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, 22, 1);
-    DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, 24, 1);
+    DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 6, 1);
+    DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 8, 1);
     matrix->show();
     delay(1000);
-
-    // FadeIn(60, 10);
-    // DrawTextHelper("PIXELIT", false, false, false, false, false,  255, 255, 255, 3, 1);
-    // FadeIn(60, 10);
-    // FadeOut(60, 10);
-    // FadeIn(60, 10);
-    // FadeOut(60, 10);
-    // FadeIn(60, 10);
 }
 
 void ShowBatteryScreen()
@@ -3690,7 +3751,10 @@ void loop()
             checkUpdateScreenPrevMillis = millis();
             if (!lastReleaseVersion.equals(VERSION))
             {
-                displayUpdateScreen();
+                if (!sleepMode)
+                {
+                    displayUpdateScreen();
+                }
             }
         }
     }
@@ -3869,13 +3933,13 @@ void loop()
         // SendMp3PlayerInfo(false);
     }
 
-    if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
+    if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
     {
         animateBMPPrevMillis = millis();
         AnimateBMP(true);
     }
 
-    if (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay)
+    if (!sleepMode && (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay))
     {
         scrollTextPrevMillis = millis();
         ScrollText(false);
