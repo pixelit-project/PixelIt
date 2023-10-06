@@ -110,8 +110,8 @@
                         <hr />
                         <br />
                         <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
-                        <v-select :items="pinsESP8266" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
-                        <v-select :items="pinsESP8266" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin (ESP8266 only)" :disabled="!config.isESP8266"></v-select>
+                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin"></v-select>
+                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin"></v-select>
                     </v-card>
                     <br />
                     <v-card class="pa-2" elevation="4">
@@ -196,6 +196,12 @@ export default {
         },
         ldrDevices() {
             return this.$store.state.ldrDevices;
+        },
+        isESP8266() {
+            return this.$store.state.config.isESP8266;
+        },
+        pinsESP32() {
+            return this.$store.state.pinsESP32;
         },
         pinsESP8266() {
             return this.$store.state.pinsESP8266;

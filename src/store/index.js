@@ -111,9 +111,9 @@ export default new Vuex.Store({
             //     target: '_blank',
             // },
             {
-                title: "Pixel Creator",
-                icon: "mdi-pencil-box-outline",
-                page: "/creator"
+                title: 'Pixel Creator',
+                icon: 'mdi-pencil-box-outline',
+                page: '/creator',
             },
             {
                 title: 'Forum',
@@ -346,6 +346,64 @@ export default new Vuex.Store({
             {
                 text: 'Pin D8',
                 value: 'Pin_D8',
+            },
+        ],
+        pinsESP32: [
+            {
+                text: 'GPIO 14',
+                value: 'GPIO_NUM_14',
+            },
+            {
+                text: 'GPIO 15',
+                value: 'GPIO_NUM_15',
+            },
+            {
+                text: 'GPIO 16',
+                value: 'GPIO_NUM_16',
+            },
+            {
+                text: 'GPIO 17',
+                value: 'GPIO_NUM_17',
+            },
+            {
+                text: 'GPIO 18',
+                value: 'GPIO_NUM_18',
+            },
+            {
+                text: 'GPIO 19',
+                value: 'GPIO_NUM_19',
+            },
+            {
+                text: 'GPIO 21',
+                value: 'GPIO_NUM_21',
+            },
+            {
+                text: 'GPIO 22',
+                value: 'GPIO_NUM_22',
+            },
+            {
+                text: 'GPIO 23',
+                value: 'GPIO_NUM_23',
+            },
+            {
+                text: 'GPIO 25',
+                value: 'GPIO_NUM_25',
+            },
+            {
+                text: 'GPIO 26',
+                value: 'GPIO_NUM_26',
+            },
+            {
+                text: 'GPIO 27',
+                value: 'GPIO_NUM_27',
+            },
+            {
+                text: 'SPI CLK',
+                value: 'SPI_CLK_GPIO_NUM',
+            },
+            {
+                text: 'SPI CS0',
+                value: 'SPI_CS0_GPIO_NUM',
             },
         ],
         btnLowHigh: [
@@ -608,6 +666,9 @@ function getDisplayName(key) {
         case 'matrixsize':
             key = 'Matrix size';
             break;
+        case 'battery':
+            key = 'Battery';
+            break;
     }
     return key;
 }
@@ -666,6 +727,9 @@ function getDisplayValue(key, value) {
             break;
         case 'matrixsize':
             value = value.cols + ' x ' + value.rows + ' (cols x rows)';
+            break;
+        case 'battery':
+            value = value + ' %';
             break;
     }
     return value;
