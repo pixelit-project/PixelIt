@@ -1,11 +1,10 @@
 name: Build, Release & Deploy
 
-on:
-  [push]
+on: [push]
 
 env:
   prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'testing') }}
-      
+
 jobs:
   build-webui:
     runs-on: ubuntu-latest
@@ -13,7 +12,7 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
         with:
-          repository: 'pixelit-project/WebUI'
+          repository: "pixelit-project/WebUI"
 
       - name: Use Node.js 💾
         uses: actions/setup-node@v3
@@ -78,7 +77,7 @@ jobs:
           pip install --upgrade platformio
 
       - name: Run PlatformIO build on selected platforms 🏗️
-        run: platformio run -e d1_mini -e ESP8266 -e wemos_d1_mini32 -e nodemcuv2
+        run: platformio run -e ESP8266_generic -e ESP8266_nodemcuv2 -e ESP32_generic -e ESP32_d1_mini32 -e ESP8266_d1_mini -e ESP32_Ulanzi
 
       - name: Upload build artifacts 💾
         uses: actions/upload-artifact@v3
@@ -118,7 +117,7 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
         with:
-          repository: 'pixelit-project/WebUI'
+          repository: "pixelit-project/WebUI"
 
       - name: Download artifacts 💾
         uses: actions/download-artifact@v3
