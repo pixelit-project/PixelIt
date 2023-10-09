@@ -74,10 +74,14 @@ jobs:
       - name: Install pio and its dependencies 🔧
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade platformio
+          pip install --upgrade platformio esptool
 
       - name: Run PlatformIO build on selected platforms 🏗️
         run: platformio run -e ESP8266_generic -e ESP8266_nodemcuv2 -e ESP32_generic -e ESP32_d1_mini32 -e ESP8266_d1_mini -e ESP32_ulanzi
+
+      - name: Merge ESP32 firmware to single binaries 🔧
+        run: |
+          python .github/merge.py
 
       - name: Upload build artifacts 💾
         uses: actions/upload-artifact@v3
