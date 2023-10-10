@@ -57,7 +57,7 @@
 #define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
 #define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
-#define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
+#define VERSION "2.3.2-beta" // will be replaced by build piple with Git-Tag!
 
 #define XSTR(x) #x
 #define STR(x) XSTR(x)
@@ -384,6 +384,9 @@ String ResetReason()
 
 Version parseVersion(const char* versionStr) {
     Version version;
+    
+    memset(version.prerelease, 0, sizeof(version.prerelease));
+
     int x = sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
     return version;
 }
@@ -3732,11 +3735,11 @@ void checkUpdate()
 
             if (result > 0)
             {
-                Log(F("CheckUpdate"), "New FW available -> " + lastReleaseVersion);
+                Log(F("CheckUpdate"), "New FW available " + String(VERSION) + " -> " + lastReleaseVersion);
             }
             else
             {
-                Log(F("CheckUpdate"), F("No new FW available"));
+                Log(F("CheckUpdate"), "No new FW available " + String(VERSION) + " -> " + lastReleaseVersion);
             }
         }
     }
