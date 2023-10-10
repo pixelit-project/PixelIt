@@ -57,7 +57,7 @@
 #define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
 #define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
-#define VERSION "2.3.2-beta" // will be replaced by build piple with Git-Tag!
+#define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
 #define XSTR(x) #x
 #define STR(x) XSTR(x)
@@ -392,6 +392,11 @@ Version parseVersion(const char* versionStr) {
 }
 
 int compareVersions(const char* version1, const char* version2) {
+    if (strlen(version1) == 0 || strlen(version2) == 0)
+    {
+        return 0;
+    }
+
     Version v1 = parseVersion(version1);
     Version v2 = parseVersion(version2);
 
