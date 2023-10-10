@@ -28,14 +28,14 @@ for item in os.listdir(root_dir):
         # Check if the directory contains a file which begins with "firmware"
         firmware_path = ""
         for file in os.listdir(item_path):
-            if file.lower().startswith("firmware") and file.lower().endswith(".bin") and "combined" not in file.lower():
+            if file.lower().startswith("firmware") and file.lower().endswith(".bin") and "full-upgrade" not in file.lower():
                 firmware_path = os.path.join(item_path, file)
                 directory_path, filename_with_extension = os.path.split(firmware_path)
                 filename, file_extension = os.path.splitext(filename_with_extension)
                 print(f"> Found a 'firmware' file: {firmware_path}")
 
                 # build new filename
-                firmware_combined_path = os.path.join(directory_path, filename + ".combined" + file_extension)
+                firmware_combined_path = os.path.join(directory_path, filename + ".full-upgrade" + file_extension)
 
                 # copy boot_app0.bin
                 print(f"> Copying boot_app0.bin to {item_path}...")
@@ -50,10 +50,6 @@ for item in os.listdir(root_dir):
                     break
                 else:
                     print("> Merging successful")
-                
-                # remove unmerged firmware
-                print(f"> Removing unmerged firmware {firmware_path}...")
-                os.remove(firmware_path)
 
                 print("> Done")
                 break
