@@ -336,6 +336,13 @@ unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
 
+typedef struct {
+    int major;
+    int minor;
+    int patch;
+    char prerelease[16];
+} Version;
+
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
 
@@ -373,6 +380,37 @@ String ResetReason()
         return "Unknown reset reason";
     }
 #endif
+}
+
+Version parseVersion(const char* versionStr) {
+    Version version;
+    int x = sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
+    return version;
+}
+
+int compareVersions(const char* version1, const char* version2) {
+    Version v1 = parseVersion(version1);
+    Version v2 = parseVersion(version2);
+
+    if (v1.major != v2.major) {
+        return v1.major - v2.major;
+    }
+    if (v1.minor != v2.minor) {
+        return v1.minor - v2.minor;
+    }
+    if (v1.patch != v2.patch) {
+        return v1.patch - v2.patch;
+    }
+
+    if (strlen(v1.prerelease) == 0 && strlen(v2.prerelease) == 0) {
+        return 0; // Versions are equal
+    } else if (strlen(v1.prerelease) == 0) {
+        return 1; // v1 is greater (no prerelease for v1, but prerelease for v2)
+    } else if (strlen(v2.prerelease) == 0) {
+        return -1; // v2 is greater (no prerelease for v2, but prerelease for v1)
+    } else {
+        return strcmp(v1.prerelease, v2.prerelease); // Compare prerelease strings
+    }
 }
 
 void getBatteryVoltage()
@@ -3689,9 +3727,12 @@ void checkUpdate()
         if (root.containsKey("version"))
         {
             lastReleaseVersion = root["version"].as<String>();
-            if (!lastReleaseVersion.equals(VERSION))
+
+            int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
+
+            if (result > 0)
             {
-                Log(F("CheckUpdate"), F("New FW available"));
+                Log(F("CheckUpdate"), "New FW available -> " + lastReleaseVersion);
             }
             else
             {
@@ -3748,7 +3789,9 @@ void loop()
         if (millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
         {
             checkUpdateScreenPrevMillis = millis();
-            if (!lastReleaseVersion.equals(VERSION))
+
+            int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
+            if (result > 0)
             {
                 if (!sleepMode)
                 {
