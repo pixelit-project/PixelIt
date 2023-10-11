@@ -1,6 +1,8 @@
-![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
+![](.github/logo.png)
 
 # PixelIt - The Matrix Display
+
+![](.github/pixelit.png)
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
