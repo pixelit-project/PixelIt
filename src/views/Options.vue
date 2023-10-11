@@ -141,7 +141,7 @@
                             <br />
                             <prism-editor class="editor" v-model="telemetryData" :highlight="highlighter" readonly></prism-editor>
                             <br />
-                            <ButtonCondition color="primary" :condition="sockedIsConnected && config.sendTelemetry" text="Send now" icon="mdi-cloud-upload" :onclick="sendTelemetry" />
+                            <ButtonCondition color="primary" :condition="sockedIsConnected && sendTelemetryEnabled" text="Send now" icon="mdi-cloud-upload" :onclick="sendTelemetry" />
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -178,6 +178,9 @@ export default {
         },
         config() {
             return this.$store.state.configData;
+        },
+        sendTelemetryEnabled() {
+            return this.$store.state.configData.sendTelemetry || false; // Initial value required, as the config object is not yet available for the first request.
         },
         sockedIsConnected() {
             return this.$store.state.socket.isConnected;

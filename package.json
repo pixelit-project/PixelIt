@@ -40,7 +40,7 @@
         "babel-eslint": "^10.1.0",
         "eslint": "^6.7.2",
         "eslint-plugin-vue": "^6.2.2",
-        "sass": "~1.66.1",
+        "sass": "~1.32.13",
         "sass-loader": "^10.3.1",
         "vue-cli-plugin-vuetify": "^2.4.2",
         "vue-template-compiler": "^2.7.8",
