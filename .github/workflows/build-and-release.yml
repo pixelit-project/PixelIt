@@ -148,9 +148,10 @@ jobs:
           destination-github-username: "pixelit-project"
           destination-repository-name: "PixelIt.Docs"
           user-email: bot@pixelit
+          user-name: PixelIt Pipeline Bot
           target-branch: master
           target-directory: "src/.vuepress/public/pixelit_flasher/firmware/"
-          commit-message: pushed from $GITHUB_REF via GitHub Actions
+          commit-message: Pushed binaries from main repo via GitHub Actions
 
   deploy-webui-gh-pages:
     runs-on: ubuntu-latest
