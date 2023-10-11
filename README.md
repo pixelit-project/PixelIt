@@ -109,11 +109,12 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.4.0 **WORK IN PROGRESS**
+### 2.4.x **WORK IN PROGRESS**
 
 -   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
 -   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
+-   (Metaln00b) Improved new firmware check by doing real version compare (major, minor, patch and prerelease)
 
 ### 2.3.2 (2023-09-16)
 
