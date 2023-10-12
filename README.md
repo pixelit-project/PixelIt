@@ -112,6 +112,8 @@ Thanks to these great people for supporting this project.
 <!-- ** WORK IN PROGRESS ** -->
 
 ### 2.4.x **WORK IN PROGRESS**
+
+-   (o0shojo0o) As of this version, it is possible to install via the new [webflasher](https://pixelit-project.github.io/firmware.html#flashing-web)
 -   (jekader) Remove duplication from platformio.ini [[#315](https://github.com/pixelit-project/PixelIt/issues/315)]
 -   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
