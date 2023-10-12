@@ -112,7 +112,7 @@ Thanks to these great people for supporting this project.
 <!-- ** WORK IN PROGRESS ** -->
 
 ### 2.4.x **WORK IN PROGRESS**
--   (jekader) Remove duplication from platformio.ini [#315](https://github.com/pixelit-project/PixelIt/issues/315)
+-   (jekader) Remove duplication from platformio.ini [[#315](https://github.com/pixelit-project/PixelIt/issues/315)]
 -   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
 -   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
@@ -123,7 +123,7 @@ Thanks to these great people for supporting this project.
 -   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
 -   (foorschtbar) Added uptime, size and last reset reason to WebUI
 -   (foorschtbar) Screens from test area are now displayed prioritized for 5 seconds
--   (foorschtbar) Combine centerText with scrollText=auto [#96](https://github.com/pixelit-project/PixelIt/issues/96)
+-   (foorschtbar) Combine centerText with scrollText=auto [[#96](https://github.com/pixelit-project/PixelIt/issues/96)]
 -   (foorschtbar) Cleanup text drawing/scrolling code **[Breaking change: Text position is now mandatory and will not be shiffed if there is an icon!]**
 -   (foorschtbar) Prepearing support for different matrix sizes
 -   (o0shojo0o) Added native `Pixel Creator` to WebUI
