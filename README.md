@@ -113,12 +113,16 @@ Thanks to these great people for supporting this project.
 
 ### 2.4.x **WORK IN PROGRESS**
 
--   (o0shojo0o) As of this version, it is possible to install via the new [webflasher](https://pixelit-project.github.io/firmware.html#flashing-web)
--   (jekader) Remove duplication from platformio.ini [[#315](https://github.com/pixelit-project/PixelIt/issues/315)]
--   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
+-   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
 -   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
 -   (Metaln00b) Improved new firmware check by doing real version compare (major, minor, patch and prerelease)
+-   (o0shojo0o) As of this version, it is possible to install via the new [webflasher](https://pixelit-project.github.io/firmware.html#flashing-web)
+-   (jekader) Remove duplication from platformio.ini [[#315](https://github.com/pixelit-project/PixelIt/issues/315)]
+-   (foorschtbar) MQTT/Websocket message interval for sensors and matrix info are now minimum 10 seconds to reduce "noise" on the network
+-   (foorschtbar) Added support for SHT31 sensor
+-   (foorschtbar) Log error if MQTT or Websocket message is to long
+-   (jekader) Improve logging during pin assignment
 
 ### 2.3.2 (2023-09-16)
 

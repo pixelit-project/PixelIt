@@ -61,7 +61,8 @@
 #define SEND_LIVEVIEW_INTERVAL 250                  // 0.5 Seconds, 0 to disable
 #define SEND_LUX_INTERVAL 1000 * 10                 // 10 Seconds
 #define SEND_MATRIXINFO_INTERVAL 1000 * 10          // 10 Seconds
-#define SEND_SENSOR_INTERVAL 1000 * 3               // 3 Seconds
+#define SEND_SENSOR_INTERVAL 1000 * 3               // 10 Seconds
+#define UPDATE_BATTERY_LEVEL_INTERVAL 1000 * 30     // 30 Seconds
 
 // Version config - will be replaced by build piple with Git-Tag!
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
@@ -104,7 +105,6 @@ unsigned int ldrSmoothing = 0;
 // Battery stuff
 float batteryLevel = 0;
 unsigned long batteryLevelPrevMillis = 0;
-const int BATTERY_LEVEL_INTERVAL = 30 * 1000;
 
 #ifndef MIN_BATTERY
 #define MIN_BATTERY 0
@@ -3794,7 +3794,7 @@ void loop()
     webSocket.loop();
 
     // Update Battery level
-    if (millis() - batteryLevelPrevMillis >= BATTERY_LEVEL_INTERVAL)
+    if (millis() - batteryLevelPrevMillis >= UPDATE_BATTERY_LEVEL_INTERVAL)
     {
         batteryLevelPrevMillis = millis();
         getBatteryVoltage();
