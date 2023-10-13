@@ -3315,7 +3315,7 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
         return LightDependentResistor::GL5539;
     if (photocell == "GL5549")
         return LightDependentResistor::GL5549;
-    Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
+    Log(F("LDR assignment - unknown type"), photocell);
     return LightDependentResistor::GL5528;
 }
 
@@ -3342,7 +3342,7 @@ uint8_t TranslatePin(String pin)
         return D8;
     if (pin == "Pin_27")
         return 27;
-    Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+    Log(F("Pin assignment - unknown pin"), pin);
     return LED_BUILTIN;
 #elif defined(ESP32)
 
@@ -3375,7 +3375,7 @@ uint8_t TranslatePin(String pin)
     if (pin == "SPI_CS0_GPIO_NUM")
         return SPI_CS0_GPIO_NUM;
 
-    Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+    Log(F("Pin assignment - unknown pin"), pin);
     return GPIO_NUM_32; // IDK
 #endif
 }
