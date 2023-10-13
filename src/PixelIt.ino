@@ -336,7 +336,8 @@ unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
 
-typedef struct {
+typedef struct
+{
     int major;
     int minor;
     int patch;
@@ -382,16 +383,18 @@ String ResetReason()
 #endif
 }
 
-Version parseVersion(const char* versionStr) {
+Version parseVersion(const char *versionStr)
+{
     Version version;
-    
+
     memset(version.prerelease, 0, sizeof(version.prerelease));
 
     int x = sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
     return version;
 }
 
-int compareVersions(const char* version1, const char* version2) {
+int compareVersions(const char *version1, const char *version2)
+{
     if (strlen(version1) == 0 || strlen(version2) == 0)
     {
         return 0;
@@ -400,23 +403,33 @@ int compareVersions(const char* version1, const char* version2) {
     Version v1 = parseVersion(version1);
     Version v2 = parseVersion(version2);
 
-    if (v1.major != v2.major) {
+    if (v1.major != v2.major)
+    {
         return v1.major - v2.major;
     }
-    if (v1.minor != v2.minor) {
+    if (v1.minor != v2.minor)
+    {
         return v1.minor - v2.minor;
     }
-    if (v1.patch != v2.patch) {
+    if (v1.patch != v2.patch)
+    {
         return v1.patch - v2.patch;
     }
 
-    if (strlen(v1.prerelease) == 0 && strlen(v2.prerelease) == 0) {
+    if (strlen(v1.prerelease) == 0 && strlen(v2.prerelease) == 0)
+    {
         return 0; // Versions are equal
-    } else if (strlen(v1.prerelease) == 0) {
+    }
+    else if (strlen(v1.prerelease) == 0)
+    {
         return 1; // v1 is greater (no prerelease for v1, but prerelease for v2)
-    } else if (strlen(v2.prerelease) == 0) {
+    }
+    else if (strlen(v2.prerelease) == 0)
+    {
         return -1; // v2 is greater (no prerelease for v2, but prerelease for v1)
-    } else {
+    }
+    else
+    {
         return strcmp(v1.prerelease, v2.prerelease); // Compare prerelease strings
     }
 }
@@ -1120,7 +1133,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(payload);
 
-        Log("MQTT_callback", "Incomming JSON (Topic: " + String(topic) + ", Length: " + String(json.measureLength()) + ") ");
+        Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Length: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
         if (channel.equals("setScreen"))
         {
@@ -1184,7 +1197,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             int forcedDuration = 0;
 
             // Logausgabe
-            Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(json.measureLength()) + ")");
+            Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(length) + "/" + String(json.measureLength()) + ")");
 
             if (json.containsKey("forcedDuration"))
             {
