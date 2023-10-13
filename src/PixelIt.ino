@@ -67,6 +67,7 @@
 // Version config - will be replaced by build piple with Git-Tag!
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
+// Workaround for String in defines
 #define XSTR(x) #x
 #define STR(x) XSTR(x)
 
@@ -2035,6 +2036,7 @@ String GetMatrixInfo()
     //// Matrix Config
     root["note"] = note;
     root["hostname"] = hostname;
+    root["buildSection"] = STR(BUILD_SECTION);
     root["freeSketchSpace"] = ESP.getFreeSketchSpace();
     root["wifiRSSI"] = WiFi.RSSI();
     root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -2103,10 +2105,13 @@ String GetTelemetry()
     root["uuid"] = sha1(GetChipID());
     root["version"] = VERSION;
     root["type"] = isESP8266 ? "esp8266" : "esp32";
+    root["buildSection"] = STR(BUILD_SECTION);
 
     JsonObject &matrix = root.createNestedObject("matrix");
     matrix["type"] = matrixType;
     matrix["name"] = MatrixTypeNames[matrixType - 1];
+    matrix["width"] = MATRIX_WIDTH;
+    matrix["height"] = MATRIX_HEIGHT;
 
     JsonArray &sensors = root.createNestedArray("sensors");
     sensors.add(LuxSensorNames[luxSensor]);
