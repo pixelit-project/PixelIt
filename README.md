@@ -123,6 +123,7 @@ Thanks to these great people for supporting this project.
 -   (foorschtbar) Added support for SHT31 sensor
 -   (foorschtbar) Log error if MQTT or Websocket message is to long
 -   (jekader) Improve logging during pin assignment
+-   (foorschtbar) Added build section from PIO config to matrix info and telemetry data
 
 ### 2.3.2 (2023-09-16)
 
