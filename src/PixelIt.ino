@@ -1135,6 +1135,11 @@ void callback(char *topic, byte *payload, unsigned int length)
 
         Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Length: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
+        if (length != json.measureLength())
+        {
+            Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+            return;
+        }
         if (channel.equals("setScreen"))
         {
             CreateFrames(json);
@@ -1170,13 +1175,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     }
     case WStype_CONNECTED:
     {
-        // Merken für was die Connection hergstellt wurde
+        // Remember for what the connection was established
         websocketConnection[num] = String((char *)payload);
 
-        // IP der Connection abfragen
+        // get ip
         IPAddress ip = webSocket.remoteIP(num);
 
-        // Logausgabe
+        // Logging
         Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
         // send message to client
@@ -1196,8 +1201,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             JsonObject &json = jsonBuffer.parseObject(payload);
             int forcedDuration = 0;
 
-            // Logausgabe
+            // Logging
             Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(length) + "/" + String(json.measureLength()) + ")");
+            if (length != json.measureLength())
+            {
+                Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+                return;
+            }
 
             if (json.containsKey("forcedDuration"))
             {
