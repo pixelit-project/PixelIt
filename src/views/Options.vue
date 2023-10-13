@@ -124,15 +124,17 @@
                         <v-card-text>
                             <h3>Why?</h3>
                             <br />
-                            Why we want to collect telemetry data and what data:<br /><br />
                             The telemetry data helps us to understand which hardware is used for the PixelIt and also which software versions of the PixelIt are on the road.<br />
                             Also it is a motivator for us developers to see the spread so that we can continue to have fun developing :)<br /><br />
                             The data is sent anonymously and includes the following data:<br />
-                            <li>UUID is a generated hash from the ESP hardware</li>
-                            <li>Version from the PixelIt</li>
-                            <li>Matrix type</li>
-                            <li>Sensors used</li>
-                            <li>Country (via GeoIP service)</li>
+                            <ul>
+                                <li>UUID is a generated hash from the ESP hardware</li>
+                                <li>Version from the PixelIt</li>
+                                <li>Build section name</li>
+                                <li>Matrix type and size</li>
+                                <li>Sensors used (types)</li>
+                                <li>Country (via GeoIP service, but <u>NO</u> IP address)</li>
+                            </ul>
                             <br />
                             That was it :)
                         </v-card-text>
@@ -242,3 +244,11 @@ export default {
     },
 };
 </script>
+<style>
+ul {
+    margin-top: 10px;
+}
+li {
+    margin-left: 20px;
+}
+</style>
