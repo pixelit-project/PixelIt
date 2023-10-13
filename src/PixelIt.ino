@@ -51,12 +51,19 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
-#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12    // 12 Hours
-#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8    // 8 Hours
-#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30 // 30 Minutes
-#define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
-#define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
+// Internal Config
+#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8      // 8 Hours
+#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30   // 30 Minutes
+#define CHECKUPDATESCREEN_DURATION 1000 * 5         // 5 Seconds
+#define CONTROL_BRIGHTNESS_INTERVAL 1000            // 1000 Milliseconds
+#define SEND_TELEMETRY_INTERVAL 1000 * 60 * 60 * 12 // 12 Hours
+#define SEND_LIVEVIEW_INTERVAL 250                  // 0.5 Seconds, 0 to disable
+#define SEND_LUX_INTERVAL 1000 * 10                 // 10 Seconds
+#define SEND_MATRIXINFO_INTERVAL 1000 * 10          // 10 Seconds
+#define SEND_SENSOR_INTERVAL 1000 * 3               // 3 Seconds
+
+// Version config - will be replaced by build piple with Git-Tag!
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
 
 #define XSTR(x) #x
@@ -315,9 +322,9 @@ int animateBMPFrameCount = 0;
 
 // Sensors Vars
 unsigned long sendLuxPrevMillis = 0;
+unsigned long getLuxPrevMillis = 0;
 unsigned long sendSensorPrevMillis = 0;
 unsigned long sendInfoPrevMillis = 0;
-String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
 float currentLux = 0.0f;
@@ -1185,7 +1192,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
         // send message to client
-        SendMatrixInfo(true);
+        SendMatrixInfo();
         SendLDR(true);
         SendSensor(true);
         SendConfig();
@@ -1980,6 +1987,7 @@ String GetSensor()
     {
         root["battery"] = "Not installed";
     }
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -1995,6 +2003,7 @@ String GetLuxSensor()
     JsonObject &root = jsonBuffer.createObject();
 
     root["lux"] = currentLux;
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -2009,6 +2018,7 @@ String GetBrightness()
 
     root["brightness_255"] = currentMatrixBrightness;
     root["brightness"] = map(currentMatrixBrightness, 0, 255, 0, 100);
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -2064,6 +2074,7 @@ String GetButtons()
     {
         root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
     }
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -3834,7 +3845,7 @@ void loop()
 
     // Send Telemetry data first time after 30.3 seconds
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
+    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
@@ -3949,9 +3960,10 @@ void loop()
         DrawClock(false);
     }
 
-    if (millis() - sendLuxPrevMillis >= 1000)
+    // Get Lunx and control brightness
+    if (millis() - getLuxPrevMillis >= SEND_LUX_INTERVAL)
     {
-        sendLuxPrevMillis = millis();
+        getLuxPrevMillis = millis();
 
         if (luxSensor == LuxSensor_BH1750)
         {
@@ -3965,8 +3977,6 @@ void loop()
         {
             currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
         }
-
-        SendLDR(false);
 
         if (!sleepMode && matrixBrightnessAutomatic)
         {
@@ -3990,7 +4000,15 @@ void loop()
         }
     }
 
-    if (millis() - sendSensorPrevMillis >= 3000)
+    // Send LDR values non-foreced
+    if (millis() - sendLuxPrevMillis >= SEND_LUX_INTERVAL)
+    {
+        sendLuxPrevMillis = millis();
+        SendLDR(false);
+    }
+
+    // Send Sensor values non-foreced
+    if (millis() - sendSensorPrevMillis >= SEND_SENSOR_INTERVAL)
     {
         sendSensorPrevMillis = millis();
         SendSensor(false);
@@ -3999,10 +4017,11 @@ void loop()
     // liveview
     liveview.loop();
 
-    if (millis() - sendInfoPrevMillis >= 3000)
+    // send matrix info
+    if (millis() - sendInfoPrevMillis >= SEND_MATRIXINFO_INTERVAL)
     {
         sendInfoPrevMillis = millis();
-        SendMatrixInfo(false);
+        SendMatrixInfo();
         // SendMp3PlayerInfo(false);
     }
 
@@ -4019,35 +4038,27 @@ void loop()
     }
 }
 
-void SendMatrixInfo(bool force)
+void SendMatrixInfo()
 {
-    if (force)
-    {
-        oldGetMatrixInfo = "";
-    }
-
-    String matrixInfo;
-
-    // Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
+    // Check if mqtt or websocket connected
     if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
     {
-        matrixInfo = GetMatrixInfo();
-    }
-    // Prüfen ob über MQTT versendet werden muss
-    if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
-    {
-        client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
-    }
-    // Prüfen ob über Websocket versendet werden muss
-    if (webSocket.connectedClients() > 0 && oldGetMatrixInfo != matrixInfo)
-    {
-        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        String matrixInfo = GetMatrixInfo();
+
+        // Check if sending via MQTT is required
+        if (mqttAktiv == true && client.connected())
         {
-            webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+            client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+        }
+        // Check if sending via websocket is required
+        if (webSocket.connectedClients() > 0)
+        {
+            for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+            {
+                webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+            }
         }
     }
-
-    oldGetMatrixInfo = matrixInfo;
 }
 
 void SendLDR(bool force)
