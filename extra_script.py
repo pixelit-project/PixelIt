@@ -31,4 +31,4 @@ if version == "":
 
 # Rename binary according to environnement/board
 # ex: firmware_esp32dev.bin or firmware_nodemcuv2.bin
-env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}.bin")
+env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}")

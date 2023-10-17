@@ -1,21 +1,21 @@
 ![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
 
-# PixelIt
+# PixelIt - The Matrix Display
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
-The PixelIt is an ESP8266 / ESP32 (under construction) and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
+The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
-If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/).
+If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
 
--   [Documentation](https://pixelit-project.github.io/)
--   [Blog](https://www.bastelbunker.de/pixel-it/)
--   [PixelIt Web](https://pixelit.bastelbunker.de/PixelGallery)
--   [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
--   [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
--   [Discord Channel ![](https://img.shields.io/discord/558849582377861122?logo=discord)](https://discord.gg/JHE9P9zczW)
+-   :memo: [Documentation](https://pixelit-project.github.io/)
+-   :page_facing_up: [Blog](https://www.bastelbunker.de/pixel-it/)
+-   :green_heart: [PixelIt Icon Gallery](https://pixelit.bastelbunker.de/PixelGallery)
+-   :bulb: [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
+-   :fire: [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
+-   :fire:[Discord Channel ![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
 
 ## Contributors
 
@@ -89,6 +89,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/jekader">
+            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
+            <br />
+            <sub><b>Null</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/rliegmann">
             <img src="https://avatars.githubusercontent.com/u/16445478?v=4" width="100;" alt="rliegmann"/>
             <br />
@@ -100,9 +107,23 @@ Thanks to these great people for supporting this project.
 
 ## Changelog
 
-<!--
-### **WORK IN PROGRESS**
--->
+<!-- ** WORK IN PROGRESS ** -->
+
+### 2.4.0 ** WORK IN PROGRESS ** (Develop Branch)
+
+-   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
+-   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
+-   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
+
+### 2.3.2 (2023-09-16)
+
+-   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
+-   (foorschtbar) Added uptime, size and last reset reason to WebUI
+-   (foorschtbar) Screens from test area are now displayed prioritized for 5 seconds
+-   (foorschtbar) Combine centerText with scrollText=auto [#96](https://github.com/pixelit-project/PixelIt/issues/96)
+-   (foorschtbar) Cleanup text drawing/scrolling code **[Breaking change: Text position is now mandatory and will not be shiffed if there is an icon!]**
+-   (foorschtbar) Prepearing support for different matrix sizes
+-   (o0shojo0o) Added native `Pixel Creator` to WebUI
 
 ### 2.2.0 (2023-02-11)
 
@@ -110,7 +131,7 @@ Thanks to these great people for supporting this project.
 -   (miccgn) Fix probing onewire can break previos i2c communication
 -   (rliegmann) Bring ESP32 support back
 -   (foorschtbar) Removed support for ESP32. There are incompatibilities with the WiFi Manager lib and the maintenance effort to fix this is currently too high (PRs are welcome!)
--   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. [Breaking change! No migration takes place! You need to swap the pins in your config!]
+-   (foorschtbar) Swaped DFPlayer Mini TX and RX pins - Description in frontend and source code now fit together. **[Breaking change: No migration takes place! You need to swap the pins in your config!]**
 -   (foorschtbar) Support for NodeMCU v2
 -   (d4rkd3v1l) any "clock" json parameters are now optional https://github.com/pixelit-project/PixelIt/pull/222
 
@@ -421,3 +442,7 @@ Thanks to these great people for supporting this project.
 
 -   (o0shojo0o) add MQTT Support
 -   (o0shojo0o) add animated 8x8 icons (max. 6 frames)
+
+## Disclaimer
+
+\* This link and some others in the documentation are affiliate links. We would be happy if you use this link, but of course you don't have to.
