@@ -2424,7 +2424,7 @@ void DrawClock(bool fromJSON)
         sprintf_P(date, PSTR("%02d/%02d"), month(), day());
     }
 
-    if (clock24Hours && clockWithSeconds && !clockFatFont)
+    if (clock24Hours && clockWithSeconds && !clockFatFont && !clockLargeFont)
     {
         xPosTime = 2;
         sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
@@ -2436,7 +2436,7 @@ void DrawClock(bool fromJSON)
         if (clockBlink && clockBlinkAnimated)
         {
             clockBlink = false;
-            if (!clockFatFont)
+            if (!clockFatFont && !clockLargeFont)
             {
                 sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2448,7 +2448,7 @@ void DrawClock(bool fromJSON)
         else
         {
             clockBlink = !clockBlink;
-            if (!clockFatFont)
+            if (!clockFatFont && !clockLargeFont)
             {
                 sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2488,7 +2488,7 @@ void DrawClock(bool fromJSON)
         {
             clockCounterDate = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFatFont || clockLargeFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
                 DrawTextCenter(String(time), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
@@ -2515,7 +2515,7 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFatFont || clockLargeFont)
         {
 
             DrawTextCenter(String(time), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
@@ -2534,7 +2534,7 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFatFont || clockLargeFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
                 DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
@@ -2561,9 +2561,9 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFatFont || clockLargeFont)
         {
-            DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(date), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2571,7 +2571,7 @@ void DrawClock(bool fromJSON)
         }
     }
 
-    if (!clockFatFont && clockDrawWeekDays)
+    if (!clockFatFont && !clockLargeFont && clockDrawWeekDays)
     {
         DrawWeekDay();
     }
