@@ -1,6 +1,8 @@
-![](https://raw.githubusercontent.com/o0shojo0o/ioBroker.pixelit/master/admin/pixelit.png)
+![](.github/logo.png)
 
 # PixelIt - The Matrix Display
+
+![](.github/pixelit.png)
 
 ![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
 
@@ -109,18 +111,26 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.4.0 ** WORK IN PROGRESS ** (Develop Branch)
+### 2.4.3 (2023-10-17)
 
--   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* (**Beta**, see [Releases](https://github.com/pixelit-project/PixelIt/releases)) :tada:
+-   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
 -   (foorschtbar) Fixed issue with flickering icons, wenn device wake from sleep mode
+-   (Metaln00b) Improved new firmware check by doing real version compare (major, minor, patch and prerelease)
+-   (o0shojo0o) As of this version, it is possible to install via the new [webflasher](https://pixelit-project.github.io/firmware.html#flashing-web)
+-   (jekader) Remove duplication from platformio.ini [[#315](https://github.com/pixelit-project/PixelIt/issues/315)]
+-   (foorschtbar) MQTT/Websocket message interval for sensors and matrix info are now minimum 10 seconds to reduce "noise" on the network
+-   (foorschtbar) Added support for SHT31 sensor
+-   (foorschtbar) Log error if MQTT or Websocket message is to long
+-   (jekader) Improve logging during pin assignment
+-   (foorschtbar) Added build section from PIO config to matrix info and telemetry data
 
 ### 2.3.2 (2023-09-16)
 
 -   (foorschtbar) Added live preview (liveview) of the Matrix to WebUI
 -   (foorschtbar) Added uptime, size and last reset reason to WebUI
 -   (foorschtbar) Screens from test area are now displayed prioritized for 5 seconds
--   (foorschtbar) Combine centerText with scrollText=auto [#96](https://github.com/pixelit-project/PixelIt/issues/96)
+-   (foorschtbar) Combine centerText with scrollText=auto [[#96](https://github.com/pixelit-project/PixelIt/issues/96)]
 -   (foorschtbar) Cleanup text drawing/scrolling code **[Breaking change: Text position is now mandatory and will not be shiffed if there is an icon!]**
 -   (foorschtbar) Prepearing support for different matrix sizes
 -   (o0shojo0o) Added native `Pixel Creator` to WebUI

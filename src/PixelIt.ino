@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #if defined(ESP8266)
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
@@ -11,7 +13,6 @@
 #include <FS.h>
 #endif
 
-#include <Arduino.h>
 // BME Sensor
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -42,19 +43,33 @@
 #include <ArduinoJson.h>
 #include <ArduinoHttpClient.h>
 #include <Hash.h>
+// Ulanzi Sensor
+#include "Adafruit_SHT31.h"
 // PixelIT Stuff
 #include "PixelItFont.h"
 #include "Webinterface.h"
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
-#define TELEMETRY_INTERVAL 1000 * 60 * 60 * 12    // 12 Hours
-#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8    // 8 Hours
-#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30 // 30 Minutes
-#define CHECKUPDATESCREEN_DURATION 1000 * 5       // 5 Seconds
-#define SEND_LIVEVIEW_INTERVAL 250                // 0.5 Seconds, 0 to disable
 
+// Internal Config
+#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8      // 8 Hours
+#define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30   // 30 Minutes
+#define CHECKUPDATESCREEN_DURATION 1000 * 5         // 5 Seconds
+#define CONTROL_BRIGHTNESS_INTERVAL 1000            // 1000 Milliseconds
+#define SEND_TELEMETRY_INTERVAL 1000 * 60 * 60 * 12 // 12 Hours
+#define SEND_LIVEVIEW_INTERVAL 250                  // 0.5 Seconds, 0 to disable
+#define SEND_LUX_INTERVAL 1000 * 10                 // 10 Seconds
+#define SEND_MATRIXINFO_INTERVAL 1000 * 10          // 10 Seconds
+#define SEND_SENSOR_INTERVAL 1000 * 3               // 10 Seconds
+#define UPDATE_BATTERY_LEVEL_INTERVAL 1000 * 30     // 30 Seconds
+
+// Version config - will be replaced by build piple with Git-Tag!
 #define VERSION "0.0.0-beta" // will be replaced by build piple with Git-Tag!
+
+// Workaround for String in defines
+#define XSTR(x) #x
+#define STR(x) XSTR(x)
 
 void FadeOut(int = 10, int = 0);
 void FadeIn(int = 10, int = 0);
@@ -79,24 +94,26 @@ unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to
 const int MQTT_RECONNECT_INTERVAL = 15000;
 // #define MQTT_MAX_PACKET_SIZE 8000
 
-//// LDR Config
-#define LDR_PIN A0
-
-//// GPIO Config
-#if defined(ESP8266)
-const int MATRIX_PIN = D2;
-#elif defined(ESP32)
-const int MATRIX_PIN = 27;
-#endif
-
-String dfpRXPin = "Pin_D7";
-String dfpTXPin = "Pin_D8";
-String onewirePin = "Pin_D1";
-String SCLPin = "Pin_D1";
-String SDAPin = "Pin_D3";
-String ldrDevice = "GL5516";
+String dfpRXPin = STR(DEFAULT_PIN_DFPRX);
+String dfpTXPin = STR(DEFAULT_PIN_DFPTX);
+String onewirePin = STR(DEFAULT_PIN_ONEWIRE);
+String SCLPin = STR(DEFAULT_PIN_SCL);
+String SDAPin = STR(DEFAULT_PIN_SDA);
+String ldrDevice = STR(DEFAULT_LDR);
 unsigned long ldrPulldown = 10000; // 10k pulldown-resistor
 unsigned int ldrSmoothing = 0;
+
+// Battery stuff
+float batteryLevel = 0;
+unsigned long batteryLevelPrevMillis = 0;
+
+#ifndef MIN_BATTERY
+#define MIN_BATTERY 0
+#endif
+
+#ifndef MAX_BATTERY
+#define MAX_BATTERY 100
+#endif
 
 // Telemetry API
 #define TELEMETRY_SERVER_HOST "pixelit.bastelbunker.de"
@@ -108,8 +125,6 @@ unsigned int ldrSmoothing = 0;
 #define CHECKUPDATE_SERVER_PATH "/api/lastversion"
 #define CHECKUPDATE_SERVER_PORT 80
 
-String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
-bool btnEnabled[] = {false, false, false};
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
 enum btnStates
@@ -135,7 +150,15 @@ enum btnActions
     btnAction_MP3PlayNext = 5,
 };
 
+#if defined(ULANZI)
+String btnPin[] = {"GPIO_NUM_26", "GPIO_NUM_27", "GPIO_NUM_14"}; // UlanziTC001 workaround to tweak WebUI
+bool btnEnabled[] = {true, true, true};
+btnActions btnAction[] = {btnAction_DoNothing, btnAction_ToggleSleepMode, btnAction_GotoClock};
+#else
+String btnPin[] = {"Pin_D0", "Pin_D4", "Pin_D5"};
+bool btnEnabled[] = {false, false, false};
 btnActions btnAction[] = {btnAction_ToggleSleepMode, btnAction_GotoClock, btnAction_DoNothing};
+#endif
 
 CRGB leds[MATRIX_WIDTH * MATRIX_HEIGHT];
 
@@ -147,12 +170,15 @@ bool isESP8266 = false;
 
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
+#elif defined(ULANZI)
+TwoWire twowire = TwoWire(0);
 #else
 TwoWire twowire;
 #endif
 Adafruit_BME280 *bme280;
 Adafruit_BMP280 *bmp280;
 Adafruit_BME680 *bme680;
+Adafruit_SHT31 sht31 = Adafruit_SHT31(&twowire);
 unsigned long lastBME680read = 0;
 DHTesp dht;
 
@@ -164,6 +190,7 @@ enum TempSensor
     TempSensor_DHT,
     TempSensor_BME680,
     TempSensor_BMP280,
+    TempSensor_SHT31,
 };
 TempSensor tempSensor = TempSensor_None;
 
@@ -216,7 +243,7 @@ int mbaDimMin = 20;
 int mbaDimMax = 100;
 int mbaLuxMin = 0;
 int mbaLuxMax = 400;
-int matrixType = 1;
+int matrixType = DEFAULT_MATRIX_TYPE;
 String note;
 String hostname;
 String matrixTempCorrection = "default";
@@ -224,10 +251,12 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
+bool bootBatteryScreen = VBAT_PIN > 0 ? true : false;
 bool bootSound = false;
 String optionsVersion = "";
 // Millis timestamp of the last receiving screen
 unsigned long lastScreenMessageMillis = 0;
+unsigned long lastGetBatteryPercent = 0;
 
 // Bmp Vars
 uint16_t bmpArray[64];
@@ -294,9 +323,9 @@ int animateBMPFrameCount = 0;
 
 // Sensors Vars
 unsigned long sendLuxPrevMillis = 0;
+unsigned long getLuxPrevMillis = 0;
 unsigned long sendSensorPrevMillis = 0;
 unsigned long sendInfoPrevMillis = 0;
-String oldGetMatrixInfo;
 String oldGetLuxSensor;
 String oldGetSensor;
 float currentLux = 0.0f;
@@ -314,6 +343,14 @@ bool checkUpdateScreen = true;
 unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
+
+typedef struct
+{
+    int major;
+    int minor;
+    int patch;
+    char prerelease[16];
+} Version;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -352,6 +389,81 @@ String ResetReason()
         return "Unknown reset reason";
     }
 #endif
+}
+
+Version parseVersion(const char *versionStr)
+{
+    Version version;
+
+    memset(version.prerelease, 0, sizeof(version.prerelease));
+
+    int x = sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
+    return version;
+}
+
+int compareVersions(const char *version1, const char *version2)
+{
+    if (strlen(version1) == 0 || strlen(version2) == 0)
+    {
+        return 0;
+    }
+
+    Version v1 = parseVersion(version1);
+    Version v2 = parseVersion(version2);
+
+    if (v1.major != v2.major)
+    {
+        return v1.major - v2.major;
+    }
+    if (v1.minor != v2.minor)
+    {
+        return v1.minor - v2.minor;
+    }
+    if (v1.patch != v2.patch)
+    {
+        return v1.patch - v2.patch;
+    }
+
+    if (strlen(v1.prerelease) == 0 && strlen(v2.prerelease) == 0)
+    {
+        return 0; // Versions are equal
+    }
+    else if (strlen(v1.prerelease) == 0)
+    {
+        return 1; // v1 is greater (no prerelease for v1, but prerelease for v2)
+    }
+    else if (strlen(v2.prerelease) == 0)
+    {
+        return -1; // v2 is greater (no prerelease for v2, but prerelease for v1)
+    }
+    else
+    {
+        return strcmp(v1.prerelease, v2.prerelease); // Compare prerelease strings
+    }
+}
+
+void getBatteryVoltage()
+{
+    uint16_t value = 0;
+    uint8_t numReadings = 5;
+
+    for (uint8_t i = 0; i < numReadings; i++)
+    {
+        value = value + analogRead(VBAT_PIN);
+
+        // 1ms pause adds more stability between reads.
+        delay(1);
+    }
+
+    batteryLevel = map(value / numReadings, MIN_BATTERY, MAX_BATTERY, 0, 100);
+    if (batteryLevel >= 100)
+    {
+        batteryLevel = 100;
+    }
+    if (batteryLevel <= 0)
+    {
+        batteryLevel = 1;
+    }
 }
 
 void SetCurrentMatrixBrightness(float newBrightness)
@@ -409,6 +521,7 @@ void SaveConfig()
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
     json["bootScreenAktiv"] = bootScreenAktiv;
+    json["bootBatteryScreen"] = bootBatteryScreen;
     json["bootSound"] = bootSound;
     json["mqttAktiv"] = mqttAktiv;
     json["mqttUser"] = mqttUser;
@@ -651,6 +764,11 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("bootScreenAktiv"))
     {
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
+    }
+
+    if (json.containsKey("bootBatteryScreen"))
+    {
+        bootBatteryScreen = json["bootBatteryScreen"].as<bool>();
     }
 
     if (json.containsKey("bootSound"))
@@ -1023,8 +1141,13 @@ void callback(char *topic, byte *payload, unsigned int length)
         DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(payload);
 
-        Log("MQTT_callback", "Incomming JSON (Topic: " + String(topic) + ", Length: " + String(json.measureLength()) + ") ");
+        Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Length: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
+        if (length != json.measureLength())
+        {
+            Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+            return;
+        }
         if (channel.equals("setScreen"))
         {
             CreateFrames(json);
@@ -1060,17 +1183,17 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     }
     case WStype_CONNECTED:
     {
-        // Merken für was die Connection hergstellt wurde
+        // Remember for what the connection was established
         websocketConnection[num] = String((char *)payload);
 
-        // IP der Connection abfragen
+        // get ip
         IPAddress ip = webSocket.remoteIP(num);
 
-        // Logausgabe
+        // Logging
         Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
         // send message to client
-        SendMatrixInfo(true);
+        SendMatrixInfo();
         SendLDR(true);
         SendSensor(true);
         SendConfig();
@@ -1086,8 +1209,13 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             JsonObject &json = jsonBuffer.parseObject(payload);
             int forcedDuration = 0;
 
-            // Logausgabe
-            Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(json.measureLength()) + ")");
+            // Logging
+            Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(length) + "/" + String(json.measureLength()) + ")");
+            if (length != json.measureLength())
+            {
+                Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+                return;
+            }
 
             if (json.containsKey("forcedDuration"))
             {
@@ -1835,7 +1963,15 @@ String GetSensor()
             root["temperature"] = CelsiusToFahrenheit(currentTemp) + temperatureOffset;
         }
     }
-
+    else if (tempSensor == TempSensor_SHT31)
+    {
+        const float currentTemp = sht31.readTemperature();
+        const float currentHumi = sht31.readHumidity();
+        root["temperature"] = currentTemp + temperatureOffset;
+        root["humidity"] = roundf(currentHumi + humidityOffset);
+        root["pressure"] = "Not installed";
+        root["gas"] = "Not installed";
+    }
     else
     {
         root["humidity"] = "Not installed";
@@ -1843,6 +1979,16 @@ String GetSensor()
         root["pressure"] = "Not installed";
         root["gas"] = "Not installed";
     }
+
+    if (VBAT_PIN > 0)
+    {
+        root["battery"] = batteryLevel;
+    }
+    else
+    {
+        root["battery"] = "Not installed";
+    }
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -1858,6 +2004,7 @@ String GetLuxSensor()
     JsonObject &root = jsonBuffer.createObject();
 
     root["lux"] = currentLux;
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -1872,6 +2019,7 @@ String GetBrightness()
 
     root["brightness_255"] = currentMatrixBrightness;
     root["brightness"] = map(currentMatrixBrightness, 0, 255, 0, 100);
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -1888,6 +2036,7 @@ String GetMatrixInfo()
     //// Matrix Config
     root["note"] = note;
     root["hostname"] = hostname;
+    root["buildSection"] = STR(BUILD_SECTION);
     root["freeSketchSpace"] = ESP.getFreeSketchSpace();
     root["wifiRSSI"] = WiFi.RSSI();
     root["wifiQuality"] = GetRSSIasQuality(WiFi.RSSI());
@@ -1927,6 +2076,7 @@ String GetButtons()
     {
         root[btnAPINames[button]] = btnLastPublishState[button] ? "true" : "false";
     }
+    root["hostname"] = hostname;
 
     String json;
     root.printTo(json);
@@ -1946,7 +2096,7 @@ void SendTelemetry()
 String GetTelemetry()
 {
     const String MatrixTypeNames[] = {"Colum major", "Row major", "Tiled 4x 8x8 CJMCU (Column major)", "MicroMatrix", "Tiled 4x 8x8 CJMCU (Row major)"};
-    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280"};
+    const String TempSensorNames[] = {"none", "BME280", "DHT", "BME680", "BMP280", "SHT31"};
     const String LuxSensorNames[] = {"LDR", "BH1750", "Max44009"};
 
     DynamicJsonBuffer jsonBuffer;
@@ -1955,10 +2105,13 @@ String GetTelemetry()
     root["uuid"] = sha1(GetChipID());
     root["version"] = VERSION;
     root["type"] = isESP8266 ? "esp8266" : "esp32";
+    root["buildSection"] = STR(BUILD_SECTION);
 
     JsonObject &matrix = root.createNestedObject("matrix");
     matrix["type"] = matrixType;
     matrix["name"] = MatrixTypeNames[matrixType - 1];
+    matrix["width"] = MATRIX_WIDTH;
+    matrix["height"] = MATRIX_HEIGHT;
 
     JsonArray &sensors = root.createNestedArray("sensors");
     sensors.add(LuxSensorNames[luxSensor]);
@@ -3005,6 +3158,28 @@ void ShowBootAnimation()
     delay(1000);
 }
 
+void ShowBatteryScreen()
+{
+    const size_t capacity = JSON_ARRAY_SIZE(64) + JSON_OBJECT_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + 350;
+    DynamicJsonBuffer jsonBuffer(capacity);
+    const char *json = "{\"bitmap\":{\"data\":[0,0,65535,65535,65535,0,0,0,0,0,65535,2016,65535,0,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,2016,2016,2016,65535,0,0,0,65535,65535,65535,65535,65535,0,0],\"position\":{\"x\":0,\"y\":0},\"size\":{\"width\":8,\"height\":8}}}";
+    JsonObject &root = jsonBuffer.parseObject(json);
+    if (root.success())
+    {
+        Serial.println("parsed json");
+    }
+    else
+    {
+        Serial.println("failed to parse json");
+    }
+    getBatteryVoltage();
+    matrix->clear();
+    DrawSingleBitmap(root["bitmap"]);
+    DrawTextHelper(String(batteryLevel, 0) + "%", false, true, false, false, false, 255, 255, 255, 9, 1);
+    matrix->show();
+    delay(1000);
+}
+
 ColorTemperature GetUserColorTemp()
 {
     if (matrixTempCorrection == "tungsten40w")
@@ -3145,12 +3320,13 @@ LightDependentResistor::ePhotoCellKind TranslatePhotocell(String photocell)
         return LightDependentResistor::GL5539;
     if (photocell == "GL5549")
         return LightDependentResistor::GL5549;
-    Log(F("Zuordnung LDR"), F("Unbekannter LDR-Typ"));
+    Log(F("LDR assignment - unknown type"), photocell);
     return LightDependentResistor::GL5528;
 }
 
 uint8_t TranslatePin(String pin)
 {
+#if defined(ESP8266)
     if (pin == "Pin_D0")
         return D0;
     if (pin == "Pin_D1")
@@ -3171,8 +3347,42 @@ uint8_t TranslatePin(String pin)
         return D8;
     if (pin == "Pin_27")
         return 27;
-    Log(F("Pin-Zuordnung"), F("Unbekannter Pin"));
+    Log(F("Pin assignment - unknown pin"), pin);
     return LED_BUILTIN;
+#elif defined(ESP32)
+
+    if (pin == "GPIO_NUM_14")
+        return GPIO_NUM_14;
+    if (pin == "GPIO_NUM_15")
+        return GPIO_NUM_15;
+    if (pin == "GPIO_NUM_16")
+        return GPIO_NUM_16;
+    if (pin == "GPIO_NUM_17")
+        return GPIO_NUM_17;
+    if (pin == "GPIO_NUM_18")
+        return GPIO_NUM_18;
+    if (pin == "GPIO_NUM_19")
+        return GPIO_NUM_19;
+    if (pin == "GPIO_NUM_21")
+        return GPIO_NUM_21;
+    if (pin == "GPIO_NUM_22")
+        return GPIO_NUM_22;
+    if (pin == "GPIO_NUM_23")
+        return GPIO_NUM_23;
+    if (pin == "GPIO_NUM_25")
+        return GPIO_NUM_25;
+    if (pin == "GPIO_NUM_26")
+        return GPIO_NUM_26;
+    if (pin == "GPIO_NUM_27")
+        return GPIO_NUM_27;
+    if (pin == "SPI_CLK_GPIO_NUM")
+        return SPI_CLK_GPIO_NUM;
+    if (pin == "SPI_CS0_GPIO_NUM")
+        return SPI_CS0_GPIO_NUM;
+
+    Log(F("Pin assignment - unknown pin"), pin);
+    return GPIO_NUM_32; // IDK
+#endif
 }
 
 void ClearTextArea()
@@ -3236,6 +3446,12 @@ void initDFPlayer()
 /////////////////////////////////////////////////////////////////////
 void setup()
 {
+#if defined(ULANZI)
+    pinMode(15, INPUT_PULLDOWN); // Fix high pitch tone
+    pinMode(27, INPUT_PULLUP);   // Middle Button fix
+    pinMode(26, INPUT_PULLUP);   // Left Button fix
+    pinMode(VBAT_PIN, INPUT);    // Battery ADC
+#endif
 
     Serial.begin(115200);
 
@@ -3244,7 +3460,7 @@ void setup()
 #if defined(ESP8266)
     if (LittleFS.begin())
 #elif defined(ESP32)
-    if (SPIFFS.begin())
+    if (SPIFFS.begin(true))
 #endif
     {
         Serial.println(F("Mounted file system."));
@@ -3299,59 +3515,71 @@ void setup()
     }
 
     // Init Temp Sensors
-    bme280 = new Adafruit_BME280();
-    if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
+    Log(F("Setup"), F("SHT31 Trying"));
+    if (sht31.begin(0x44))
     {
-        Log(F("Setup"), F("BME280 started"));
-        tempSensor = TempSensor_BME280;
+        Log(F("Setup"), F("SHT31 started"));
+        tempSensor = TempSensor_SHT31;
     }
     else
     {
-        delete bme280;
-        bmp280 = new Adafruit_BMP280(&twowire);
-        Log(F("Setup"), F("BMP280 Trying"));
-        if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
+        Log(F("Setup"), F("BME280 Trying"));
+        bme280 = new Adafruit_BME280();
+        if (bme280->begin(BME280_ADDRESS_ALTERNATE, &twowire))
         {
-            Log(F("Setup"), F("BMP280 started"));
-            tempSensor = TempSensor_BMP280;
+            Log(F("Setup"), F("BME280 started"));
+            tempSensor = TempSensor_BME280;
         }
         else
         {
-            delete bmp280;
-            bme680 = new Adafruit_BME680(&twowire);
-            if (bme680->begin())
+            delete bme280;
+            bmp280 = new Adafruit_BMP280(&twowire);
+            Log(F("Setup"), F("BMP280 Trying"));
+            if (bmp280->begin(BMP280_ADDRESS_ALT, 0x58))
             {
-                Log(F("Setup"), F("BME680 started"));
-                tempSensor = TempSensor_BME680;
+                Log(F("Setup"), F("BMP280 started"));
+                tempSensor = TempSensor_BMP280;
             }
             else
             {
-                Log(F("Setup"), F("No BMP280, BME280 or BME 680 sensor found"));
-                // AM2320 needs a delay to be reliably initialized
-                delete bme680;
-
-                // continue only if:
-                //  - LDR is being used. This means: no light sensor in I²C bus.
-                //  - SDA and SCL use different pin than onewire
-
-                // Otherwise, we already found a light sensor on I²C. If we would start a probe for OneWire on the same pin now, I²C will be disfunctional.
-                if (luxSensor == LuxSensor_LDR || (onewirePin != SDAPin && onewirePin != SCLPin))
+                delete bmp280;
+                bme680 = new Adafruit_BME680(&twowire);
+                Log(F("Setup"), F("BME680 Trying"));
+                if (bme680->begin())
                 {
-                    delay(800);
-                    dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
-                    if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
-                    {
-                        Log(F("Setup"), F("DHT started"));
-                        tempSensor = TempSensor_DHT;
-                    }
-                    else
-                    {
-                        Log(F("Setup"), F("No DHT Sensor found"));
-                    }
+                    Log(F("Setup"), F("BME680 started"));
+                    tempSensor = TempSensor_BME680;
                 }
                 else
                 {
-                    Log(F("Setup"), F("Not probing DHT sensor: light sensor already found on same pin as DHT."));
+                    Log(F("Setup"), F("No SHT31, BMP280, BME280 or BME680 sensor found"));
+                    // AM2320 needs a delay to be reliably initialized
+                    delete bme680;
+
+                    // continue only if:
+                    //  - LDR is being used. This means: no light sensor in I²C bus.
+                    //  - SDA and SCL use different pin than onewire
+
+                    // Otherwise, we already found a light sensor on I²C. If we would start a probe for OneWire on the same pin now, I²C will be disfunctional.
+                    if (luxSensor == LuxSensor_LDR || (onewirePin != SDAPin && onewirePin != SCLPin))
+                    {
+                        delay(800);
+                        dht.setup(TranslatePin(onewirePin), DHTesp::DHT22);
+                        Log(F("Setup"), F("DHT Trying"));
+                        if (!isnan(dht.getHumidity()) && !isnan(dht.getTemperature()))
+                        {
+                            Log(F("Setup"), F("DHT started"));
+                            tempSensor = TempSensor_DHT;
+                        }
+                        else
+                        {
+                            Log(F("Setup"), F("No DHT Sensor found"));
+                        }
+                    }
+                    else
+                    {
+                        Log(F("Setup"), F("Not probing DHT sensor: light sensor already found on same pin as DHT."));
+                    }
                 }
             }
         }
@@ -3421,6 +3649,12 @@ void setup()
     if (bootScreenAktiv)
     {
         ShowBootAnimation();
+    }
+
+    // Battery
+    if (bootBatteryScreen)
+    {
+        ShowBatteryScreen();
     }
 
     // Hostname
@@ -3540,13 +3774,16 @@ void checkUpdate()
         if (root.containsKey("version"))
         {
             lastReleaseVersion = root["version"].as<String>();
-            if (!lastReleaseVersion.equals(VERSION))
+
+            int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
+
+            if (result > 0)
             {
-                Log(F("CheckUpdate"), F("New FW available"));
+                Log(F("CheckUpdate"), "New FW available " + String(VERSION) + " -> " + lastReleaseVersion);
             }
             else
             {
-                Log(F("CheckUpdate"), F("No new FW available"));
+                Log(F("CheckUpdate"), "No new FW available " + String(VERSION) + " -> " + lastReleaseVersion);
             }
         }
     }
@@ -3560,6 +3797,13 @@ void loop()
 {
     server.handleClient();
     webSocket.loop();
+
+    // Update Battery level
+    if (millis() - batteryLevelPrevMillis >= UPDATE_BATTERY_LEVEL_INTERVAL)
+    {
+        batteryLevelPrevMillis = millis();
+        getBatteryVoltage();
+    }
 
     // Reset GPIO based on the array, as far as something is present in the array.
     for (int i = 0; i < SET_GPIO_SIZE; i++)
@@ -3592,7 +3836,9 @@ void loop()
         if (millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
         {
             checkUpdateScreenPrevMillis = millis();
-            if (!lastReleaseVersion.equals(VERSION))
+
+            int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
+            if (result > 0)
             {
                 if (!sleepMode)
                 {
@@ -3604,7 +3850,7 @@ void loop()
 
     // Send Telemetry data first time after 30.3 seconds
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= TELEMETRY_INTERVAL))
+    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
@@ -3719,9 +3965,10 @@ void loop()
         DrawClock(false);
     }
 
-    if (millis() - sendLuxPrevMillis >= 1000)
+    // Get Lunx and control brightness
+    if (millis() - getLuxPrevMillis >= SEND_LUX_INTERVAL)
     {
-        sendLuxPrevMillis = millis();
+        getLuxPrevMillis = millis();
 
         if (luxSensor == LuxSensor_BH1750)
         {
@@ -3735,8 +3982,6 @@ void loop()
         {
             currentLux = (roundf(photocell->getSmoothedLux() * 1000) / 1000) + luxOffset;
         }
-
-        SendLDR(false);
 
         if (!sleepMode && matrixBrightnessAutomatic)
         {
@@ -3760,7 +4005,15 @@ void loop()
         }
     }
 
-    if (millis() - sendSensorPrevMillis >= 3000)
+    // Send LDR values non-foreced
+    if (millis() - sendLuxPrevMillis >= SEND_LUX_INTERVAL)
+    {
+        sendLuxPrevMillis = millis();
+        SendLDR(false);
+    }
+
+    // Send Sensor values non-foreced
+    if (millis() - sendSensorPrevMillis >= SEND_SENSOR_INTERVAL)
     {
         sendSensorPrevMillis = millis();
         SendSensor(false);
@@ -3769,10 +4022,11 @@ void loop()
     // liveview
     liveview.loop();
 
-    if (millis() - sendInfoPrevMillis >= 3000)
+    // send matrix info
+    if (millis() - sendInfoPrevMillis >= SEND_MATRIXINFO_INTERVAL)
     {
         sendInfoPrevMillis = millis();
-        SendMatrixInfo(false);
+        SendMatrixInfo();
         // SendMp3PlayerInfo(false);
     }
 
@@ -3789,35 +4043,27 @@ void loop()
     }
 }
 
-void SendMatrixInfo(bool force)
+void SendMatrixInfo()
 {
-    if (force)
-    {
-        oldGetMatrixInfo = "";
-    }
-
-    String matrixInfo;
-
-    // Prüfen ob die ermittlung der MatrixInfo überhaupt erforderlich ist
+    // Check if mqtt or websocket connected
     if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
     {
-        matrixInfo = GetMatrixInfo();
-    }
-    // Prüfen ob über MQTT versendet werden muss
-    if (mqttAktiv == true && client.connected() && oldGetMatrixInfo != matrixInfo)
-    {
-        client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
-    }
-    // Prüfen ob über Websocket versendet werden muss
-    if (webSocket.connectedClients() > 0 && oldGetMatrixInfo != matrixInfo)
-    {
-        for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+        String matrixInfo = GetMatrixInfo();
+
+        // Check if sending via MQTT is required
+        if (mqttAktiv == true && client.connected())
         {
-            webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+            client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+        }
+        // Check if sending via websocket is required
+        if (webSocket.connectedClients() > 0)
+        {
+            for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
+            {
+                webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+            }
         }
     }
-
-    oldGetMatrixInfo = matrixInfo;
 }
 
 void SendLDR(bool force)
