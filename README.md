@@ -48,12 +48,27 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/Metaln00b">
+            <img src="https://avatars.githubusercontent.com/u/25951169?v=4" width="100;" alt="Metaln00b"/>
+            <br />
+            <sub><b>Florian</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/pplucky">
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
             <sub><b>Pplucky</b></sub>
         </a>
     </td>
+    <td align="center">
+        <a href="https://github.com/jekader">
+            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
+            <br />
+            <sub><b>Null</b></sub>
+        </a>
+    </td></tr>
+<tr>
     <td align="center">
         <a href="https://github.com/fmunozs">
             <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
@@ -67,8 +82,7 @@ Thanks to these great people for supporting this project.
             <br />
             <sub><b>Rozza-m</b></sub>
         </a>
-    </td></tr>
-<tr>
+    </td>
     <td align="center">
         <a href="https://github.com/hermannbach">
             <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
@@ -88,13 +102,6 @@ Thanks to these great people for supporting this project.
             <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
             <br />
             <sub><b>Hamster65</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/jekader">
-            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
-            <br />
-            <sub><b>Null</b></sub>
         </a>
     </td>
     <td align="center">
