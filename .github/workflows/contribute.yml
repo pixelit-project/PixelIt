@@ -13,5 +13,6 @@ jobs:
         with:
           auto_detect_branch_protection: false
           commit_message: "Updated readme with new contributors"
+          use_username: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
