@@ -293,7 +293,6 @@ uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
 bool forceClock = false;
 bool clockBlinkAnimated = true;
-uint clockFontChoise = 2;
 bool clockLargeFont = false;
 bool clockFatFont = false;
 bool clockDrawWeekDays = true;
@@ -2415,7 +2414,18 @@ void DrawClock(bool fromJSON)
 
     int xPosTime = 0;
 
-    // check if a large font is in use
+    // use Adafruit 7px font as large clock font by default
+    uint clockFontChoice = 1;
+    if (clockFatFont) // use fat 8px clock font if set explicitly
+    {
+        clockFontChoice = 2;
+    }
+    else if (clockLargeFont) // use large 8px clock font if set explicitly
+    {
+        clockFontChoice = 3;
+    }
+
+    // check if a large font is set
     bool clockFontIsLarge = false;
     if (clockLargeFont || clockFatFont)
     {
@@ -2487,20 +2497,16 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock++;
         }
-        if (clockLargeFont) // use non-bold font
-        {
-            clockFontChoise = 3;
-        }
         if (clockCounterClock > clockSwitchSec)
         {
             clockCounterDate = 0;
 
             if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
-                DrawTextCenter(String(time), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
                 matrix->clear();
-                DrawTextCenter(String(date), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeIn(30);
             }
             else
@@ -2525,7 +2531,7 @@ void DrawClock(bool fromJSON)
         else if (clockFontIsLarge)
         {
 
-            DrawTextCenter(String(time), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2570,7 +2576,7 @@ void DrawClock(bool fromJSON)
         }
         else if (clockFontIsLarge)
         {
-            DrawTextCenter(String(date), clockFontChoise, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
