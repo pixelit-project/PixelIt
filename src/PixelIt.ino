@@ -293,6 +293,7 @@ uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
 bool forceClock = false;
 bool clockBlinkAnimated = true;
+bool clockLargeFont = false;
 bool clockFatFont = false;
 bool clockDrawWeekDays = true;
 
@@ -517,6 +518,7 @@ void SaveConfig()
     json["clockDateDayMonth"] = clockDateDayMonth;
     json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
     json["clockBlinkAnimated"] = clockBlinkAnimated;
+    json["clockLargeFont"] = clockLargeFont;
     json["clockFatFont"] = clockFatFont;
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
@@ -746,11 +748,15 @@ void SetConfigVariables(JsonObject &json)
         clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
     }
 
+    if (json.containsKey("clockLargeFont"))
+    {
+        clockLargeFont = json["clockLargeFont"].as<bool>();
+    }
+
     if (json.containsKey("clockFatFont"))
     {
         clockFatFont = json["clockFatFont"].as<bool>();
     }
-
     if (json.containsKey("clockDrawWeekDays"))
     {
         clockDrawWeekDays = json["clockDrawWeekDays"].as<bool>();
@@ -1559,7 +1565,12 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 logMessage += F("fatFont, ");
                 clockFatFont = json["clock"]["fatFont"];
             }
-
+            bool isLargeFontSet = json["clock"]["largeFont"].is<bool>();
+            if (isLargeFontSet)
+            {
+                logMessage += F("largeFont, ");
+                clockLargeFont = json["clock"]["largeFont"];
+            }
             bool isDrawWeekDaysSet = json["clock"]["drawWeekDays"].is<bool>();
             if (isDrawWeekDaysSet)
             {
@@ -2169,10 +2180,21 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         // Position correction
         posY = posY - 1;
     }
-    else if (bigFont == 2) // very large font, only to be used for time display / very large font, only for the time display
+    else if (bigFont == 2) // fat font, only to be used for time display
+    {
+        // Set fat font
+        matrix->setFont(&FatPixels);
+
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 6;
+    }
+    else if (bigFont == 3) // very large font, only to be used for time display
     {
         // Set very large font
-        matrix->setFont(&FatPixels);
+        matrix->setFont(&LargePixels);
 
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
         xTextWidth = boundsw;
@@ -2392,6 +2414,24 @@ void DrawClock(bool fromJSON)
 
     int xPosTime = 0;
 
+    // use Adafruit 7px font as large clock font by default
+    uint clockFontChoice = 1;
+    if (clockFatFont) // use fat 8px clock font if set explicitly
+    {
+        clockFontChoice = 2;
+    }
+    else if (clockLargeFont) // use large 8px clock font if set explicitly
+    {
+        clockFontChoice = 3;
+    }
+
+    // check if a large font is set
+    bool clockFontIsLarge = false;
+    if (clockLargeFont || clockFatFont)
+    {
+        clockFontIsLarge = true;
+    }
+
     if (clockDateDayMonth)
     {
         sprintf_P(date, PSTR("%02d.%02d."), day(), month());
@@ -2401,7 +2441,7 @@ void DrawClock(bool fromJSON)
         sprintf_P(date, PSTR("%02d/%02d"), month(), day());
     }
 
-    if (clock24Hours && clockWithSeconds && !clockFatFont)
+    if (clock24Hours && clockWithSeconds && !clockFontIsLarge)
     {
         xPosTime = 2;
         sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
@@ -2413,7 +2453,7 @@ void DrawClock(bool fromJSON)
         if (clockBlink && clockBlinkAnimated)
         {
             clockBlink = false;
-            if (!clockFatFont)
+            if (!clockFontIsLarge)
             {
                 sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2425,7 +2465,7 @@ void DrawClock(bool fromJSON)
         else
         {
             clockBlink = !clockBlink;
-            if (!clockFatFont)
+            if (!clockFontIsLarge)
             {
                 sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2457,17 +2497,16 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock++;
         }
-
         if (clockCounterClock > clockSwitchSec)
         {
             clockCounterDate = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
-                DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
                 matrix->clear();
-                DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeIn(30);
             }
             else
@@ -2489,10 +2528,10 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFontIsLarge)
         {
 
-            DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2508,7 +2547,7 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
                 DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
@@ -2535,9 +2574,9 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFontIsLarge)
         {
-            DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2545,7 +2584,7 @@ void DrawClock(bool fromJSON)
         }
     }
 
-    if (!clockFatFont && clockDrawWeekDays)
+    if (!clockFontIsLarge && clockDrawWeekDays)
     {
         DrawWeekDay();
     }
