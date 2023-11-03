@@ -30,78 +30,85 @@ Thanks to these great people for supporting this project.
         <a href="https://github.com/o0shojo0o">
             <img src="https://avatars.githubusercontent.com/u/19333515?v=4" width="100;" alt="o0shojo0o"/>
             <br />
-            <sub><b>Dennis Rathjen</b></sub>
+            <sub><b>o0shojo0o</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/foorschtbar">
             <img src="https://avatars.githubusercontent.com/u/10727275?v=4" width="100;" alt="foorschtbar"/>
             <br />
-            <sub><b>Fab!an</b></sub>
+            <sub><b>foorschtbar</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/miccgn">
             <img src="https://avatars.githubusercontent.com/u/71180164?v=4" width="100;" alt="miccgn"/>
             <br />
-            <sub><b>Miccgn</b></sub>
+            <sub><b>miccgn</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/Metaln00b">
+            <img src="https://avatars.githubusercontent.com/u/25951169?v=4" width="100;" alt="Metaln00b"/>
+            <br />
+            <sub><b>Metaln00b</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/pplucky">
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
-            <sub><b>Pplucky</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/fmunozs">
-            <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
-            <br />
-            <sub><b>Fernando Muñoz</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/rozza-m">
-            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
-            <br />
-            <sub><b>Rozza-m</b></sub>
-        </a>
-    </td></tr>
-<tr>
-    <td align="center">
-        <a href="https://github.com/hermannbach">
-            <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
-            <br />
-            <sub><b>HBach</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/d4rkd3v1l">
-            <img src="https://avatars.githubusercontent.com/u/13336238?v=4" width="100;" alt="d4rkd3v1l"/>
-            <br />
-            <sub><b>Martin Straub</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/hamster65">
-            <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
-            <br />
-            <sub><b>Hamster65</b></sub>
+            <sub><b>pplucky</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/jekader">
             <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
             <br />
-            <sub><b>Null</b></sub>
+            <sub><b>jekader</b></sub>
+        </a>
+    </td></tr>
+<tr>
+    <td align="center">
+        <a href="https://github.com/fmunozs">
+            <img src="https://avatars.githubusercontent.com/u/1041604?v=4" width="100;" alt="fmunozs"/>
+            <br />
+            <sub><b>fmunozs</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/rozza-m">
+            <img src="https://avatars.githubusercontent.com/u/1784953?v=4" width="100;" alt="rozza-m"/>
+            <br />
+            <sub><b>rozza-m</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/hermannbach">
+            <img src="https://avatars.githubusercontent.com/u/6616722?v=4" width="100;" alt="hermannbach"/>
+            <br />
+            <sub><b>hermannbach</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/d4rkd3v1l">
+            <img src="https://avatars.githubusercontent.com/u/13336238?v=4" width="100;" alt="d4rkd3v1l"/>
+            <br />
+            <sub><b>d4rkd3v1l</b></sub>
+        </a>
+    </td>
+    <td align="center">
+        <a href="https://github.com/hamster65">
+            <img src="https://avatars.githubusercontent.com/u/36369379?v=4" width="100;" alt="hamster65"/>
+            <br />
+            <sub><b>hamster65</b></sub>
         </a>
     </td>
     <td align="center">
         <a href="https://github.com/rliegmann">
             <img src="https://avatars.githubusercontent.com/u/16445478?v=4" width="100;" alt="rliegmann"/>
             <br />
-            <sub><b>Rliegmann</b></sub>
+            <sub><b>rliegmann</b></sub>
         </a>
     </td></tr>
 </table>
@@ -111,7 +118,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.4.x **WORK IN PROGRESS**
+### 2.4.3 (2023-10-17)
 
 -   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* :tada:
 -   (foorschtbar) Display `zZz` on the matrix when the device going to sleep
