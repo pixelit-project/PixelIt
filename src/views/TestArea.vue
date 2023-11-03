@@ -13,6 +13,20 @@
                 <br />
                 <v-card class="pa-2" elevation="4">
                     <v-card-title>
+                        <h2>JSON String</h2>
+                    </v-card-title>
+                    <hr />
+                    <br />
+                    <prism-editor class="editor" v-model="testarea.json" :highlight="highlighter" line-numbers></prism-editor>
+                    <br />
+                    <div class="text-center">
+                        <ButtonCondition color="info" :condition="sockedIsConnected" text="Send JSON" icon="mdi-cloud-upload" :onclick="sendJson" />
+                    </div>
+                </v-card>
+            </v-col>
+            <v-col cols="12" lg="4">
+                <v-card class="pa-2" elevation="4">
+                    <v-card-title>
                         <h2>Text / Brightness</h2>
                     </v-card-title>
                     <hr />
@@ -25,7 +39,8 @@
                         <ButtonCondition color="info" :condition="sockedIsConnected" text="Send Text" icon="mdi-cloud-upload" :onclick="sendText" />
                     </div>
                 </v-card>
-                <br />
+            </v-col>
+            <v-col cols="12" lg="4">
                 <v-card class="pa-2" elevation="4">
                     <v-card-title>
                         <h2>Bitmap Array</h2>
@@ -36,20 +51,6 @@
                     <br />
                     <div class="text-center">
                         <ButtonCondition color="info" :condition="sockedIsConnected" text="Send Bitmap" icon="mdi-cloud-upload" :onclick="sendBitmap" />
-                    </div>
-                </v-card>
-            </v-col>
-            <v-col cols="24" lg="8">
-                <v-card class="pa-2" elevation="4">
-                    <v-card-title>
-                        <h2>JSON String</h2>
-                    </v-card-title>
-                    <hr />
-                    <br />
-                    <prism-editor class="editor" v-model="testarea.json" :highlight="highlighter" line-numbers></prism-editor>
-                    <br />
-                    <div class="text-center">
-                        <ButtonCondition color="info" :condition="sockedIsConnected" text="Send JSON" icon="mdi-cloud-upload" :onclick="sendJson" />
                     </div>
                 </v-card>
             </v-col>

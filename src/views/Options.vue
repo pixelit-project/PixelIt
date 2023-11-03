@@ -75,9 +75,10 @@
                         <ColorPickerTextfield />
                         <v-switch v-model="config.clockDayLightSaving" label="Daylight saving" dense hide-details></v-switch>
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
-                        <v-switch v-model="config.clockFatFont" label="Big clock font" persistent-hint dense hide-details></v-switch>
-                        <v-switch v-model="config.clockWithSeconds" label="Clock with seconds" :disabled="!config.clock24Hours || config.clockFatFont" dense hide-details></v-switch>
-                        <v-switch v-model="config.clockDrawWeekDays" label="Clock with Weekdays" :disabled="config.clockFatFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockLargeFont" label="Large clock font" persistent-hint :disabled="config.clockFatFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockFatFont" label="Bold clock font" persistent-hint :disabled="config.clockLargeFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockWithSeconds" label="Clock with seconds" :disabled="!config.clock24Hours || config.clockFatFont || config.clockLargeFont" dense hide-details></v-switch>
+                        <v-switch v-model="config.clockDrawWeekDays" label="Clock with Weekdays" :disabled="config.clockFatFont || config.clockLargeFont" dense hide-details></v-switch>
                         <v-switch v-model="config.clockSwitchAktiv" label="Switch clock/date active" dense hide-details></v-switch>
                         <v-switch v-model="config.clockBlinkAnimated" label="Flashing time separator" dense hide-details></v-switch>
                         <v-switch v-model="config.clockDayOfWeekFirstMonday" label="Monday as start of the week" dense hide-details></v-switch>

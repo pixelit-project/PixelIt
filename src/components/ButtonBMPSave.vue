@@ -88,7 +88,7 @@ export default {
             // send new bitmap
             fetch(`${this.$apiServerBaseURL}/SaveBitmap`, {
                 method: 'POST',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'Client': this.$client},
                 body: JSON.stringify({
                     rgb565array: this.cleanedData,
                     userName: this.userName != '' ? this.userName : 'Not specified',

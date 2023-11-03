@@ -31,6 +31,10 @@ export default {
             type: String,
             required: true,
         },
+        mapZoom: {
+            type: Number,
+            required: false,            
+        },
     },
     components: {
         LMap,
@@ -50,7 +54,7 @@ export default {
         return {
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             attribution: '&copy; <a target="_blank" href="http://osm.org/copyright">OpenStreetMap</a> contributors',
-            zoom: 2,
+            zoom: this.mapZoom || 2,
             center: [51.505, -0.159],
             style: `height: ${this.height}`,
             icon: L.icon({
