@@ -10,11 +10,11 @@ The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controll
 Settings and small tests are possible via the web interface,
 also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
-If you want to get an impression of the WebUI, you can do that here in [Demo WebUi](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
+If you want to get an impression of the WebUI, you can do that here in [Demo WebUI](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
 
 -   :memo: [Documentation](https://pixelit-project.github.io/)
 -   :page_facing_up: [Blog](https://www.bastelbunker.de/pixel-it/)
--   :green_heart: [PixelIt Icon Gallery](https://pixelit.bastelbunker.de/PixelGallery)
+-   :green_heart: [PixelIt Icon Gallery (in Demo WebUI)](https://pixelit-project.github.io/PixelIt/webui/#/gallery)
 -   :bulb: [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
 -   :fire: [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
 -   :fire:[Discord Channel ![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
