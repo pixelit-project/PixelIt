@@ -88,12 +88,14 @@ export default {
     watch: {
         '$store.state.gitVersion': function (newVal) {
             if (this.$store.state.version) {
-                this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
+                //this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
+                this.$store.state.newVersionAvailable = isNewVersionAvailable(this.$store.state.version, newVal);
             }
         },
         '$store.state.version': function (newVal) {
             if (this.$store.state.gitVersion) {
-                this.$store.state.newVersionAvailable = newVal != this.$store.state.gitVersion;
+                //this.$store.state.newVersionAvailable = newVal != this.$store.state.gitVersion;
+                this.$store.state.newVersionAvailable = isNewVersionAvailable(newVal, this.$store.state.gitVersion);
             }
         },
     },
@@ -143,6 +145,34 @@ async function getStatistics(vue) {
         console.log(`getStatistics: error (${error})`);
     }
 }
+
+
+function isNewVersionAvailable(local, git){
+    return compareVersions(local, git) == -1
+}
+
+// 0 if a = b 
+// 1 if a > b 
+// -1 if a < b
+const compareVersions = ((prep, l, i, r) => (a, b) =>{
+    a = prep(a);
+    b = prep(b);
+    l = Math.max(a.length, b.length);
+    i = 0;
+    r = i;
+    while (!r && i < l)
+        //convert into integer, uncluding undefined values
+      r = ~~a[i] - ~~b[i++];
+
+    return r < 0 ? -1 : (r ? 1 : 0);
+})(t => ("" + t)
+    // treat non-numerical characters as lower version
+    // replacing them with a negative number based on charcode of first character
+  .replace(/[^\d.]+/g, c => "." + (c.replace(/[\W_]+/, "").toUpperCase().charCodeAt(0) - 65536) + ".")
+    // remove trailing "." and "0" if followed by non-numerical characters (1.0.0b);
+  .replace(/(?:\.0+)*(\.-\d+(?:\.\d+)?)\.*$/g, "$1")
+    // return array
+  .split("."));
 
 </script>
 

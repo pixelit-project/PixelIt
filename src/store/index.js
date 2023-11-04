@@ -97,7 +97,7 @@ export default new Vuex.Store({
                 page: '/statistics',
             },
             {
-                title: 'Update',
+                title: 'Update & Backup',
                 icon: 'mdi-tray-arrow-up',
                 page: '/update',
             },
