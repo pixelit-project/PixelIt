@@ -120,6 +120,7 @@ Thanks to these great people for supporting this project.
 
 ### WORK IN PROGRESS
 
+-   (o0shojo0o) Added config backup and restore [[#319](https://github.com/pixelit-project/PixelIt/issues/319)]
 -   (o0shojo0o) Added Statistics to WebUi 
 -   (jekader) Added large 8px non-bold clock font [[#320](https://github.com/pixelit-project/PixelIt/pull/320)]
 
