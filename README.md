@@ -121,8 +121,8 @@ Thanks to these great people for supporting this project.
 ### WORK IN PROGRESS
 
 -   (o0shojo0o) Also now in the WebUI Improved check of new firmware through a real version comparison
--   (o0shojo0o) Added config backup and restore to WebUi [[#319](https://github.com/pixelit-project/PixelIt/issues/319)]
--   (o0shojo0o) Added Statistics to WebUi 
+-   (o0shojo0o) Added config backup and restore to WebUI [[#319](https://github.com/pixelit-project/PixelIt/issues/319)]
+-   (o0shojo0o) Added Statistics to WebUI 
 -   (jekader) Added large 8px non-bold clock font [[#320](https://github.com/pixelit-project/PixelIt/pull/320)]
 
 ### 2.4.3 (2023-10-17)
