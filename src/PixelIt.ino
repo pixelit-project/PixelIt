@@ -1149,9 +1149,9 @@ void callback(char *topic, byte *payload, unsigned int length)
 
         Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Length: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
-        if (length != json.measureLength())
+        if (json.measureLength() == 2)
         {
-            Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+            Log("MQTT_callback", "JSON message empty or too long");
             return;
         }
         if (channel.equals("setScreen"))
