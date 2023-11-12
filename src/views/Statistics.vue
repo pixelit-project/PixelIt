@@ -1,11 +1,26 @@
 <template>
     <v-container class="statistics">
-        <v-row>
+        <div v-if="statsError || sendStatistics == false">
+            <v-row>
+                <v-col cols="12" lg="12">
+                    <v-card class="pa-2" elevation="4">
+                        <v-card-text class="text-md-center">
+                            <h2>Activate the telemetry data to see the statistics.</h2>
+                            <br>
+                            <h4>To activate the telemetry data, go to <a href="/#/options"><b>Options</b> and activate <b>"Send Telemetry data"</b></a></h4>
+                            <small>After activation, it can take up to one minute for the data to become visible.</small>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
+        </div>
+        <div v-else>
+            <v-row>
                 <v-col cols="12" lg="12">
                     <v-card class="pa-2" elevation="4">
                         <v-card-text class="text-md-center">
                             These statistics are created with the telemetry data of the PixelIts that have reported in the last 30 days.<br>
-                             <b>Thanks to everyone who shares this data with us!</b>
+                                <b>Thanks to everyone who shares this data with us!</b>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -46,7 +61,7 @@
                             <h2>Countrys</h2>
                         </v-card-title>
                         <hr />                    
-                       <apexchart height="600px" type="donut" :options="countryChartOptions" :series="countryStats"></apexchart>     
+                        <apexchart height="600px" type="donut" :options="countryChartOptions" :series="countryStats"></apexchart>     
                     </v-card>               
                 </v-col>
                 <v-col cols="12" lg="4">
@@ -65,12 +80,13 @@
                         <v-card-title>
                             <h2>Usermap</h2>
                         </v-card-title>
-                        <hr />
+                        <hr />                        
                         <p></p>
                         <UserMap :mapZoom= 3  :coords="userMapData" height="600px" />
                     </v-card>
                 </v-col>
             </v-row>
+        </div>
     </v-container>
 </template>
 
@@ -86,7 +102,7 @@ export default {
     },
     computed: {
         userMapData() {
-            return this.$store.state.userMapData;
+            return this.$store.state.userMapData.coords;
         },
         buildStats() {
             if (this.$store.state.statistics.buildStats){
@@ -177,7 +193,13 @@ export default {
                     }
                 } 
             };
-        }     
+        },  
+        statsError() {            
+            return this.$store.state.statistics.error;             
+        },  
+        sendStatistics(){
+            return this.$store.state.configData.sendTelemetry;
+        }
     },
     methods: {       
     },

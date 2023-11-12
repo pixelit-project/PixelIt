@@ -58,8 +58,16 @@
                         <h2>Usermap</h2>
                     </v-card-title>
                     <hr />
-                    <p></p>
-                    <UserMap :coords="userMapData" height="500px" />
+                    <v-card-text class="text-md-center" v-if="userMapError || sendStatistics == false">
+                        <h2>Activate the telemetry data to see the usermap.</h2>
+                        <br>
+                        <h4>To activate the telemetry data, go to <a href="/#/options"><b>Options</b> and activate <b>"Send Telemetry data"</b></a></h4>
+                        <small>After activation, it can take up to one minute for the data to become visible.</small>
+                    </v-card-text>
+                    <div v-else>
+                        <p></p>                    
+                        <UserMap :coords="userMapData" height="500px" />
+                    </div>
                 </v-card>
             </v-col>
         </v-row>
@@ -103,8 +111,11 @@ export default {
             return this.$store.state.gitDownloadUrl;
         },
         userMapData() {
-            return this.$store.state.userMapData;
+            return this.$store.state.userMapData.coords;
         },
+        userMapError() {            
+            return this.$store.state.userMapData.error;             
+        },  
         isDemoMode() {
             return this.$demoMode;
         },
@@ -113,6 +124,9 @@ export default {
         },
         liveviewCanvasSettings() {
             return this.$store.state.matrixSize;
+        },
+        sendStatistics(){
+            return this.$store.state.configData.sendTelemetry;
         },
     },
 };

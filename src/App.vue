@@ -35,10 +35,9 @@ export default {
         // Get style cookie
         this.$vuetify.theme.dark = this.$cookies.get('theme_dark') ? this.$cookies.get('theme_dark') === 'true' : true;
 
-        getCurrentGitReleaseData(this);
-        getUserMapData(this);
-        getStatistics(this);
+        getCurrentGitReleaseData(this);    
         sendTelemetry(this);
+        getStatistics(this);
 
         // Check again every 15 minutes
         setInterval(() => {
@@ -47,7 +46,6 @@ export default {
 
         // Check again every 15 minutes
         setInterval(() => {
-            getUserMapData(this);
             getStatistics(this);
         }, 1000 * 60 * 15);
 
@@ -130,17 +128,21 @@ async function sendTelemetry(vue) {
     }, 1000);
 }
 
-async function getUserMapData(vue) {
+async function getStatistics(vue) {
+    const uuid = getUUID(vue);
+    if (uuid == '') {
+        setTimeout(() => {getStatistics(vue)}, 600)
+        return;
+    }
+
     try {
-        vue.$store.state.userMapData = await (await fetch(`${vue.$apiServerBaseURL}/usermapdata`)).json();
+        vue.$store.state.userMapData = await (await fetch(`${vue.$apiServerBaseURL}/usermap?uuid=${uuid}`)).json();
     } catch (error) {
         console.log(`getUserMapData: error (${error})`);
     }
-}
-
-async function getStatistics(vue) {
-    try {
-        vue.$store.state.statistics = await (await fetch(`${vue.$apiServerBaseURL}/statistics`)).json();
+   
+    try {      
+        vue.$store.state.statistics = await (await fetch(`${vue.$apiServerBaseURL}/statistics?uuid=${uuid}`)).json();
     } catch (error) {
         console.log(`getStatistics: error (${error})`);
     }
@@ -149,6 +151,17 @@ async function getStatistics(vue) {
 
 function isNewVersionAvailable(local, git){
     return compareVersions(local, git) == -1
+}
+
+function getUUID(vue){
+    if (vue.$route.query.uuid){
+        return vue.$route.query.uuid;
+    }
+
+    if (vue.$store.state.telemetryData == '') {
+        return '';
+    }
+    return JSON.parse(vue.$store.state.telemetryData).uuid
 }
 
 // 0 if a = b 
