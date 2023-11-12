@@ -26,7 +26,7 @@
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
                         <v-switch v-model="config.bootScreenAktiv" label="Bootscreen active" hide-details dense></v-switch>
                         <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>
-                        <v-switch v-model="config.checkUpdateScreen" label="Check and show new available firmware on the PixelIt " hide-details dense></v-switch>
+                        <v-switch v-model="config.checkUpdateScreen" label="Display on matrix when new firmware is available" hide-details dense></v-switch>
                     </v-card>
                     <br />
                     <v-card class="pa-2" elevation="4">
@@ -102,6 +102,8 @@
                         <v-text-field v-model="config.mqttUser" label="User" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
                         <v-text-field v-model="config.mqttPassword" label="Password" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
                         <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
+                        <v-switch v-model="config.mqttUseDeviceTopic" :label="deviceTopicLabel" :disabled="!config.mqttAktiv" dense></v-switch>
+                        <v-switch v-model="config.mqttHAdiscoverable" label="Making the device discoverable by HomeAssistant" :disabled="!config.mqttAktiv" dense></v-switch>
                     </v-card>
                     <br />
                     <v-card class="pa-2" elevation="4">
@@ -214,6 +216,15 @@ export default {
         },
         telemetryData() {
             return this.$store.state.telemetryData;
+        },
+        deviceTopicLabel() {
+            let hostname = '';
+            if (this.$store.state.configData.hostname != '') {
+                hostname = this.$store.state.configData.hostname.trim();
+            } else {
+                hostname = this.$store.state.displayHostname;
+            }
+            return 'Use additional device topic (' + this.$store.state.configData.mqttMasterTopic.trim().replace(/\/?$/, '/') + hostname + '/)';
         },
     },
     methods: {

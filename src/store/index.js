@@ -619,6 +619,9 @@ function getDisplayName(key) {
         case 'hostname':
             key = 'Hostname';
             break;
+        case 'deviceID':
+            key = 'Device-ID';
+            break;
         case 'note':
             key = 'Note';
             break;
