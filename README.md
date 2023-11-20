@@ -118,7 +118,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### WORK IN PROGRESS
+### 2.5.0 (2023-11-20)
 
 -   (foorschtbar) Fixes "MQTT message is to long" [[#322](https://github.com/pixelit-project/PixelIt/issues/322)]
 -   (o0shojo0o) Adjustments in the WebUI for the new API structure of the UserMap endpoint
