@@ -48,6 +48,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/jekader">
+            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
+            <br />
+            <sub><b>jekader</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/Metaln00b">
             <img src="https://avatars.githubusercontent.com/u/25951169?v=4" width="100;" alt="Metaln00b"/>
             <br />
@@ -59,13 +66,6 @@ Thanks to these great people for supporting this project.
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
             <sub><b>pplucky</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/jekader">
-            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
-            <br />
-            <sub><b>jekader</b></sub>
         </a>
     </td></tr>
 <tr>
