@@ -476,6 +476,57 @@ const GFXglyph PixelItGlyphs[] PROGMEM = {
 
 const GFXfont PixelItFont PROGMEM = {(uint8_t *)PixelItBitmaps, (GFXglyph *)PixelItGlyphs, 0x20, 0xE9, 6};
 
+const uint8_t LargePixels_Bitmaps[] PROGMEM = {
+    //                                ASCII code and symbol
+    0x00,                         //  0x20 ' '
+    0x80,                         //  0x21 '!'
+    0x74, 0x63, 0x18, 0xC6, 0x2E, //  0x30 '0'
+    0x59, 0x24, 0x97,             //  0x31 '1'
+    0x74, 0x42, 0x22, 0x22, 0x1F, //  0x32 '2'
+    0x74, 0x42, 0x60, 0x86, 0x2E, //  0x33 '3'
+    0x19, 0x53, 0x1F, 0x84, 0x21, //  0x34 '4'
+    0xFC, 0x21, 0xE0, 0x86, 0x2E, //  0x35 '5'
+    0x74, 0x61, 0xE8, 0xC6, 0x2E, //  0x36 '6'
+    0xF8, 0x42, 0x22, 0x21, 0x08, //  0x37 '7'
+    0x74, 0x62, 0xE8, 0xC6, 0x2E, //  0x38 '8'
+    0x74, 0x63, 0x17, 0x86, 0x2E, //  0x39 '9'
+    0x90                          //  0x3A ':'
+};
+
+// {offset, width, height, advance cursor, x offset, y offset}
+const GFXglyph LargePixels_Glyphs[] PROGMEM = {
+    //                       ASCII code and symbol
+    {0, 1, 1, 2, 0, -5},  // 0x20 ' '
+    {0, 0, 0, 0, 0, 0},   // 0x21 '!'
+    {0, 0, 0, 0, 0, 0},   // 0x22 '"'
+    {0, 0, 0, 0, 0, 0},   // 0x23 '#'
+    {0, 0, 0, 0, 0, 0},   // 0x24 '$'
+    {0, 0, 0, 0, 0, 0},   // 0x25 '%'
+    {0, 0, 0, 0, 0, 0},   // 0x26 '&'
+    {0, 0, 0, 0, 0, 0},   // 0x27 '''
+    {0, 0, 0, 0, 0, 0},   // 0x28 '('
+    {0, 0, 0, 0, 0, 0},   // 0x29 ')'
+    {0, 0, 0, 0, 0, 0},   // 0x2A '*'
+    {0, 0, 0, 0, 0, 0},   // 0x2B '+'
+    {0, 0, 0, 0, 0, 0},   // 0x2C ','
+    {0, 0, 0, 0, 0, 0},   // 0x2D '-'
+    {1, 1, 1, 2, 0, 0},   // 0x2E '.'
+    {0, 0, 0, 0, 0, 0},   // 0x2F '/'
+    {2, 5, 8, 6, 0, -7},  // 0x30 '0'
+    {7, 3, 8, 4, 0, -7},  // 0x31 '1'
+    {10, 5, 8, 6, 0, -7}, // 0x32 '2'
+    {15, 5, 8, 6, 0, -7}, // 0x33 '3'
+    {20, 5, 8, 6, 0, -7}, // 0x34 '4'
+    {25, 5, 8, 6, 0, -7}, // 0x35 '5'
+    {30, 5, 8, 6, 0, -7}, // 0x36 '6'
+    {35, 5, 8, 6, 0, -7}, // 0x37 '7'
+    {40, 5, 8, 6, 0, -7}, // 0x38 '8'
+    {45, 5, 8, 6, 0, -7}, // 0x39 '9'
+    {50, 1, 4, 2, 0, -5}  // 0x3A ':'
+};
+
+const GFXfont LargePixels PROGMEM = {(uint8_t *)LargePixels_Bitmaps, (GFXglyph *)LargePixels_Glyphs, 0x20, 0x3A, 8};
+
 const uint8_t FatPixels_Bitmaps[] PROGMEM = {
     //                                ASCII code and symbol
     0x00,                         //  0x20 ' '

@@ -118,6 +118,17 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### WORK IN PROGRESS
+
+-   (foorschtbar) Fixes "MQTT message is to long" [[#322](https://github.com/pixelit-project/PixelIt/issues/322)]
+-   (o0shojo0o) Adjustments in the WebUI for the new API structure of the UserMap endpoint
+-   (o0shojo0o) Also now in the WebUI Improved check of new firmware through a real version comparison
+-   (o0shojo0o) Added config backup and restore to WebUI [[#319](https://github.com/pixelit-project/PixelIt/issues/319)]
+-   (o0shojo0o) Added Statistics to WebUI
+-   (jekader) Added large 8px non-bold clock font [[#320](https://github.com/pixelit-project/PixelIt/pull/320)]
+-   (foorschtbar) Made HomeAssistant service discovery configurable
+-   (foorschtbar) Added optional MQTT device topic (`<Mastertopic>/<Hostname>/<commands>`)
+
 ### 2.4.3 (2023-10-17)
 
 -   (foorschtbar) Native support for [Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)\* :tada:
