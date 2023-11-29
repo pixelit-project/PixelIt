@@ -4,7 +4,7 @@
 
 ![](.github/pixelit.png)
 
-![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/pixelit-project/PixelIt/build-and-release.yml) ![GitHub all releases](https://img.shields.io/github/downloads/pixelit-project/PixelIt/total) ![GitHub Repo stars](https://img.shields.io/github/stars/pixelit-project/PixelIt) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/pixelit-project/pixelit) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/y/pixelit-project/pixelit) ![GitHub top language](https://img.shields.io/github/languages/top/pixelit-project/pixelit)
 
 The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
 Settings and small tests are possible via the web interface,
