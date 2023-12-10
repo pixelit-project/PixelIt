@@ -1,23 +1,32 @@
-![](.github/logo.png)
+<img src=".github/logo.png" width="100px" height="100px" />
 
 # PixelIt - The Matrix Display
 
 ![](.github/pixelit.png)
 
-![](https://github.com/pixelit-project/PixelIt/actions/workflows/build-and-release.yml/badge.svg)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/pixelit-project/PixelIt/build-and-release.yml) ![GitHub all releases](https://img.shields.io/github/downloads/pixelit-project/PixelIt/total) ![GitHub Repo stars](https://img.shields.io/github/stars/pixelit-project/PixelIt) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/pixelit-project/pixelit) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/y/pixelit-project/pixelit) ![GitHub top language](https://img.shields.io/github/languages/top/pixelit-project/pixelit)
 
 The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
 Settings and small tests are possible via the web interface,
-also a node-red node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
+also a Node-RED node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
 
 If you want to get an impression of the WebUI, you can do that here in [Demo WebUI](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
 
 -   :memo: [Documentation](https://pixelit-project.github.io/)
--   :page_facing_up: [Blog](https://www.bastelbunker.de/pixel-it/)
 -   :green_heart: [PixelIt Icon Gallery (in Demo WebUI)](https://pixelit-project.github.io/PixelIt/webui/#/gallery)
--   :bulb: [GitHub Discussions (Forum) ![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
--   :fire: [Telegram Channel ![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
--   :fire:[Discord Channel ![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
+-   :bulb: [GitHub Discussions (Forum)](https://github.com/pixelit-project/PixelIt/discussions) [![](https://img.shields.io/github/discussions/pixelit-project/PixelIt)](https://github.com/pixelit-project/PixelIt/discussions)
+-   :speech_balloon: [Telegram Channel](https://t.me/pixelitdisplay) [![](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Frunkit.io%2Fdamiankrawczyk%2Ftelegram-badge%2Fbranches%2Fmaster%3Furl%3Dhttps%3A%2F%2Ft.me%2Fpixelitdisplay)](https://t.me/pixelitdisplay)
+-   :speech_balloon: [Discord Channel](https://discord.gg/ERBSHWxB2S) [![](https://img.shields.io/discord/1145731525996970025?logo=discord)](https://discord.gg/ERBSHWxB2S)
+
+## Project highlights
+
+-   :fire: Support for **[Node-RED](https://pixelit-project.github.io/nodered.html)**, **[HomeAssistant](https://pixelit-project.github.io/webinterface.html#mqtt)** and **[ioBroker](https://pixelit-project.github.io/iobroker.html)**
+-   :fire: Support for **[DIY Matrixes](https://pixelit-project.github.io/hardware.html#parts-list)** (ESP32/ESP8266) and prebuild **[Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)**\*
+-   :fire: Awesome [WebUI](https://pixelit-project.github.io/PixelIt/webui/) for configuration and control. Checkout the **[Demo](https://pixelit-project.github.io/PixelIt/webui/)**
+-   :fire: Great **[documentation](https://pixelit-project.github.io/)**
+-   :fire: Unlimited possibilities through the open **[API](https://pixelit-project.github.io/api.html)**
+-   :fire: Helpful and welcoming community on **[Telegram](https://t.me/pixelitdisplay)**, **[Discord](https://discord.gg/ERBSHWxB2S)** and **[GitHub Discussions](https://github.com/pixelit-project/PixelIt/discussions)**
+-   :fire: Showroom for your own PixelIt builds on the **[Show you PixelIt](https://github.com/pixelit-project/PixelIt/discussions/48)** thread.
 
 ## Contributors
 
@@ -113,6 +122,10 @@ Thanks to these great people for supporting this project.
     </td></tr>
 </table>
 <!-- readme: contributors -end -->
+
+## WebUI
+
+![](.github/webui.png)
 
 ## Changelog
 
