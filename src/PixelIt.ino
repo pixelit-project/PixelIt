@@ -89,6 +89,9 @@ String mqttUser = "";
 String mqttPassword = "";
 String mqttServer = "";
 String mqttMasterTopic = "pixelit/";
+String mqttDeviceTopic = "";
+bool mqttUseDeviceTopic = true;
+bool mqttHAdiscoverable = true;
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
 const int MQTT_RECONNECT_INTERVAL = 15000;
@@ -246,6 +249,7 @@ int mbaLuxMax = 400;
 int matrixType = DEFAULT_MATRIX_TYPE;
 String note;
 String hostname;
+String deviceID;
 String matrixTempCorrection = "default";
 
 // System Vars
@@ -293,6 +297,7 @@ uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
 uint clockAutoFallbackTime = 30;
 bool forceClock = false;
 bool clockBlinkAnimated = true;
+bool clockLargeFont = false;
 bool clockFatFont = false;
 bool clockDrawWeekDays = true;
 
@@ -397,7 +402,7 @@ Version parseVersion(const char *versionStr)
 
     memset(version.prerelease, 0, sizeof(version.prerelease));
 
-    int x = sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
+    sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
     return version;
 }
 
@@ -466,7 +471,7 @@ void getBatteryVoltage()
     }
 }
 
-void SetCurrentMatrixBrightness(float newBrightness)
+void SetCurrentMatrixBrightness(int newBrightness)
 {
     currentMatrixBrightness = newBrightness;
     matrix->setBrightness(currentMatrixBrightness);
@@ -517,6 +522,7 @@ void SaveConfig()
     json["clockDateDayMonth"] = clockDateDayMonth;
     json["clockDayOfWeekFirstMonday"] = clockDayOfWeekFirstMonday;
     json["clockBlinkAnimated"] = clockBlinkAnimated;
+    json["clockLargeFont"] = clockLargeFont;
     json["clockFatFont"] = clockFatFont;
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
@@ -529,6 +535,8 @@ void SaveConfig()
     json["mqttServer"] = mqttServer;
     json["mqttMasterTopic"] = mqttMasterTopic;
     json["mqttPort"] = mqttPort;
+    json["mqttUseDeviceTopic"] = mqttUseDeviceTopic;
+    json["mqttHAdiscoverable"] = mqttHAdiscoverable;
     json["luxOffset"] = luxOffset;
     json["temperatureOffset"] = temperatureOffset;
     json["humidityOffset"] = humidityOffset;
@@ -643,7 +651,7 @@ void SetConfigVariables(JsonObject &json)
 
     if (json.containsKey("matrixBrightness"))
     {
-        SetCurrentMatrixBrightness(json["matrixBrightness"].as<float>());
+        SetCurrentMatrixBrightness(json["matrixBrightness"].as<int>());
     }
 
     if (json.containsKey("matrixType"))
@@ -664,10 +672,6 @@ void SetConfigVariables(JsonObject &json)
         {
             if ((hostname_raw.charAt(n) >= '0' && hostname_raw.charAt(n) <= '9') || (hostname_raw.charAt(n) >= 'A' && hostname_raw.charAt(n) <= 'Z') || (hostname_raw.charAt(n) >= 'a' && hostname_raw.charAt(n) <= 'z') || (hostname_raw.charAt(n) == '_') || (hostname_raw.charAt(n) == '-'))
                 hostname += hostname_raw.charAt(n);
-        }
-        if (hostname.isEmpty())
-        {
-            hostname = "PixelIt";
         }
     }
 
@@ -746,11 +750,15 @@ void SetConfigVariables(JsonObject &json)
         clockDayOfWeekFirstMonday = json["clockDayOfWeekFirstMonday"].as<bool>();
     }
 
+    if (json.containsKey("clockLargeFont"))
+    {
+        clockLargeFont = json["clockLargeFont"].as<bool>();
+    }
+
     if (json.containsKey("clockFatFont"))
     {
         clockFatFont = json["clockFatFont"].as<bool>();
     }
-
     if (json.containsKey("clockDrawWeekDays"))
     {
         clockDrawWeekDays = json["clockDrawWeekDays"].as<bool>();
@@ -809,6 +817,16 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("mqttPort"))
     {
         mqttPort = json["mqttPort"].as<int>();
+    }
+
+    if (json.containsKey("mqttUseDeviceTopic"))
+    {
+        mqttUseDeviceTopic = json["mqttUseDeviceTopic"].as<bool>();
+    }
+
+    if (json.containsKey("mqttHAdiscoverable"))
+    {
+        mqttHAdiscoverable = json["mqttHAdiscoverable"].as<bool>();
     }
 
     if (json.containsKey("luxOffset"))
@@ -1084,6 +1102,10 @@ void HandleAndSendButtonPress(uint button, bool state)
     if (mqttAktiv == true && client.connected())
     {
         client.publish((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
+        if (mqttUseDeviceTopic)
+        {
+            client.publish((mqttDeviceTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
+        }
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0)
@@ -1136,16 +1158,20 @@ void callback(char *topic, byte *payload, unsigned int length)
     {
         payload[length] = '\0';
         String channel = String(topic);
-        channel.replace(mqttMasterTopic, "");
+        int lastSlashIndex = channel.lastIndexOf('/');
+        if (lastSlashIndex != -1)
+        {
+            channel = channel.substring(lastSlashIndex + 1);
+        }
 
         DynamicJsonBuffer jsonBuffer;
         JsonObject &json = jsonBuffer.parseObject(payload);
 
-        Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Length: " + String(length) + "/" + String(json.measureLength()) + ") ");
+        Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Cmd: " + channel + ", Bytes: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
-        if (length != json.measureLength())
+        if (json.measureLength() == 2)
         {
-            Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+            Log("MQTT_callback", "JSON message empty or too long");
             return;
         }
         if (channel.equals("setScreen"))
@@ -1155,14 +1181,26 @@ void callback(char *topic, byte *payload, unsigned int length)
         else if (channel.equals("getLuxsensor"))
         {
             client.publish((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
+            if (mqttUseDeviceTopic)
+            {
+                client.publish((mqttDeviceTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
+            }
         }
         else if (channel.equals("getMatrixinfo"))
         {
             client.publish((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
+            if (mqttUseDeviceTopic)
+            {
+                client.publish((mqttDeviceTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
+            }
         }
         else if (channel.equals("getConfig"))
         {
             client.publish((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
+            if (mqttUseDeviceTopic)
+            {
+                client.publish((mqttDeviceTopic + "config").c_str(), GetConfig().c_str());
+            }
         }
         else if (channel.equals("setConfig"))
         {
@@ -1279,47 +1317,51 @@ void CreateFrames(JsonObject &json)
 
 void CreateFrames(JsonObject &json, int forceDuration)
 {
+    bool sendMatrixInfo = false;
+
+    String logMessage = F("JSON contains ");
 
     if (json.containsKey("sleepMode"))
     {
 
+        logMessage += F("Sleep Control, ");
         Serial.printf("SleepMode: %s\n", json["sleepMode"].as<bool>() ? "true" : "false");
 
         // Update internal sleep state
         bool newSleepMode = json["sleepMode"].as<bool>();
 
-        if (newSleepMode == sleepMode)
+        if (newSleepMode != sleepMode)
         {
-            // Nothing to do
-            return;
-        }
-        else
-        {
+            sendMatrixInfo = true;
             // Update sleep mode
             sleepMode = newSleepMode;
+
+            // Display sleepscreen
+            SleepScreen(sleepMode, false);
+
+            // Restore last frame if sleep mode is disabled
+            if (sleepMode == false && currentScreenJsonBuffer.length() > 0)
+            {
+                DynamicJsonBuffer jsonBuffer;
+                JsonObject &tmpJson = jsonBuffer.parseObject(currentScreenJsonBuffer);
+                CreateFrames(tmpJson);
+                return;
+            }
         }
-
-        // Display sleepscreen
-        SleepScreen(sleepMode, false);
-
-        // Restore last frame if sleep mode is disabled
-        if (sleepMode == false)
-        {
-            DynamicJsonBuffer jsonBuffer;
-            JsonObject &tmpJson = jsonBuffer.parseObject(currentScreenJsonBuffer);
-            CreateFrames(tmpJson);
-        }
-
-        return;
     }
 
-    String logMessage = F("JSON contains ");
-
     // Ist eine Display Helligkeit übergeben worden?
-    if (json.containsKey("brightness"))
+    if (json.containsKey("brightness") && !sleepMode)
     {
         logMessage += F("Brightness Control, ");
-        currentMatrixBrightness = json["brightness"];
+
+        if (json["brightness"].as<int>() != currentMatrixBrightness)
+        {
+            sendMatrixInfo = true;
+            currentMatrixBrightness = json["brightness"].as<int>();
+            matrix->setBrightness(currentMatrixBrightness);
+            matrix->show();
+        }
     }
 
     // Set GPIO
@@ -1424,7 +1466,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
     }
 
-    if (!sleepMode && (millis() >= forcedScreenIsActiveUntil || forceDuration > 0))
+    // Process screen content if
+    // - no sleepmode control is in message
+    // - not sleeping
+    // - no forced screen is active OR forceDuration is set
+    if (!json.containsKey("sleepMode") && !sleepMode && (millis() >= forcedScreenIsActiveUntil || forceDuration > 0))
     {
         matrix->setBrightness(currentMatrixBrightness);
 
@@ -1517,7 +1563,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         // Clock
         if (json.containsKey("clock"))
         {
-            logMessage += F("InternalClock Control, Params: ");
+            logMessage += F("InternalClock Control, Params: (");
             scrollTextAktivLoop = false;
             animateBMPAktivLoop = false;
             clockAktiv = true;
@@ -1559,7 +1605,12 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 logMessage += F("fatFont, ");
                 clockFatFont = json["clock"]["fatFont"];
             }
-
+            bool isLargeFontSet = json["clock"]["largeFont"].is<bool>();
+            if (isLargeFontSet)
+            {
+                logMessage += F("largeFont, ");
+                clockLargeFont = json["clock"]["largeFont"];
+            }
             bool isDrawWeekDaysSet = json["clock"]["drawWeekDays"].is<bool>();
             if (isDrawWeekDaysSet)
             {
@@ -1579,6 +1630,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 logMessage += F("hexColor, ");
                 ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
             }
+            if (logMessage.endsWith(", "))
+            {
+                logMessage.remove(logMessage.length() - 2);
+            }
+            logMessage += F("), ");
             DrawClock(true);
         }
 
@@ -1663,9 +1719,8 @@ void CreateFrames(JsonObject &json, int forceDuration)
             for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
             {
                 DrawSingleBitmap(singleBitmap);
-                logMessage += F("Bitmap,");
-            }
-
+                        }
+            logMessage += json["bitmaps"].as<JsonArray>().size();
             logMessage += F("), ");
         }
 
@@ -1732,7 +1787,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         bool scrollTextAktiv = false;
         if (json.containsKey("text"))
         {
-            logMessage += F("Text");
+            logMessage += F("Text, ");
             // Always assume the default delay first.
             scrollTextDelay = scrollTextDefaultDelay;
 
@@ -1797,19 +1852,25 @@ void CreateFrames(JsonObject &json, int forceDuration)
             matrix->show();
         }
     }
-    else
+
+    if (sleepMode && !json.containsKey("sleepMode"))
     {
-        logMessage += F("skipped, because an forced screen is currently being displayed.");
+        logMessage += F("[not all data processed because sleepMode is active]");
     }
 
-    Log(F("CreateFrames"), logMessage + " (Length: " + json.measureLength() + ")");
+    if (logMessage.endsWith(", "))
+    {
+        logMessage.remove(logMessage.length() - 2);
+        logMessage += F(" ");
+    }
+    Log(F("CreateFrames"), logMessage + "(Length: " + json.measureLength() + ")");
 
     if (forceDuration > 0 && (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation")))
     {
         forcedScreenIsActiveUntil = millis() + forceDuration;
     }
 
-    if (!json.containsKey("sleepMode"))
+    if (!json.containsKey("sleepMode") && !sleepMode)
     {
         // Store last frame
 
@@ -1820,6 +1881,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
         json["animateBMPAktivLoopRestore"] = animateBMPAktivLoop;
         currentScreenJsonBuffer = "";
         json.printTo(currentScreenJsonBuffer);
+    }
+
+    if (sendMatrixInfo)
+    {
+        SendMatrixInfo();
     }
 }
 
@@ -2036,6 +2102,7 @@ String GetMatrixInfo()
     //// Matrix Config
     root["note"] = note;
     root["hostname"] = hostname;
+    root["deviceID"] = deviceID;
     root["buildSection"] = STR(BUILD_SECTION);
     root["freeSketchSpace"] = ESP.getFreeSketchSpace();
     root["wifiRSSI"] = WiFi.RSSI();
@@ -2169,10 +2236,21 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         // Position correction
         posY = posY - 1;
     }
-    else if (bigFont == 2) // very large font, only to be used for time display / very large font, only for the time display
+    else if (bigFont == 2) // fat font, only to be used for time display
+    {
+        // Set fat font
+        matrix->setFont(&FatPixels);
+
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 6;
+    }
+    else if (bigFont == 3) // very large font, only to be used for time display
     {
         // Set very large font
-        matrix->setFont(&FatPixels);
+        matrix->setFont(&LargePixels);
 
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
         xTextWidth = boundsw;
@@ -2392,6 +2470,24 @@ void DrawClock(bool fromJSON)
 
     int xPosTime = 0;
 
+    // use Adafruit 7px font as large clock font by default
+    uint clockFontChoice = 1;
+    if (clockFatFont) // use fat 8px clock font if set explicitly
+    {
+        clockFontChoice = 2;
+    }
+    else if (clockLargeFont) // use large 8px clock font if set explicitly
+    {
+        clockFontChoice = 3;
+    }
+
+    // check if a large font is set
+    bool clockFontIsLarge = false;
+    if (clockLargeFont || clockFatFont)
+    {
+        clockFontIsLarge = true;
+    }
+
     if (clockDateDayMonth)
     {
         sprintf_P(date, PSTR("%02d.%02d."), day(), month());
@@ -2401,7 +2497,7 @@ void DrawClock(bool fromJSON)
         sprintf_P(date, PSTR("%02d/%02d"), month(), day());
     }
 
-    if (clock24Hours && clockWithSeconds && !clockFatFont)
+    if (clock24Hours && clockWithSeconds && !clockFontIsLarge)
     {
         xPosTime = 2;
         sprintf_P(time, PSTR("%02d:%02d:%02d"), hour(), minute(), second());
@@ -2413,7 +2509,7 @@ void DrawClock(bool fromJSON)
         if (clockBlink && clockBlinkAnimated)
         {
             clockBlink = false;
-            if (!clockFatFont)
+            if (!clockFontIsLarge)
             {
                 sprintf_P(time, PSTR("%2d %02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2425,7 +2521,7 @@ void DrawClock(bool fromJSON)
         else
         {
             clockBlink = !clockBlink;
-            if (!clockFatFont)
+            if (!clockFontIsLarge)
             {
                 sprintf_P(time, PSTR("%2d:%02d %s"), hourFormat12(), minute(), isAM() ? "AM" : "PM");
             }
@@ -2457,17 +2553,16 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock++;
         }
-
         if (clockCounterClock > clockSwitchSec)
         {
             clockCounterDate = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
-                DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
                 matrix->clear();
-                DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+                DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeIn(30);
             }
             else
@@ -2489,10 +2584,10 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFontIsLarge)
         {
 
-            DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2508,7 +2603,7 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock = 0;
 
-            if (clockFatFont) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
+            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
             {
                 DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
                 FadeOut(30);
@@ -2535,9 +2630,9 @@ void DrawClock(bool fromJSON)
                 }
             }
         }
-        else if (clockFatFont)
+        else if (clockFontIsLarge)
         {
-            DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
+            DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
         }
         else
         {
@@ -2545,7 +2640,7 @@ void DrawClock(bool fromJSON)
         }
     }
 
-    if (!clockFatFont && clockDrawWeekDays)
+    if (!clockFontIsLarge && clockDrawWeekDays)
     {
         DrawWeekDay();
     }
@@ -2609,381 +2704,431 @@ boolean MQTTreconnect()
         client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
         client.subscribe((mqttMasterTopic + "getConfig").c_str());
         client.subscribe((mqttMasterTopic + "setConfig").c_str());
+        if (mqttUseDeviceTopic)
+        {
+            client.subscribe((mqttDeviceTopic + "setScreen").c_str());
+            client.subscribe((mqttDeviceTopic + "getLuxsensor").c_str());
+            client.subscribe((mqttDeviceTopic + "getMatrixinfo").c_str());
+            client.subscribe((mqttDeviceTopic + "getConfig").c_str());
+            client.subscribe((mqttDeviceTopic + "setConfig").c_str());
+        }
         // ... and publish state ....
         client.publish((mqttMasterTopic + "state").c_str(), "connected", true);
+        if (mqttUseDeviceTopic)
+        {
+            client.publish((mqttDeviceTopic + "state").c_str(), "connected", true);
+        }
 
         // ... and provide discovery information
         // Create discovery information for Homeassistant
         // Can also be processed by ioBroker, OpenHAB etc.
-        String deviceID = hostname;
-        if (deviceID.isEmpty())
-            deviceID = "pixelit";
-#if defined(ESP8266)
-        deviceID += ESP.getChipId();
-#elif defined(ESP32)
-        deviceID += uint64ToString(ESP.getEfuseMac());
-#endif
-        // Get host IP to provide URL in MQTT discovery device info
-        String ip_url = "http://" + WiFi.localIP().toString();
-        String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
-        configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
-        String configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"dev_cla\":\"#CLASS#\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"unit_of_meas\":\"#UNIT#\","
-            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
-            "}"));
-        configPayloadTemplate.replace(" ", "");
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        String topic;
-        String payload;
-
-        if (tempSensor != TempSensor_None)
+        if (mqttHAdiscoverable)
         {
-            topic = configTopicTemplate;
-            topic.replace(F("#COMPONENT#"), F("sensor"));
-            topic.replace(F("#SENSORID#"), F("Temperature"));
 
-            payload = configPayloadTemplate;
-            payload.replace(F("#SENSORID#"), F("Temperature"));
-            payload.replace(F("#SENSORNAME#"), F("Temperature"));
-            payload.replace(F("#CLASS#"), F("temperature"));
-            payload.replace(F("#STATETOPIC#"), F("sensor"));
-            payload.replace(F("#UNIT#"), "°C");
-            payload.replace(F("#VALUENAME#"), F("temperature"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            // Get host IP to provide URL in MQTT discovery device info
+            String ip_url = "http://" + WiFi.localIP().toString();
+            String configTopicTemplate = String(F("homeassistant/#COMPONENT#/#DEVICEID#/#DEVICEID##SENSORID#/config"));
+            configTopicTemplate.replace(F("#DEVICEID#"), deviceID);
+            String configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"dev_cla\":\"#CLASS#\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+                "\"unit_of_meas\":\"#UNIT#\","
+                "\"val_tpl\":\"{{value_json.#VALUENAME#}}\""
+                "}"));
+            configPayloadTemplate.replace(" ", "");
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
 
-            topic = configTopicTemplate;
-            topic.replace(F("#COMPONENT#"), F("sensor"));
-            topic.replace(F("#SENSORID#"), F("Humidity"));
+            String topic;
+            String payload;
 
-            payload = configPayloadTemplate;
-            payload.replace(F("#SENSORNAME#"), F("Humidity"));
-            payload.replace(F("#CLASS#"), F("humidity"));
-            payload.replace(F("#STATETOPIC#"), F("sensor"));
-            payload.replace(F("#UNIT#"), "%");
-            payload.replace(F("#VALUENAME#"), F("humidity"));
-            client.publish(topic.c_str(), payload.c_str(), true);
-        }
-        if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
-        {
-            topic = configTopicTemplate;
-            topic.replace(F("#COMPONENT#"), F("sensor"));
-            topic.replace(F("#SENSORID#"), F("Pressure"));
-
-            payload = configPayloadTemplate;
-            payload.replace(F("#SENSORID#"), F("Pressure"));
-            payload.replace(F("#SENSORNAME#"), F("Pressure"));
-            payload.replace(F("#CLASS#"), F("pressure"));
-            payload.replace(F("#STATETOPIC#"), F("sensor"));
-            payload.replace(F("#UNIT#"), "hPa");
-            payload.replace(F("#VALUENAME#"), F("pressure"));
-            client.publish(topic.c_str(), payload.c_str(), true);
-        }
-
-        if (tempSensor == TempSensor_BME680)
-        {
-            topic = configTopicTemplate;
-            topic.replace(F("#COMPONENT#"), F("sensor"));
-            topic.replace(F("#SENSORID#"), F("VOC"));
-
-            payload = configPayloadTemplate;
-            payload.replace(F("#SENSORID#"), F("VOC"));
-            payload.replace(F("#SENSORNAME#"), F("VOC"));
-            payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
-            payload.replace(F("#STATETOPIC#"), F("sensor"));
-            payload.replace(F("#UNIT#"), "kOhm");
-            payload.replace(F("#VALUENAME#"), F("gas"));
-            client.publish(topic.c_str(), payload.c_str(), true);
-        }
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("Illuminance"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("Illuminance"));
-        payload.replace(F("#SENSORNAME#"), F("Illuminance"));
-        payload.replace(F("#CLASS#"), F("illuminance"));
-        payload.replace(F("#STATETOPIC#"), F("luxsensor"));
-        payload.replace(F("#UNIT#"), "lx");
-        payload.replace(F("#VALUENAME#"), F("lux"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"ic\":\"mdi:gesture-tap-button\","
-            "\"pl_on\":\"true\","
-            "\"pl_off\":\"false\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
-            "}"));
-        configPayloadTemplate.replace(" ", "");
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
-        {
-            if (btnEnabled[n])
+            if (tempSensor != TempSensor_None)
             {
                 topic = configTopicTemplate;
-                topic.replace(F("#COMPONENT#"), F("binary_sensor"));
-                topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
+                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#SENSORID#"), F("Temperature"));
 
                 payload = configPayloadTemplate;
-                payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
-                payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
-                payload.replace(F("#STATETOPIC#"), String(F("buttons/button")) + String(n));
+                payload.replace(F("#SENSORID#"), F("Temperature"));
+                payload.replace(F("#SENSORNAME#"), F("Temperature"));
+                payload.replace(F("#CLASS#"), F("temperature"));
+                payload.replace(F("#STATETOPIC#"), F("sensor"));
+                payload.replace(F("#UNIT#"), "°C");
+                payload.replace(F("#VALUENAME#"), F("temperature"));
+                client.publish(topic.c_str(), payload.c_str(), true);
+
+                topic = configTopicTemplate;
+                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#SENSORID#"), F("Humidity"));
+
+                payload = configPayloadTemplate;
+                payload.replace(F("#SENSORNAME#"), F("Humidity"));
+                payload.replace(F("#CLASS#"), F("humidity"));
+                payload.replace(F("#STATETOPIC#"), F("sensor"));
+                payload.replace(F("#UNIT#"), "%");
+                payload.replace(F("#VALUENAME#"), F("humidity"));
                 client.publish(topic.c_str(), payload.c_str(), true);
             }
+            if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
+            {
+                topic = configTopicTemplate;
+                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#SENSORID#"), F("Pressure"));
+
+                payload = configPayloadTemplate;
+                payload.replace(F("#SENSORID#"), F("Pressure"));
+                payload.replace(F("#SENSORNAME#"), F("Pressure"));
+                payload.replace(F("#CLASS#"), F("pressure"));
+                payload.replace(F("#STATETOPIC#"), F("sensor"));
+                payload.replace(F("#UNIT#"), "hPa");
+                payload.replace(F("#VALUENAME#"), F("pressure"));
+                client.publish(topic.c_str(), payload.c_str(), true);
+            }
+
+            if (tempSensor == TempSensor_BME680)
+            {
+                topic = configTopicTemplate;
+                topic.replace(F("#COMPONENT#"), F("sensor"));
+                topic.replace(F("#SENSORID#"), F("VOC"));
+
+                payload = configPayloadTemplate;
+                payload.replace(F("#SENSORID#"), F("VOC"));
+                payload.replace(F("#SENSORNAME#"), F("VOC"));
+                payload.replace(F("#CLASS#"), F("volatile_organic_compounds"));
+                payload.replace(F("#STATETOPIC#"), F("sensor"));
+                payload.replace(F("#UNIT#"), "kOhm");
+                payload.replace(F("#VALUENAME#"), F("gas"));
+                client.publish(topic.c_str(), payload.c_str(), true);
+            }
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("Illuminance"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("Illuminance"));
+            payload.replace(F("#SENSORNAME#"), F("Illuminance"));
+            payload.replace(F("#CLASS#"), F("illuminance"));
+            payload.replace(F("#STATETOPIC#"), F("luxsensor"));
+            payload.replace(F("#UNIT#"), "lx");
+            payload.replace(F("#VALUENAME#"), F("lux"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"ic\":\"mdi:gesture-tap-button\","
+                "\"pl_on\":\"true\","
+                "\"pl_off\":\"false\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\""
+                "}"));
+            configPayloadTemplate.replace(" ", "");
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+            for (uint8_t n = 0; n < sizeof(btnEnabled) / sizeof(btnEnabled[0]); n++)
+            {
+                if (btnEnabled[n])
+                {
+                    topic = configTopicTemplate;
+                    topic.replace(F("#COMPONENT#"), F("binary_sensor"));
+                    topic.replace(F("#SENSORID#"), String(F("Button")) + String(n));
+
+                    payload = configPayloadTemplate;
+                    payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
+                    payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
+                    payload.replace(F("#STATETOPIC#"), String(F("buttons/button")) + String(n));
+                    client.publish(topic.c_str(), payload.c_str(), true);
+                }
+            }
+
+            // Wifi RSSI
+            configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"dev_cla\":\"signal_strength\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+                "\"unit_of_meas\":\"#UNIT#\","
+                "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+                "\"ent_cat\":\"diagnostic\","
+                "\"ic\":\"mdi:#ICON#\","
+                "\"enabled_by_default\":\"false\""
+                "}"));
+            configPayloadTemplate.replace(" ", "");
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("wifiRSSI"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("wifiRSSI"));
+            payload.replace(F("#SENSORNAME#"), F("Wifi Signal"));
+            payload.replace(F("#CLASS#"), F("signal_strength"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#UNIT#"), "dBm");
+            payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
+            payload.replace(F("#ICON#"), F("signal"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // Wifi Quality sensor
+            configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+                "\"unit_of_meas\":\"#UNIT#\","
+                "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+                "\"ent_cat\":\"diagnostic\","
+                "\"ic\":\"mdi:#ICON#\","
+                "\"enabled_by_default\":\"false\""
+                "}"));
+            configPayloadTemplate.replace(" ", "");
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("WifiQuality"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("WifiQuality"));
+            payload.replace(F("#SENSORNAME#"), F("Wifi Quality"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#UNIT#"), "%");
+            payload.replace(F("#VALUENAME#"), F("wifiQuality"));
+            payload.replace(F("#ICON#"), F("signal"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // CPU Freq.
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("cpuFreqMHz"));
+            payload.replace(F("#SENSORNAME#"), F("CPU Freq."));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#UNIT#"), "MHz");
+            payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
+            payload.replace(F("#ICON#"), F("developer-board"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // Wifi SSID
+            configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+                "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
+                "\"ent_cat\":\"diagnostic\","
+                "\"ic\":\"mdi:#ICON#\","
+                "\"enabled_by_default\":\"false\""
+                "}"));
+            configPayloadTemplate.replace(" ", "");
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("WifiSSID"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("WifiSSID"));
+            payload.replace(F("#SENSORNAME#"), F("SSID"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#VALUENAME#"), F("wifiSSID"));
+            payload.replace(F("#ICON#"), F("wifi"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // Wifi BSSID
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("WifiBSSID"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("WifiBSSID"));
+            payload.replace(F("#SENSORNAME#"), F("BSSID"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
+            payload.replace(F("#ICON#"), F("wifi"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // Chip ID
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("sensor"));
+            topic.replace(F("#SENSORID#"), F("chipID"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("chipID"));
+            payload.replace(F("#SENSORNAME#"), F("Chip ID"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#VALUENAME#"), F("chipID"));
+            payload.replace(F("#ICON#"), F("developer-board"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            // LED Matrix on/off + brightness light
+            configPayloadTemplate = String(F(
+                "{"
+                "\"dev\":{"
+                "\"ids\":\"#DEVICEID#\","
+                "\"name\":\"#HOSTNAME#\","
+                "\"mdl\":\"PixelIt\","
+                "\"mf\":\"PixelIt\","
+                "\"sw\":\"#VERSION#\","
+                "\"cu\":\"#IP#\""
+                "},"
+                "\"avty_t\":\"#MASTERTOPIC#state\","
+                "\"pl_avail\":\"connected\","
+                "\"pl_not_avail\":\"disconnected\","
+                "\"uniq_id\":\"#DEVICEID##SENSORID#\","
+                "\"name\":\"#SENSORNAME#\","
+                "\"schema\":\"template\","
+                "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
+                "\"stat_tpl\":\"{{ \'on\' if value_json.sleepMode is false else \'off\' }}\","
+                "\"cmd_t\":\"#MASTERTOPIC##COMMANDTOPIC#\","
+                "\"cmd_on_tpl\":\"{\\\"sleepMode\\\": false {%- if brightness is defined -%}, \\\"brightness\\\": {{ brightness }}{%- endif -%}}\","
+                "\"cmd_off_tpl\":\"{\\\"sleepMode\\\": true}\","
+                "\"bri_tpl\":\"{{ value_json.currentMatrixBrightness }}\","
+                "\"icon\":\"mdi:#ICON#\""
+                "}"));
+            configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
+            configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
+            configPayloadTemplate.replace(F("#VERSION#"), VERSION);
+            if (mqttUseDeviceTopic)
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttDeviceTopic);
+            }
+            else
+            {
+                configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
+            }
+            configPayloadTemplate.replace(F("#IP#"), ip_url);
+
+            topic = configTopicTemplate;
+            topic.replace(F("#COMPONENT#"), F("light"));
+            topic.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+
+            payload = configPayloadTemplate;
+            payload.replace(F("#SENSORID#"), F("LEDMatrixLight"));
+            payload.replace(F("#SENSORNAME#"), F("LED Matrix"));
+            payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
+            payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
+            payload.replace(F("#ICON#"), F("led-strip"));
+            client.publish(topic.c_str(), payload.c_str(), true);
+
+            Log(F("MQTTreconnect"), F("MQTT discovery information published"));
         }
-
-        // Wifi RSSI
-        configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"dev_cla\":\"signal_strength\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"unit_of_meas\":\"#UNIT#\","
-            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-            "\"ent_cat\":\"diagnostic\","
-            "\"ic\":\"mdi:#ICON#\","
-            "\"enabled_by_default\":\"false\""
-            "}"));
-        configPayloadTemplate.replace(" ", "");
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("wifiRSSI"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("wifiRSSI"));
-        payload.replace(F("#SENSORNAME#"), F("Wifi Signal"));
-        payload.replace(F("#CLASS#"), F("signal_strength"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#UNIT#"), "dBm");
-        payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
-        payload.replace(F("#ICON#"), F("signal"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // Wifi Quality sensor
-        configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"unit_of_meas\":\"#UNIT#\","
-            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-            "\"ent_cat\":\"diagnostic\","
-            "\"ic\":\"mdi:#ICON#\","
-            "\"enabled_by_default\":\"false\""
-            "}"));
-        configPayloadTemplate.replace(" ", "");
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("WifiQuality"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("WifiQuality"));
-        payload.replace(F("#SENSORNAME#"), F("Wifi Quality"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#UNIT#"), "%");
-        payload.replace(F("#VALUENAME#"), F("wifiQuality"));
-        payload.replace(F("#ICON#"), F("signal"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // CPU Freq.
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("cpuFreqMHz"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("cpuFreqMHz"));
-        payload.replace(F("#SENSORNAME#"), F("CPU Freq."));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#UNIT#"), "MHz");
-        payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
-        payload.replace(F("#ICON#"), F("developer-board"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // Wifi SSID
-        configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"val_tpl\":\"{{value_json.#VALUENAME#}}\","
-            "\"ent_cat\":\"diagnostic\","
-            "\"ic\":\"mdi:#ICON#\","
-            "\"enabled_by_default\":\"false\""
-            "}"));
-        configPayloadTemplate.replace(" ", "");
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("WifiSSID"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("WifiSSID"));
-        payload.replace(F("#SENSORNAME#"), F("SSID"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#VALUENAME#"), F("wifiSSID"));
-        payload.replace(F("#ICON#"), F("wifi"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // Wifi BSSID
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("WifiBSSID"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("WifiBSSID"));
-        payload.replace(F("#SENSORNAME#"), F("BSSID"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
-        payload.replace(F("#ICON#"), F("wifi"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // Chip ID
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("sensor"));
-        topic.replace(F("#SENSORID#"), F("chipID"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("chipID"));
-        payload.replace(F("#SENSORNAME#"), F("Chip ID"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#VALUENAME#"), F("chipID"));
-        payload.replace(F("#ICON#"), F("developer-board"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        // LED Matrix on/off + brightness light
-        configPayloadTemplate = String(F(
-            "{"
-            "\"dev\":{"
-            "\"ids\":\"#DEVICEID#\","
-            "\"name\":\"#HOSTNAME#\","
-            "\"mdl\":\"PixelIt\","
-            "\"mf\":\"PixelIt\","
-            "\"sw\":\"#VERSION#\","
-            "\"cu\":\"#IP#\""
-            "},"
-            "\"avty_t\":\"#MASTERTOPIC#state\","
-            "\"pl_avail\":\"connected\","
-            "\"pl_not_avail\":\"disconnected\","
-            "\"uniq_id\":\"#DEVICEID##SENSORID#\","
-            "\"name\":\"#SENSORNAME#\","
-            "\"schema\":\"template\","
-            "\"stat_t\":\"#MASTERTOPIC##STATETOPIC#\","
-            "\"stat_tpl\":\"{{ \'on\' if value_json.sleepMode is false else \'off\' }}\","
-            "\"cmd_t\":\"#MASTERTOPIC##COMMANDTOPIC#\","
-            "\"cmd_on_tpl\":\"{\'sleepMode\': false {%- if brightness is defined -%}, \'brightness\': {{ brightness }}{%- endif -%}}\","
-            "\"cmd_off_tpl\":\"{\'sleepMode\': true}\","
-            "\"bri_tpl\":\"{{ value_json.currentMatrixBrightness }}\","
-            "\"icon\":\"mdi:#ICON#\""
-            "}"));
-        configPayloadTemplate.replace(F("#DEVICEID#"), deviceID);
-        configPayloadTemplate.replace(F("#HOSTNAME#"), hostname);
-        configPayloadTemplate.replace(F("#VERSION#"), VERSION);
-        configPayloadTemplate.replace(F("#MASTERTOPIC#"), mqttMasterTopic);
-        configPayloadTemplate.replace(F("#IP#"), ip_url);
-
-        topic = configTopicTemplate;
-        topic.replace(F("#COMPONENT#"), F("light"));
-        topic.replace(F("#SENSORID#"), F("LEDMatrixLight"));
-
-        payload = configPayloadTemplate;
-        payload.replace(F("#SENSORID#"), F("LEDMatrixLight"));
-        payload.replace(F("#SENSORNAME#"), F("LED Matrix"));
-        payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
-        payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
-        payload.replace(F("#ICON#"), F("led-strip"));
-        client.publish(topic.c_str(), payload.c_str(), true);
-
-        Log(F("MQTTreconnect"), F("MQTT discovery information published"));
     }
     else
     {
@@ -3657,12 +3802,21 @@ void setup()
         ShowBatteryScreen();
     }
 
-    // Hostname
+    // Set unique device ID
+    deviceID = "PixelIt-";
+#if defined(ESP8266)
+    deviceID += ESP.getChipId();
+#elif defined(ESP32)
+    deviceID += uint64ToString(ESP.getEfuseMac());
+#endif
+    // Set hostname from config
+    // variable is already validated in LoadConfig()
     if (hostname.isEmpty())
     {
-        hostname = "PixelIt";
+        hostname = deviceID;
     }
     WiFi.hostname(hostname);
+    mqttDeviceTopic = mqttMasterTopic + hostname + "/";
 
     wifiManager.setAPCallback(EnteredHotspotCallback);
     wifiManager.setMinimumSignalQuality();
@@ -4001,6 +4155,7 @@ void loop()
             {
                 SetCurrentMatrixBrightness(newBrightness);
                 Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness));
+                matrix->show();
             }
         }
     }
@@ -4054,6 +4209,10 @@ void SendMatrixInfo()
         if (mqttAktiv == true && client.connected())
         {
             client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+            if (mqttUseDeviceTopic)
+            {
+                client.publish((mqttDeviceTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+            }
         }
         // Check if sending via websocket is required
         if (webSocket.connectedClients() > 0)
@@ -4084,6 +4243,10 @@ void SendLDR(bool force)
     if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
     {
         client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+        if (mqttUseDeviceTopic)
+        {
+            client.publish((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+        }
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0 && oldGetLuxSensor != luxSensor)
@@ -4126,6 +4289,11 @@ void SendSensor(bool force)
     {
         client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
         client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
+        if (mqttUseDeviceTopic)
+        {
+            client.publish((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
+            client.publish((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true);
+        }
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0 && oldGetSensor != Sensor)
