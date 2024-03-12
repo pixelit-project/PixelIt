@@ -57,6 +57,13 @@ Thanks to these great people for supporting this project.
         </a>
     </td>
     <td align="center">
+        <a href="https://github.com/jekader">
+            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
+            <br />
+            <sub><b>jekader</b></sub>
+        </a>
+    </td>
+    <td align="center">
         <a href="https://github.com/Metaln00b">
             <img src="https://avatars.githubusercontent.com/u/25951169?v=4" width="100;" alt="Metaln00b"/>
             <br />
@@ -68,13 +75,6 @@ Thanks to these great people for supporting this project.
             <img src="https://avatars.githubusercontent.com/u/16407309?v=4" width="100;" alt="pplucky"/>
             <br />
             <sub><b>pplucky</b></sub>
-        </a>
-    </td>
-    <td align="center">
-        <a href="https://github.com/jekader">
-            <img src="https://avatars.githubusercontent.com/u/2088123?v=4" width="100;" alt="jekader"/>
-            <br />
-            <sub><b>jekader</b></sub>
         </a>
     </td></tr>
 <tr>
@@ -131,7 +131,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### WORK IN PROGRESS
+### 2.5.0 (2023-11-20)
 
 -   (foorschtbar) Fixes "MQTT message is to long" [[#322](https://github.com/pixelit-project/PixelIt/issues/322)]
 -   (o0shojo0o) Adjustments in the WebUI for the new API structure of the UserMap endpoint
