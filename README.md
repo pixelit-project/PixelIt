@@ -131,6 +131,11 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 2.5.1 (2023-03-22)
+
+-   (rliegmann) Fixed ESP32 Pin Definition
+-   (foorschtbar) Fixed build issue with MAX44009 lib
+
 ### 2.5.0 (2023-11-20)
 
 -   (foorschtbar) Fixes "MQTT message is to long" [[#322](https://github.com/pixelit-project/PixelIt/issues/322)]
