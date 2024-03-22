@@ -1719,7 +1719,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
             {
                 DrawSingleBitmap(singleBitmap);
-                        }
+            }
             logMessage += json["bitmaps"].as<JsonArray>().size();
             logMessage += F("), ");
         }
@@ -3643,8 +3643,7 @@ void setup()
     else
     {
         delete bh1750;
-        max44009 = new Max44009(Max44009::Boolean::False);
-        max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
+        max44009 = new Max44009(MAX44009_DEFAULT_ADDRESS, &twowire);
         if (max44009->isConnected())
         {
             Log(F("Setup"), F("Max44009/GY-049 started"));
