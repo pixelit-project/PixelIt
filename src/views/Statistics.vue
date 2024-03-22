@@ -29,7 +29,7 @@
                 <v-col cols="12" lg="4">
                     <v-card class="pa-1" elevation="4">
                         <v-card-title>
-                            <h2>Builds</h2>
+                            <h2>Boards</h2>
                         </v-card-title>
                         <hr />              
                         <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="buildStats"></apexchart>
@@ -58,7 +58,7 @@
                 <v-col cols="12" lg="8">
                     <v-card class="pa-2" elevation="4">
                         <v-card-title>
-                            <h2>Countrys</h2>
+                            <h2>Countries</h2>
                         </v-card-title>
                         <hr />                    
                         <apexchart height="600px" type="donut" :options="countryChartOptions" :series="countryStats"></apexchart>     
