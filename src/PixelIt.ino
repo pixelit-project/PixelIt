@@ -1719,7 +1719,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             for (JsonVariant singleBitmap : json["bitmaps"].as<JsonArray>())
             {
                 DrawSingleBitmap(singleBitmap);
-                        }
+            }
             logMessage += json["bitmaps"].as<JsonArray>().size();
             logMessage += F("), ");
         }
@@ -3497,36 +3497,36 @@ uint8_t TranslatePin(String pin)
 #elif defined(ESP32)
 
     if (pin == "GPIO_NUM_14")
-        return GPIO_NUM_14;
+        return (int)GPIO_NUM_14;
     if (pin == "GPIO_NUM_15")
-        return GPIO_NUM_15;
+        return (int)GPIO_NUM_15;
     if (pin == "GPIO_NUM_16")
-        return GPIO_NUM_16;
+        return (int)GPIO_NUM_16;
     if (pin == "GPIO_NUM_17")
-        return GPIO_NUM_17;
+        return (int)GPIO_NUM_17;
     if (pin == "GPIO_NUM_18")
-        return GPIO_NUM_18;
+        return (int)GPIO_NUM_18;
     if (pin == "GPIO_NUM_19")
-        return GPIO_NUM_19;
+        return (int)GPIO_NUM_19;
     if (pin == "GPIO_NUM_21")
-        return GPIO_NUM_21;
+        return (int)GPIO_NUM_21;
     if (pin == "GPIO_NUM_22")
-        return GPIO_NUM_22;
+        return (int)GPIO_NUM_22;
     if (pin == "GPIO_NUM_23")
-        return GPIO_NUM_23;
+        return (int)GPIO_NUM_23;
     if (pin == "GPIO_NUM_25")
-        return GPIO_NUM_25;
+        return (int)GPIO_NUM_25;
     if (pin == "GPIO_NUM_26")
-        return GPIO_NUM_26;
+        return (int)GPIO_NUM_26;
     if (pin == "GPIO_NUM_27")
-        return GPIO_NUM_27;
+        return (int)GPIO_NUM_27;
     if (pin == "SPI_CLK_GPIO_NUM")
-        return SPI_CLK_GPIO_NUM;
+        return (int)SPI_CLK_GPIO_NUM;
     if (pin == "SPI_CS0_GPIO_NUM")
-        return SPI_CS0_GPIO_NUM;
+        return (int)SPI_CS0_GPIO_NUM;
 
     Log(F("Pin assignment - unknown pin"), pin);
-    return GPIO_NUM_32; // IDK
+    return (int)GPIO_NUM_32; // IDK
 #endif
 }
 
@@ -3643,8 +3643,7 @@ void setup()
     else
     {
         delete bh1750;
-        max44009 = new Max44009(Max44009::Boolean::False);
-        max44009->configure(MAX44009_DEFAULT_ADDRESS, &twowire, Max44009::Boolean::False);
+        max44009 = new Max44009(MAX44009_DEFAULT_ADDRESS, &twowire);
         if (max44009->isConnected())
         {
             Log(F("Setup"), F("Max44009/GY-049 started"));
