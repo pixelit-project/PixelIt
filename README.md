@@ -131,7 +131,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.5.1 (2023-03-22)
+### 2.5.1 (2023-04-07)
 
 -   (rliegmann) Fixed ESP32 Pin Definition
 -   (foorschtbar) Fixed build issue with MAX44009 lib
