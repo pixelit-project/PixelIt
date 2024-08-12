@@ -9,7 +9,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository_owner == 'pixelit-project'
     steps:
       - name: Contribute List
-        uses: akhilmhdh/contributors-readme-action@v2.3.6
+        uses: akhilmhdh/contributors-readme-action@v2.3.10
         with:
           auto_detect_branch_protection: false
           commit_message: "Updated readme with new contributors"
