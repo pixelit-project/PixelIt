@@ -38,7 +38,6 @@
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
-#include "ColorConverterLib.h"
 #include <TimeLib.h>
 #include <ArduinoJson.h>
 #include <ArduinoHttpClient.h>
@@ -508,8 +507,8 @@ void SaveConfig()
     json["clockTimeZone"] = clockTimeZone;
 
     String clockColorHex;
-    ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
-    json["clockColor"] = "#" + clockColorHex;
+    RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
+    json["clockColor"] = clockColorHex;
 
     json["clockSwitchAktiv"] = clockSwitchAktiv;
     json["clockSwitchSec"] = clockSwitchSec;
@@ -692,7 +691,7 @@ void SetConfigVariables(JsonObject &json)
 
     if (json.containsKey("clockColor"))
     {
-        ColorConverter::HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
+        HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
     }
 
     if (json.containsKey("clockSwitchAktiv"))
@@ -1112,7 +1111,8 @@ void HandleAndSendButtonPress(uint button, bool state)
     {
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
+            String payload = "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}";
+            webSocket.sendTXT(i, payload);
         }
     }
 
@@ -1235,8 +1235,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         SendLDR(true);
         SendSensor(true);
         SendConfig();
-        webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
-        webSocket.sendTXT(num, "{\"telemetry\":" + GetTelemetry() + "}");
+        String payload = "{\"buttons\":" + GetButtons() + "}";
+        webSocket.sendTXT(num, payload);
+        payload = "{\"telemetry\":" + GetTelemetry() + "}";
+        webSocket.sendTXT(num, payload);
         break;
     }
     case WStype_TEXT:
@@ -1545,7 +1547,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t b = 255;
             if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
+                HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
             }
             else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
             {
@@ -1628,7 +1630,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             else if (json["clock"]["hexColor"].as<char *>() != NULL)
             {
                 logMessage += F("hexColor, ");
-                ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
+                HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
             }
             if (logMessage.endsWith(", "))
             {
@@ -1651,7 +1653,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["bar"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
+                HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {
@@ -1671,7 +1673,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 uint8_t r, g, b;
                 if (x["hexColor"].as<char *>() != NULL)
                 {
-                    ColorConverter::HexToRgb(x["hexColor"].as<char *>(), r, g, b);
+                    HexToRgb(x["hexColor"].as<char *>(), r, g, b);
                 }
                 else
                 {
@@ -1797,7 +1799,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["text"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+                HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {
@@ -4218,7 +4220,8 @@ void SendMatrixInfo()
         {
             for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
             {
-                webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+                String payload = "{\"sysinfo\":" + matrixInfo + "}";
+                webSocket.sendTXT(i, payload);
             }
         }
     }
@@ -4252,7 +4255,8 @@ void SendLDR(bool force)
     {
         for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"sensor\":" + luxSensor + "}");
+            String payload = "{\"sensor\":" + luxSensor + "}";
+            webSocket.sendTXT(i, payload);
         }
     }
 
@@ -4299,7 +4303,8 @@ void SendSensor(bool force)
     {
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"sensor\":" + Sensor + "}");
+            String payload = "{\"sensor\":" + Sensor + "}";
+            webSocket.sendTXT(i, payload);
         }
     }
 
@@ -4312,8 +4317,8 @@ void SendConfig()
     {
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            String config = GetConfig();
-            webSocket.sendTXT(i, "{\"config\":" + config + "}");
+            String payload = "{\"config\":" + GetConfig() + "}";
+            webSocket.sendTXT(i, payload);
         }
     }
 }
@@ -4372,6 +4377,35 @@ void sendNTPpacket(String &address)
     udp.beginPacket(address.c_str(), 123);
     udp.write(packetBuffer, NTP_PACKET_SIZE);
     udp.endPacket();
+}
+
+//decode hex string into R G B decimals
+void HexToRgb(String hex, uint8_t& red, uint8_t& green, uint8_t& blue)
+{
+    const char* hexString = (hex[0] == '#') ? hex.c_str() + 1 : hex.c_str();
+    long number = strtol(hexString, nullptr, 16);
+    red = (number >> 16) & 0xFF;
+    green = (number >> 8) & 0xFF;
+    blue = number & 0xFF;
+}
+
+// convert R G B decimal values to hex string
+void RgbToHex(uint8_t red, uint8_t green, uint8_t blue, String &hex)
+{
+    String redHex = String(red, HEX);
+    if (redHex.length() < 2) {
+        redHex = "0" + redHex;
+    }
+    String greenHex = String(green, HEX);
+    if (greenHex.length() < 2) {
+        greenHex = "0" + greenHex;
+    }
+    String blueHex = String(blue, HEX);
+    if (blueHex.length() < 2) {
+        blueHex = "0" + blueHex;
+    }
+    hex = "#" + redHex + greenHex + blueHex;
+    hex.toUpperCase();
 }
 
 void Log(String function, String message)
