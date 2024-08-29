@@ -144,6 +144,11 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 3.0.0-beta (WORK IN PROGRESS)
+-   (jekader) Upgraded ESP8266 SDK
+-   (jekader) Upgraded WiFiManager and other libraries
+-   (jekader) Removed unnecessary toolchain-xtensa32 libary
+
 ### 2.5.1 (2024-04-07)
 
 -   (rliegmann) Fixed ESP32 Pin Definition
