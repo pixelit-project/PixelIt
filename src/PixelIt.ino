@@ -27,6 +27,9 @@
 // MQTT
 #include <PubSubClient.h>
 // Matrix
+#if defined(ESP8266)
+#define FASTLED_INTERRUPT_RETRY_COUNT 0
+#endif
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
