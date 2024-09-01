@@ -145,6 +145,7 @@ Thanks to these great people for supporting this project.
 <!-- ** WORK IN PROGRESS ** -->
 
 ### 3.0.0-beta (WORK IN PROGRESS)
+-   (o0shojo0o) Added compatibility check for configuration restore. 
 -   (jekader) Upgraded ESP8266 SDK
 -   (jekader) Upgraded WiFiManager and other libraries
 -   (jekader) Removed unnecessary toolchain-xtensa32 libary
