@@ -27,6 +27,9 @@
 // MQTT
 #include <PubSubClient.h>
 // Matrix
+#if defined(ESP8266)
+#define FASTLED_INTERRUPT_RETRY_COUNT 0 // Since espresif version 3, this is required for esp 8266.
+#endif
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <FastLED.h>
@@ -393,6 +396,12 @@ String ResetReason()
         return "Unknown reset reason";
     }
 #endif
+}
+
+void matrixShow()
+{
+    FastLED.delay(5);
+    FastLED.show();
 }
 
 Version parseVersion(const char *versionStr)
@@ -1069,17 +1078,17 @@ void SleepScreen(bool startSleep, bool forceClockOnWake)
         Log(F("SleepScreen"), F("Sleeping..."));
         matrix->clear();
         DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 6, 1);
-        matrix->show();
+        matrixShow();
         delay(200);
         DrawTextHelper("Z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 1, 1);
-        matrix->show();
+        matrixShow();
         delay(200);
         DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) + 4, 1);
-        matrix->show();
+        matrixShow();
         delay(500);
         FadeOut(30, 0);
         matrix->setBrightness(0);
-        matrix->show();
+        matrixShow();
     }
     else
     {
@@ -1362,7 +1371,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             sendMatrixInfo = true;
             currentMatrixBrightness = json["brightness"].as<int>();
             matrix->setBrightness(currentMatrixBrightness);
-            matrix->show();
+            matrixShow();
         }
     }
 
@@ -1851,7 +1860,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         {
             // Fade nicht aktiv!
             // Muss mich selbst um Show kümmern
-            matrix->show();
+            matrixShow();
         }
     }
 
@@ -2311,7 +2320,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         }
         else
         {
-            matrix->show();
+            matrixShow();
         }
     }
     else
@@ -2347,7 +2356,7 @@ void ScrollText(bool isFadeInRequired)
         }
         else
         {
-            matrix->show();
+            matrixShow();
         }
     }
     else
@@ -2431,7 +2440,7 @@ void AnimateBMP(bool isShowRequired)
 
     if (isShowRequired)
     {
-        matrix->show();
+        matrixShow();
     }
 }
 
@@ -2581,7 +2590,7 @@ void DrawClock(bool fromJSON)
                     {
                         DrawWeekDay();
                     }
-                    matrix->show();
+                    matrixShow();
                     delay(35);
                 }
             }
@@ -2627,7 +2636,7 @@ void DrawClock(bool fromJSON)
                     {
                         DrawWeekDay();
                     }
-                    matrix->show();
+                    matrixShow();
                     delay(35);
                 }
             }
@@ -2651,7 +2660,7 @@ void DrawClock(bool fromJSON)
     // muss ich mich selbst ums Show kümmern.
     if (!fromJSON)
     {
-        matrix->show();
+        matrixShow();
     }
 }
 
@@ -3152,7 +3161,7 @@ void FadeOut(int dealy, int minBrightness)
     {
         currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
         matrix->setBrightness(currentFadeBrightness);
-        matrix->show();
+        matrixShow();
         counter--;
         delay(dealy);
     }
@@ -3167,7 +3176,7 @@ void FadeIn(int dealy, int minBrightness)
     {
         currentFadeBrightness = map(counter, 0, 25, minBrightness, currentMatrixBrightness);
         matrix->setBrightness(currentFadeBrightness);
-        matrix->show();
+        matrixShow();
         counter++;
         delay(dealy);
     }
@@ -3183,7 +3192,7 @@ void ColoredBarWipe()
         matrix->drawFastVLine(i + 1, 0, 8, ColorWheel((i * 9) & 255, 0));
         matrix->drawFastVLine(i - 1, 0, 8, 0);
         matrix->drawFastVLine(i - 2, 0, 8, 0);
-        matrix->show();
+        matrixShow();
         delay(15);
     }
 }
@@ -3206,7 +3215,7 @@ void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
                 matrix->drawFastVLine(32 - col, row, 2, matrix->Color(r, g, b));
                 matrix->drawFastVLine(32 - col - 1, row, 2, matrix->Color(r, g, b));
             }
-            matrix->show();
+            matrixShow();
             delay(5);
         }
         matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
@@ -3220,12 +3229,12 @@ void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b)
             matrix->drawFastVLine(0, row + 1, 2, matrix->Color(r, g, b));
             matrix->drawFastVLine(1, row + 1, 2, matrix->Color(r, g, b));
         }
-        matrix->show();
+        matrixShow();
         delay(5);
         matrix->fillRect(0, row, 32, 2, matrix->Color(0, 0, 0));
     }
     matrix->fillRect(0, 0, 32, 8, matrix->Color(0, 0, 0));
-    matrix->show();
+    matrixShow();
 }
 
 void BitmapWipe(JsonArray &data, int16_t w)
@@ -3240,10 +3249,10 @@ void BitmapWipe(JsonArray &data, int16_t w)
                 matrix->drawPixel(x + i, y, data[j * w + i].as<uint16_t>());
             }
         }
-        matrix->show();
+        matrixShow();
         delay(18);
         matrix->fillRect(0, 0, x, 8, matrix->Color(0, 0, 0));
-        matrix->show();
+        matrixShow();
     }
 }
 
@@ -3256,7 +3265,7 @@ void ColorFlash(int red, int green, int blue)
             matrix->drawPixel(column, row, matrix->Color(red, green, blue));
         }
     }
-    matrix->show();
+    matrixShow();
 }
 
 uint ColorWheel(byte wheelPos, int pos)
@@ -3280,28 +3289,28 @@ uint ColorWheel(byte wheelPos, int pos)
 void ShowBootAnimation()
 {
     DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, (MATRIX_WIDTH / 2) - 12, 1);
-    matrix->show();
+    matrixShow();
 
     delay(200);
     DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, (MATRIX_WIDTH / 2) - 8, 1);
-    matrix->show();
+    matrixShow();
 
     delay(200);
     DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, (MATRIX_WIDTH / 2) - 6, 1);
-    matrix->show();
+    matrixShow();
 
     delay(200);
     DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, (MATRIX_WIDTH / 2) - 2, 1);
-    matrix->show();
+    matrixShow();
 
     delay(200);
     DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, (MATRIX_WIDTH / 2) + 2, 1);
-    matrix->show();
+    matrixShow();
 
     delay(500);
     DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 6, 1);
     DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 8, 1);
-    matrix->show();
+    matrixShow();
     delay(1000);
 }
 
@@ -3323,7 +3332,7 @@ void ShowBatteryScreen()
     matrix->clear();
     DrawSingleBitmap(root["bitmap"]);
     DrawTextHelper(String(batteryLevel, 0) + "%", false, true, false, false, false, 255, 255, 255, 9, 1);
-    matrix->show();
+    matrixShow();
     delay(1000);
 }
 
@@ -4156,7 +4165,7 @@ void loop()
             {
                 SetCurrentMatrixBrightness(newBrightness);
                 Log(F("Auto Brightness"), "Lux: " + String(currentLux) + " set brightness to " + String(currentMatrixBrightness));
-                matrix->show();
+                matrixShow();
             }
         }
     }
@@ -4379,10 +4388,10 @@ void sendNTPpacket(String &address)
     udp.endPacket();
 }
 
-//decode hex string into R G B decimals
-void HexToRgb(String hex, uint8_t& red, uint8_t& green, uint8_t& blue)
+// decode hex string into R G B decimals
+void HexToRgb(String hex, uint8_t &red, uint8_t &green, uint8_t &blue)
 {
-    const char* hexString = (hex[0] == '#') ? hex.c_str() + 1 : hex.c_str();
+    const char *hexString = (hex[0] == '#') ? hex.c_str() + 1 : hex.c_str();
     long number = strtol(hexString, nullptr, 16);
     red = (number >> 16) & 0xFF;
     green = (number >> 8) & 0xFF;
@@ -4393,15 +4402,18 @@ void HexToRgb(String hex, uint8_t& red, uint8_t& green, uint8_t& blue)
 void RgbToHex(uint8_t red, uint8_t green, uint8_t blue, String &hex)
 {
     String redHex = String(red, HEX);
-    if (redHex.length() < 2) {
+    if (redHex.length() < 2)
+    {
         redHex = "0" + redHex;
     }
     String greenHex = String(green, HEX);
-    if (greenHex.length() < 2) {
+    if (greenHex.length() < 2)
+    {
         greenHex = "0" + greenHex;
     }
     String blueHex = String(blue, HEX);
-    if (blueHex.length() < 2) {
+    if (blueHex.length() < 2)
+    {
         blueHex = "0" + blueHex;
     }
     hex = "#" + redHex + greenHex + blueHex;
