@@ -58,7 +58,7 @@ jobs:
         uses: actions/setup-python@v5
 
       - name: Download WebUI artifacts 💾
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: pixelit-webui
           path: pixelit-webui-artifact
@@ -95,7 +95,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download artifacts 💾
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: pixelit-firmware
 
@@ -125,7 +125,7 @@ jobs:
           path: docs
 
       - name: Download artifacts 💾
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: pixelit-firmware
           path: artifacts
@@ -164,7 +164,7 @@ jobs:
           repository: "pixelit-project/WebUI"
 
       - name: Download artifacts 💾
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: pixelit-webui
           path: webui
