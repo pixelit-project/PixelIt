@@ -144,6 +144,10 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 2.5.2 (2024-10-05)
+
+-   (foorschtbar) Fixed ESP32 Battery Pin Definition
+
 ### 2.5.1 (2024-04-07)
 
 -   (rliegmann) Fixed ESP32 Pin Definition
