@@ -76,9 +76,27 @@
                     <DownloadStats :items="gitReleases" />
                 </v-card>
             </v-col>
-        </v-row>      
+        </v-row>     
+        <v-dialog v-model="popupIsActive" max-width="500">
+        <v-card>
+            <v-card-title class="headline orange--text">Warning, please note!</v-card-title>
+                <v-card-text>
+                    <div v-for="restoreWarning in restoreWarnings" :key="restoreWarning">
+                    {{ restoreWarning }}                    
+                    </div>
+                    <br>
+                    Should the configuration backup still be restored on this PixelIt?
+                </v-card-text>
+            <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="orange" text @click="uploadConfigWithWarnings">Ignore and Restore</v-btn>
+            <v-btn color="green" text @click="popupIsActive = false">Cancel</v-btn>         
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
     </v-container>
 </template>
+
 
 <script>
 import DownloadStats from '../components/DownloadStats';
@@ -91,6 +109,9 @@ export default {
             firmwareFile: null,
             filesystemFile: null,
             configFile: null,
+            popupIsActive: false,
+            ignoreRestoreWarnings: false,
+            restoreWarnings: []
         };
     },
     computed: {
@@ -153,8 +174,13 @@ export default {
                 e;
             }
         },
+        uploadConfigWithWarnings() {
+            this.popupIsActive=false;
+            this.ignoreRestoreWarnings= true;            
+            this.uploadConfig();
+        },
         uploadConfig() {               
-            let reader = new FileReader();
+            const reader = new FileReader();
             reader.onload = e => { 
                 const config = JSON.parse(e.target.result);
                 // Clean Config
@@ -165,19 +191,59 @@ export default {
                     this.$socket.close();
                 }, 3000);   
             };
-            reader.readAsText(this.configFile);
+
+            const version = this.$store.state.version;
+            const buildSection = JSON.parse(this.$store.state.telemetryData).buildSection;
+
+            const [, fileVersion, ...buildSectionParts] = this.configFile.name.replace(/\(\d+\)/g, '()').replace(/[\s()]+/g, '').replace('.json', '').split('_');
+            const fileBuildSection = buildSectionParts.join('_');
+
+            this.restoreWarnings = [];
+
+            if (this.ignoreRestoreWarnings == false){
+
+                if (fileVersion == ''){
+                    this.restoreWarnings.push("It could not be determined with which firmware version this backup was created.");
+                } 
+                else if (version != fileVersion){
+                    this.restoreWarnings.push("Backup firmware version does not match the version of this PixelIt!");
+                    this.restoreWarnings.push(`Backup: ${fileVersion} <--> PixelIt: ${version}`);                                  
+                }
+
+                if (this.restoreWarnings.length > 0){
+                    this.restoreWarnings.push(`---`);
+                }
+            
+                if (fileBuildSection == ''){
+                    this.restoreWarnings.push("It could not be determined with which hardware version this backup was created.");
+                } 
+                else if (buildSection != fileBuildSection){
+                    this.restoreWarnings.push("Backup hardware version does not match the version of this PixelIt!");
+                    this.restoreWarnings.push(`Backup: ${fileBuildSection} <--> PixelIt: ${buildSection}`);
+                }
+                
+                if (this.restoreWarnings.length > 0){
+                    this.popupIsActive = true;
+                    return;
+                }
+            }
+
+            this.ignoreRestoreWarnings = false;
+            reader.readAsText(this.configFile);            
         },
         async downloadConfig(){          
             try {
-                //const jsonData = JSON.stringify(await (await fetch(`http://${this.$pixelitHost}/api/config`)).json());
                 const jsonData = JSON.stringify(this.$store.state.configData);                
                 const blob = new Blob([jsonData], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
 
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `pixlitConfig_${this.$store.state.version}.json`;
 
+                const version = this.$store.state.version;
+                const buildSection = JSON.parse(this.$store.state.telemetryData).buildSection;
+
+                link.download = `pixlitConfig_${version}_${buildSection}.json`;
                 link.click();
 
                 URL.revokeObjectURL(url);

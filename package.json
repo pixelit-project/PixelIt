@@ -15,7 +15,7 @@
         "@babel/polyfill": "^7.11.5",
         "@types/prismjs": "^1.26.2",
         "apexcharts": "^3.44.0",
-        "core-js": "^3.32.2",
+        "core-js": "^3.38.1",
         "leaflet": "^1.9.4",
         "mutationobserver-shim": "^0.3.7",
         "popper.js": "^1.16.1",
