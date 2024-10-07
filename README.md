@@ -148,6 +148,7 @@ Thanks to these great people for supporting this project.
 
 -   (foorschtbar) Fixed ESP32 Battery Pin Definition
 -   (foorschtbar) Removed color convertion libary
+-   (o0shojo0o) Added compatibility check for configuration restore. 
 
 ### 2.5.1 (2024-04-07)
 
