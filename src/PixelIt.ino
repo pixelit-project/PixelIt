@@ -38,7 +38,6 @@
 #include <DHTesp.h>
 #include <DFPlayerMini_Fast.h>
 #include <SoftwareSerial.h>
-#include "ColorConverterLib.h"
 #include <TimeLib.h>
 #include <ArduinoJson.h>
 #include <ArduinoHttpClient.h>
@@ -506,11 +505,7 @@ void SaveConfig()
     json["matrixTempCorrection"] = matrixTempCorrection;
     json["ntpServer"] = ntpServer;
     json["clockTimeZone"] = clockTimeZone;
-
-    String clockColorHex;
-    ColorConverter::RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
-    json["clockColor"] = "#" + clockColorHex;
-
+    json["clockColor"] = "#" + RGBtoHEX(clockColorR, clockColorG, clockColorB);
     json["clockSwitchAktiv"] = clockSwitchAktiv;
     json["clockSwitchSec"] = clockSwitchSec;
     json["clock24Hours"] = clock24Hours;
@@ -692,7 +687,7 @@ void SetConfigVariables(JsonObject &json)
 
     if (json.containsKey("clockColor"))
     {
-        ColorConverter::HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
+        HEXtoRGB(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
     }
 
     if (json.containsKey("clockSwitchAktiv"))
@@ -1545,7 +1540,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t b = 255;
             if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
             }
             else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
             {
@@ -1628,7 +1623,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             else if (json["clock"]["hexColor"].as<char *>() != NULL)
             {
                 logMessage += F("hexColor, ");
-                ColorConverter::HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
+                HEXtoRGB(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
             }
             if (logMessage.endsWith(", "))
             {
@@ -1651,7 +1646,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["bar"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["bar"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {
@@ -1671,7 +1666,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 uint8_t r, g, b;
                 if (x["hexColor"].as<char *>() != NULL)
                 {
-                    ColorConverter::HexToRgb(x["hexColor"].as<char *>(), r, g, b);
+                    HEXtoRGB(x["hexColor"].as<char *>(), r, g, b);
                 }
                 else
                 {
@@ -1797,7 +1792,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["text"]["hexColor"].as<char *>() != NULL)
             {
-                ColorConverter::HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["text"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {

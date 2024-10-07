@@ -144,9 +144,10 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.5.2 (2024-10-05)
+### 2.5.2 (2024-10-07)
 
 -   (foorschtbar) Fixed ESP32 Battery Pin Definition
+-   (foorschtbar) Removed color convertion libary
 
 ### 2.5.1 (2024-04-07)
 
