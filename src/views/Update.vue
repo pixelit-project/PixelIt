@@ -6,7 +6,7 @@
                     <v-col cols="12" lg="12">
                         <v-card class="pa-0" elevation="4">
                             <v-card-text class="text-md-center">
-                                <h2>Firmware / Filesystem Update</h2>
+                                <h2>Update Firmware & Filesystem</h2>
                             </v-card-text>
                         </v-card>
                     </v-col>
@@ -70,7 +70,6 @@
                 <v-card class="pa-2" elevation="4">
                     <v-card-title>
                         <h2>Download Stats</h2>
-                        <span class="smallInfo">( last 4 versions )</span>
                     </v-card-title>
                     <hr />
                     <DownloadStats :items="gitReleases" />
