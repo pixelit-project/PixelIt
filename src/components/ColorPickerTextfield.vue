@@ -1,5 +1,5 @@
 <template>
-    <v-text-field v-model="color" label="Color" readonly hint="click left on the box">
+    <v-text-field v-model="config.clockColor" label="Color" readonly hint="click left on the box">
         <template v-slot:prepend>
             <v-menu v-model="menu" top nudge-bottom="100" nudge-left="16" :close-on-content-click="false">
                 <template v-slot:activator="{ on }">
@@ -7,7 +7,7 @@
                 </template>
                 <v-card>
                     <v-card-text class="pa-0">
-                        <v-color-picker v-model="color" />
+                        <v-color-picker v-model="config.clockColor" />
                     </v-card-text>
                 </v-card>
             </v-menu>
@@ -22,17 +22,15 @@ export default {
             menu: false,
         };
     },
-    props: {
-        color: {
-            type: String,
-            required: true,
-        },
-    },
+    props: {},
     computed: {
+        config() {
+            return this.$store.state.configData;
+        },
         swatchStyle() {
-            const { color, menu } = this;
+            const { config, menu } = this;
             return {
-                backgroundColor: color,
+                backgroundColor: config.clockColor,
                 cursor: 'pointer',
                 height: '30px',
                 width: '30px',

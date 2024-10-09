@@ -72,7 +72,7 @@
                         <br />
                         <v-text-field v-model="config.ntpServer" label="NTP-Server" hint="domain or ip address" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.clockTimeZone" type="number" label="UTC offset" hint="your UTC time offset" :rules="[rules.required, rules.minMinus12, rules.max14]"></v-text-field>
-                        <ColorPickerTextfield :color="config.clockColor" />
+                        <ColorPickerTextfield />
                         <v-switch v-model="config.clockDayLightSaving" label="Daylight saving" dense hide-details></v-switch>
                         <v-switch v-model="config.clock24Hours" label="24 Hours" persistent-hint dense hide-details></v-switch>
                         <v-switch v-model="config.clockLargeFont" label="Large clock font" persistent-hint :disabled="config.clockFatFont" dense hide-details></v-switch>
@@ -219,7 +219,7 @@ export default {
         },
         deviceTopicLabel() {
             let hostname = '';
-            if (this.$store?.state?.configData?.hostname != '') {
+            if (this.$store.state.configData.hostname != '') {
                 hostname = this.$store.state.configData.hostname.trim();
             } else {
                 hostname = this.$store.state.displayHostname;
