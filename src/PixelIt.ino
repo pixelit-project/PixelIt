@@ -50,6 +50,12 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
+#include "BtnActions.h"
+#include "BtnStates.h"
+#include "TempSensor.h"
+#include "TemperatureUnit.h"
+#include "LuxSensor.h"
+#include "Version.h"
 
 // Internal Config
 #define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8      // 8 Hours
@@ -129,28 +135,11 @@ unsigned long batteryLevelPrevMillis = 0;
 
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
-enum btnStates
-{
-    btnState_Released,
-    btnState_PressedNew,
-    btnState_PressedBefore,
-};
-
 const String btnAPINames[]{"leftButton", "middleButton", "rightButton"};
 const String btnLogNames[]{"Left button", "Middle button", "Right button"};
 
 btnStates btnState[] = {btnState_Released, btnState_Released, btnState_Released};
 bool btnLastPublishState[] = {false, false, false};
-
-enum btnActions
-{
-    btnAction_DoNothing = 0,
-    btnAction_GotoClock = 1,
-    btnAction_ToggleSleepMode = 2,
-    btnAction_MP3PlayPause = 3,
-    btnAction_MP3PlayPrevious = 4,
-    btnAction_MP3PlayNext = 5,
-};
 
 #if defined(ULANZI)
 String btnPin[] = {"GPIO_NUM_26", "GPIO_NUM_27", "GPIO_NUM_14"}; // UlanziTC001 workaround to tweak WebUI
@@ -185,35 +174,14 @@ unsigned long lastBME680read = 0;
 DHTesp dht;
 
 // TempSensor
-enum TempSensor
-{
-    TempSensor_None,
-    TempSensor_BME280,
-    TempSensor_DHT,
-    TempSensor_BME680,
-    TempSensor_BMP280,
-    TempSensor_SHT31,
-};
 TempSensor tempSensor = TempSensor_None;
 
 // TemperatureUnit
-enum TemperatureUnit
-{
-    TemperatureUnit_Celsius,
-    TemperatureUnit_Fahrenheit
-};
 TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
 
 LightDependentResistor *photocell;
 BH1750 *bh1750;
 Max44009 *max44009;
-
-enum LuxSensor
-{
-    LuxSensor_LDR,
-    LuxSensor_BH1750,
-    LuxSensor_Max44009,
-};
 LuxSensor luxSensor = LuxSensor_LDR;
 
 FastLED_NeoMatrix *matrix;
@@ -347,14 +315,6 @@ bool checkUpdateScreen = true;
 unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
-
-typedef struct
-{
-    int major;
-    int minor;
-    int patch;
-    char prerelease[16];
-} Version;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
