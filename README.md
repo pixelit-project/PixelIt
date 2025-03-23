@@ -144,6 +144,10 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 2.5.4 (2025-03-23) ** WORK IN PROGRESS **
+
+- (foorschtbar) Battery screen on boot can now be disabled
+
 ### 2.5.3 (2024-10-09)
 
 -   (foorschtbar) Fixed ESP32 Battery Pin Definition

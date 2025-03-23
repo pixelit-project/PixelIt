@@ -1863,6 +1863,9 @@ String GetConfig()
         DynamicJsonBuffer jsonBuffer;
         JsonObject &root = jsonBuffer.parseObject(buf.get());
 
+        // add current vbat pin to show button on webinterface or not
+        root["showBatteryBtn"] = VBAT_PIN > 0 ? true : false;
+
         String json;
         root.printTo(json);
 
