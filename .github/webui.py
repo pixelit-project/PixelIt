@@ -11,7 +11,7 @@ print(content)
 content = "const char mainPage[] PROGMEM = R\"=====(" + content + ")=====\";"
 
 # Write the content of the file
-webuih = open('./src/Webinterface.h', 'w')
+webuih = open('./include/Webinterface.h', 'w')
 webuih.write(content)
 webuih.close()
 

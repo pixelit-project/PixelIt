@@ -145,10 +145,21 @@ Thanks to these great people for supporting this project.
 <!-- ** WORK IN PROGRESS ** -->
 
 ### 3.0.0-beta (WORK IN PROGRESS)
--   (o0shojo0o) Added compatibility check for configuration restore. 
+
+-   (o0shojo0o) Added compatibility check for configuration restore.
 -   (jekader) Upgraded ESP8266 SDK
 -   (jekader) Upgraded WiFiManager and other libraries
 -   (jekader) Removed unnecessary toolchain-xtensa32 libary
+
+### 2.5.3 (2024-10-09)
+
+-   (foorschtbar) Fixed ESP32 Battery Pin Definition
+-   (foorschtbar) Removed color convertion libary
+-   (o0shojo0o) Added compatibility check for configuration restore.
+
+### 2.5.2 (2024-10-09)
+
+-   The version has been withdrawn.
 
 ### 2.5.1 (2024-04-07)
 

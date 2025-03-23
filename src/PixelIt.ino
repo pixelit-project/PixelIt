@@ -50,6 +50,12 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
+#include "BtnActions.h"
+#include "BtnStates.h"
+#include "TempSensor.h"
+#include "TemperatureUnit.h"
+#include "LuxSensor.h"
+#include "Version.h"
 
 // Internal Config
 #define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8      // 8 Hours
@@ -129,28 +135,11 @@ unsigned long batteryLevelPrevMillis = 0;
 
 int btnPressedLevel[] = {LOW, LOW, LOW};
 
-enum btnStates
-{
-    btnState_Released,
-    btnState_PressedNew,
-    btnState_PressedBefore,
-};
-
 const String btnAPINames[]{"leftButton", "middleButton", "rightButton"};
 const String btnLogNames[]{"Left button", "Middle button", "Right button"};
 
 btnStates btnState[] = {btnState_Released, btnState_Released, btnState_Released};
 bool btnLastPublishState[] = {false, false, false};
-
-enum btnActions
-{
-    btnAction_DoNothing = 0,
-    btnAction_GotoClock = 1,
-    btnAction_ToggleSleepMode = 2,
-    btnAction_MP3PlayPause = 3,
-    btnAction_MP3PlayPrevious = 4,
-    btnAction_MP3PlayNext = 5,
-};
 
 #if defined(ULANZI)
 String btnPin[] = {"GPIO_NUM_26", "GPIO_NUM_27", "GPIO_NUM_14"}; // UlanziTC001 workaround to tweak WebUI
@@ -185,35 +174,14 @@ unsigned long lastBME680read = 0;
 DHTesp dht;
 
 // TempSensor
-enum TempSensor
-{
-    TempSensor_None,
-    TempSensor_BME280,
-    TempSensor_DHT,
-    TempSensor_BME680,
-    TempSensor_BMP280,
-    TempSensor_SHT31,
-};
 TempSensor tempSensor = TempSensor_None;
 
 // TemperatureUnit
-enum TemperatureUnit
-{
-    TemperatureUnit_Celsius,
-    TemperatureUnit_Fahrenheit
-};
 TemperatureUnit temperatureUnit = TemperatureUnit_Celsius;
 
 LightDependentResistor *photocell;
 BH1750 *bh1750;
 Max44009 *max44009;
-
-enum LuxSensor
-{
-    LuxSensor_LDR,
-    LuxSensor_BH1750,
-    LuxSensor_Max44009,
-};
 LuxSensor luxSensor = LuxSensor_LDR;
 
 FastLED_NeoMatrix *matrix;
@@ -347,14 +315,6 @@ bool checkUpdateScreen = true;
 unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
-
-typedef struct
-{
-    int major;
-    int minor;
-    int patch;
-    char prerelease[16];
-} Version;
 
 // MP3Player Vars
 String OldGetMP3PlayerInfo;
@@ -505,11 +465,7 @@ void SaveConfig()
     json["matrixTempCorrection"] = matrixTempCorrection;
     json["ntpServer"] = ntpServer;
     json["clockTimeZone"] = clockTimeZone;
-
-    String clockColorHex;
-    RgbToHex(clockColorR, clockColorG, clockColorB, clockColorHex);
-    json["clockColor"] = clockColorHex;
-
+    json["clockColor"] = "#" + RGBtoHEX(clockColorR, clockColorG, clockColorB);
     json["clockSwitchAktiv"] = clockSwitchAktiv;
     json["clockSwitchSec"] = clockSwitchSec;
     json["clock24Hours"] = clock24Hours;
@@ -691,7 +647,7 @@ void SetConfigVariables(JsonObject &json)
 
     if (json.containsKey("clockColor"))
     {
-        HexToRgb(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
+        HEXtoRGB(json["clockColor"].as<String>(), clockColorR, clockColorG, clockColorB);
     }
 
     if (json.containsKey("clockSwitchAktiv"))
@@ -1547,7 +1503,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t b = 255;
             if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
             {
-                HexToRgb(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
             }
             else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
             {
@@ -1630,7 +1586,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             else if (json["clock"]["hexColor"].as<char *>() != NULL)
             {
                 logMessage += F("hexColor, ");
-                HexToRgb(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
+                HEXtoRGB(json["clock"]["hexColor"].as<char *>(), clockColorR, clockColorG, clockColorB);
             }
             if (logMessage.endsWith(", "))
             {
@@ -1653,7 +1609,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["bar"]["hexColor"].as<char *>() != NULL)
             {
-                HexToRgb(json["bar"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["bar"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {
@@ -1673,7 +1629,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 uint8_t r, g, b;
                 if (x["hexColor"].as<char *>() != NULL)
                 {
-                    HexToRgb(x["hexColor"].as<char *>(), r, g, b);
+                    HEXtoRGB(x["hexColor"].as<char *>(), r, g, b);
                 }
                 else
                 {
@@ -1799,7 +1755,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             uint8_t r, g, b;
             if (json["text"]["hexColor"].as<char *>() != NULL)
             {
-                HexToRgb(json["text"]["hexColor"].as<char *>(), r, g, b);
+                HEXtoRGB(json["text"]["hexColor"].as<char *>(), r, g, b);
             }
             else
             {
@@ -4379,10 +4335,10 @@ void sendNTPpacket(String &address)
     udp.endPacket();
 }
 
-//decode hex string into R G B decimals
-void HexToRgb(String hex, uint8_t& red, uint8_t& green, uint8_t& blue)
+// decode hex string into R G B decimals
+void HexToRgb(String hex, uint8_t &red, uint8_t &green, uint8_t &blue)
 {
-    const char* hexString = (hex[0] == '#') ? hex.c_str() + 1 : hex.c_str();
+    const char *hexString = (hex[0] == '#') ? hex.c_str() + 1 : hex.c_str();
     long number = strtol(hexString, nullptr, 16);
     red = (number >> 16) & 0xFF;
     green = (number >> 8) & 0xFF;
@@ -4393,15 +4349,18 @@ void HexToRgb(String hex, uint8_t& red, uint8_t& green, uint8_t& blue)
 void RgbToHex(uint8_t red, uint8_t green, uint8_t blue, String &hex)
 {
     String redHex = String(red, HEX);
-    if (redHex.length() < 2) {
+    if (redHex.length() < 2)
+    {
         redHex = "0" + redHex;
     }
     String greenHex = String(green, HEX);
-    if (greenHex.length() < 2) {
+    if (greenHex.length() < 2)
+    {
         greenHex = "0" + greenHex;
     }
     String blueHex = String(blue, HEX);
-    if (blueHex.length() < 2) {
+    if (blueHex.length() < 2)
+    {
         blueHex = "0" + blueHex;
     }
     hex = "#" + redHex + greenHex + blueHex;
