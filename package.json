@@ -13,7 +13,7 @@
     },
     "dependencies": {
         "@babel/polyfill": "^7.11.5",
-        "@types/prismjs": "^1.26.2",
+        "@types/prismjs": "^1.26.5",
         "apexcharts": "^3.44.0",
         "core-js": "^3.38.1",
         "leaflet": "^1.9.4",
@@ -23,7 +23,7 @@
         "prismjs": "^1.29.0",
         "vue": "^2.7.8",
         "vue-apexcharts": "^1.6.2",
-        "vue-cookies": "^1.8.3",
+        "vue-cookies": "^1.8.6",
         "vue-native-websocket": "^2.0.15",
         "vue-prism-editor": "^1.3.0",
         "vue-router": "^3.5.1",

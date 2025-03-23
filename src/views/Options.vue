@@ -25,6 +25,7 @@
                         <v-text-field v-model="config.hostname" label="Hostname"></v-text-field>
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
                         <v-switch v-model="config.bootScreenAktiv" label="Bootscreen active" hide-details dense></v-switch>
+                        <v-switch v-model="config.bootBatteryScreen" label="Show battery status on boot" hide-details dense v-if="showBatteryBtn"></v-switch>
                         <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>
                         <v-switch v-model="config.checkUpdateScreen" label="Display on matrix when new firmware is available" hide-details dense></v-switch>
                     </v-card>
@@ -216,6 +217,9 @@ export default {
         },
         telemetryData() {
             return this.$store.state.telemetryData;
+        },
+        showBatteryBtn() {
+            return this.$store.state.configData.showBatteryBtn;
         },
         deviceTopicLabel() {
             let hostname = '';
