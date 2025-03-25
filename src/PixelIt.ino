@@ -1319,6 +1319,17 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
     }
 
+    // Enable/Disable automatic brightness control
+    if (json.containsKey("autobrightness"))
+    {
+        logMessage += F("Brightness Automatic Control, ");
+        if (json["autobrightness"].as<bool>() != matrixBrightnessAutomatic)
+        {
+            sendMatrixInfo = true;
+            matrixBrightnessAutomatic = json["autobrightness"].as<bool>();
+        }
+    }
+
     // Set GPIO
     if (json.containsKey("setGpio"))
     {
