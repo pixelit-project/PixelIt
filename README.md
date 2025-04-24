@@ -148,7 +148,7 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.5.5 (2025-04-24) ** WORK IN PROGRESS **
+### 2.5.5 (2025-04-24)
 
 - (foorschtbar) Battery screen on boot can now be disabled
 - (foorschtbar) Added autobrightness to API
