@@ -140,13 +140,18 @@ Thanks to these great people for supporting this project.
 
 ![](.github/webui.png)
 
+## Videos
+
+[![](.github/youtube.jpg)](https://www.youtube.com/watch?v=Tpol4iNq4xo&pp=ygUHcGl4ZWxpdA%3D%3D)
+
 ## Changelog
 
 <!-- ** WORK IN PROGRESS ** -->
 
-### 2.5.4 (2025-03-23) ** WORK IN PROGRESS **
+### 2.5.5 (2025-04-24) ** WORK IN PROGRESS **
 
 - (foorschtbar) Battery screen on boot can now be disabled
+- (foorschtbar) Added autobrightness to API
 
 ### 2.5.3 (2024-10-09)
 
