@@ -1,0 +1,656 @@
+[
+    {
+        "id": "c3fd799b89f7e308",
+        "type": "tab",
+        "label": "Flux 7",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "483273d97f18e058",
+        "type": "Core",
+        "z": "c3fd799b89f7e308",
+        "name": "PixelIT Core",
+        "uuid": "",
+        "ip": "192.168.1.61",
+        "masterTopic": "",
+        "x": 1190,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5735811545a43ad3",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Météo toutes les 15min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "900",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 180,
+        "wires": [
+            [
+                "79043b0845ed667f"
+            ]
+        ]
+    },
+    {
+        "id": "79043b0845ed667f",
+        "type": "http request",
+        "z": "c3fd799b89f7e308",
+        "name": "API Météo La Rochelle",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/weather?q=La%20Rochelle,FR&appid=VOTREIDOPENWEATHERMAP&units=metric&lang=fr",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 370,
+        "y": 180,
+        "wires": [
+            [
+                "5417b0382bb17054"
+            ]
+        ]
+    },
+    {
+        "id": "5417b0382bb17054",
+        "type": "function",
+        "z": "c3fd799b89f7e308",
+        "name": "Traiter données météo",
+        "func": "// Stocker les données météo dans le context global\nif (msg.payload && msg.payload.main) {\n    const weather = {\n        temp: Math.round(msg.payload.main.temp),\n        description: msg.payload.weather[0].description,\n        icon: msg.payload.weather[0].icon,\n        city: msg.payload.name\n    };\n    \n    // Mapper les icônes OpenWeather vers les IDs PixelIT\n    const iconMap = {\n        '01d': '1', '01n': '2', '02d': '3', '02n': '4',\n        '03d': '5', '03n': '5', '04d': '6', '04n': '6',\n        '09d': '7', '09n': '7', '10d': '8', '10n': '9',\n        '11d': '10', '11n': '10', '13d': '11', '13n': '11',\n        '50d': '12', '50n': '12'\n    };\n    \n    weather.pixelitIcon = iconMap[weather.icon] || '609';\n    global.set('weather', weather);\n    \n    node.status({ fill: \"green\", shape: \"dot\", text: `${weather.temp}°C - ${weather.description}` });\n} else {\n    node.status({ fill: \"red\", shape: \"dot\", text: \"Erreur API météo\" });\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e760478df7333d22",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Simple",
+        "props": [
+            {
+                "p": "payload",
+                "v": "Hello PixelIT!",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "625a71e95bbe4264"
+            ]
+        ]
+    },
+    {
+        "id": "625a71e95bbe4264",
+        "type": "Screen Init",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Screen",
+        "inscreenName": "test",
+        "induration": "5",
+        "x": 310,
+        "y": 280,
+        "wires": [
+            [
+                "e43fd4f31a9985e9"
+            ]
+        ]
+    },
+    {
+        "id": "e43fd4f31a9985e9",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Text",
+        "intextString": "{{payload}}",
+        "inbigFont": "false",
+        "inscrollText": "true",
+        "inscrollTextDelay": "100",
+        "incenterText": "false",
+        "inposX": "0",
+        "inposY": "1",
+        "incolorR": "255",
+        "incolorG": "255",
+        "incolorB": "255",
+        "x": 470,
+        "y": 280,
+        "wires": [
+            [
+                "30cfb8a95c7e4b13"
+            ]
+        ]
+    },
+    {
+        "id": "30cfb8a95c7e4b13",
+        "type": "Alert Screen",
+        "z": "c3fd799b89f7e308",
+        "name": "Afficher Test",
+        "x": 630,
+        "y": 280,
+        "wires": [
+            [
+                "483273d97f18e058"
+            ]
+        ]
+    },
+    {
+        "id": "adfacd5f1f96ed2c",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Heure",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 340,
+        "wires": [
+            [
+                "d02bf3ae0b3b5f15"
+            ]
+        ]
+    },
+    {
+        "id": "d02bf3ae0b3b5f15",
+        "type": "Screen Init",
+        "z": "c3fd799b89f7e308",
+        "name": "Heure Screen",
+        "inscreenName": "time",
+        "induration": "7",
+        "x": 310,
+        "y": 340,
+        "wires": [
+            [
+                "0a456b711eddd5c3"
+            ]
+        ]
+    },
+    {
+        "id": "0a456b711eddd5c3",
+        "type": "function",
+        "z": "c3fd799b89f7e308",
+        "name": "Préparer Heure",
+        "func": "const now = new Date();\nconst hour = now.getHours();\n\n// Couleur selon l'heure\nif (hour >= 6 && hour < 12) {\n    msg.colorR = 255; msg.colorG = 200; msg.colorB = 0; // Matin\n} else if (hour >= 12 && hour < 18) {\n    msg.colorR = 0; msg.colorG = 150; msg.colorB = 255; // Après-midi\n} else if (hour >= 18 && hour < 22) {\n    msg.colorR = 255; msg.colorG = 100; msg.colorB = 0; // Soirée\n} else {\n    msg.colorR = 100; msg.colorG = 0; msg.colorB = 200; // Nuit\n}\n\n// Formater l'heure plus courte\nmsg.timeText = now.toLocaleTimeString('fr-FR', { \n    hour: '2-digit', \n    minute: '2-digit',\n    hour12: false\n}).replace(':', 'h');\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.timeText}` });\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 340,
+        "wires": [
+            [
+                "b5c36a2810e54bee"
+            ]
+        ]
+    },
+    {
+        "id": "b5c36a2810e54bee",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Texte Heure",
+        "intextString": "{{timeText}}",
+        "inbigFont": "false",
+        "inscrollText": "false",
+        "inscrollTextDelay": "0",
+        "incenterText": "false",
+        "inposX": "2",
+        "inposY": "1",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 670,
+        "y": 340,
+        "wires": [
+            [
+                "095f966f521d401c"
+            ]
+        ]
+    },
+    {
+        "id": "f9ed8692f8af0ded",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Jour",
+        "intextString": "{{dayText}}",
+        "inbigFont": "false",
+        "inscrollText": "false",
+        "inscrollTextDelay": "0",
+        "incenterText": "true",
+        "inposX": "16",
+        "inposY": "6",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 830,
+        "y": 340,
+        "wires": [
+            [
+                "095f966f521d401c"
+            ]
+        ]
+    },
+    {
+        "id": "095f966f521d401c",
+        "type": "Alert Screen",
+        "z": "c3fd799b89f7e308",
+        "name": "Afficher Heure",
+        "x": 990,
+        "y": 340,
+        "wires": [
+            [
+                "483273d97f18e058"
+            ]
+        ]
+    },
+    {
+        "id": "eb5c0292710697c8",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Date",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 400,
+        "wires": [
+            [
+                "f298381e71dc3601"
+            ]
+        ]
+    },
+    {
+        "id": "f298381e71dc3601",
+        "type": "Screen Init",
+        "z": "c3fd799b89f7e308",
+        "name": "Date Screen",
+        "inscreenName": "date",
+        "induration": "7",
+        "x": 310,
+        "y": 400,
+        "wires": [
+            [
+                "8e787d7455567197"
+            ]
+        ]
+    },
+    {
+        "id": "8e787d7455567197",
+        "type": "function",
+        "z": "c3fd799b89f7e308",
+        "name": "Préparer Date",
+        "func": "const now = new Date();\nconst hour = now.getHours();\n\n// Couleur selon l'heure\nif (hour >= 6 && hour < 12) {\n    msg.colorR = 255; msg.colorG = 200; msg.colorB = 0; // Matin\n} else if (hour >= 12 && hour < 18) {\n    msg.colorR = 0; msg.colorG = 150; msg.colorB = 255; // Après-midi\n} else if (hour >= 18 && hour < 22) {\n    msg.colorR = 255; msg.colorG = 100; msg.colorB = 0; // Soirée\n} else {\n    msg.colorR = 100; msg.colorG = 0; msg.colorB = 200; // Nuit\n}\n\n// Formater la date\nmsg.dateText = now.toLocaleDateString('fr-FR', { \n    weekday: 'long',\n    day: '2-digit', \n    month: '2-digit',\n    year: '2-digit'\n});\n\n// Jour de la semaine\nconst days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];\nmsg.dayText = days[now.getDay()];\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${msg.dateText}` });\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 400,
+        "wires": [
+            [
+                "13942f7a9b603942"
+            ]
+        ]
+    },
+    {
+        "id": "13942f7a9b603942",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Texte Date",
+        "intextString": "{{dateText}}",
+        "inbigFont": "false",
+        "inscrollText": "auto",
+        "inscrollTextDelay": "0",
+        "incenterText": "false",
+        "inposX": "2",
+        "inposY": "1",
+        "incolorHex": "",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 670,
+        "y": 400,
+        "wires": [
+            [
+                "2b42fc3fb005f81e"
+            ]
+        ]
+    },
+    {
+        "id": "69d9aa47aa06418f",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Jour",
+        "intextString": "{{dayText}}",
+        "inbigFont": "false",
+        "inscrollText": "auto",
+        "inscrollTextDelay": "0",
+        "incenterText": "true",
+        "inposX": "16",
+        "inposY": "6",
+        "incolorHex": "",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 830,
+        "y": 400,
+        "wires": [
+            [
+                "2b42fc3fb005f81e"
+            ]
+        ]
+    },
+    {
+        "id": "2b42fc3fb005f81e",
+        "type": "Alert Screen",
+        "z": "c3fd799b89f7e308",
+        "name": "Afficher Date",
+        "x": 990,
+        "y": 400,
+        "wires": [
+            [
+                "483273d97f18e058"
+            ]
+        ]
+    },
+    {
+        "id": "36965f1cafbf9e87",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Test Météo",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 460,
+        "wires": [
+            [
+                "184bee0e0f945d51"
+            ]
+        ]
+    },
+    {
+        "id": "184bee0e0f945d51",
+        "type": "Screen Init",
+        "z": "c3fd799b89f7e308",
+        "name": "Météo Screen",
+        "inscreenName": "weather",
+        "induration": "7",
+        "x": 310,
+        "y": 460,
+        "wires": [
+            [
+                "f6b6b553bea12e33"
+            ]
+        ]
+    },
+    {
+        "id": "f6b6b553bea12e33",
+        "type": "function",
+        "z": "c3fd799b89f7e308",
+        "name": "Préparer Météo",
+        "func": "const now = new Date();\nconst hour = now.getHours();\n\n// Couleur selon l'heure\nif (hour >= 6 && hour < 12) {\n    msg.colorR = 255; msg.colorG = 200; msg.colorB = 0; // Matin\n} else if (hour >= 12 && hour < 18) {\n    msg.colorR = 0; msg.colorG = 150; msg.colorB = 255; // Après-midi\n} else if (hour >= 18 && hour < 22) {\n    msg.colorR = 255; msg.colorG = 100; msg.colorB = 0; // Soirée\n} else {\n    msg.colorR = 100; msg.colorG = 0; msg.colorB = 200; // Nuit\n}\n\n// Récupérer les données météo\nconst weather = global.get('weather') || { \n    temp: 20, \n    description: 'Test', \n    pixelitIcon: '609' \n};\n\nmsg.tempText = weather.temp + '°';\nmsg.weatherIcon = weather.pixelitIcon;\n\n// Jour de la semaine\nconst days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];\nmsg.dayText = days[now.getDay()];\n\nnode.status({ fill: \"green\", shape: \"dot\", text: `${weather.temp}°C` });\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 460,
+        "wires": [
+            [
+                "fd81208079bb4630"
+            ]
+        ]
+    },
+    {
+        "id": "fd81208079bb4630",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Jour",
+        "intextString": "{{dayText}}",
+        "inbigFont": "false",
+        "inscrollText": "false",
+        "inscrollTextDelay": "0",
+        "incenterText": "true",
+        "inposX": "16",
+        "inposY": "6",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 670,
+        "y": 460,
+        "wires": [
+            [
+                "6483586ebd07cd90"
+            ]
+        ]
+    },
+    {
+        "id": "6483586ebd07cd90",
+        "type": "Text",
+        "z": "c3fd799b89f7e308",
+        "name": "Température",
+        "intextString": "{{tempText}}",
+        "inbigFont": "false",
+        "inscrollText": "false",
+        "inscrollTextDelay": "0",
+        "incenterText": "false",
+        "inposX": "20",
+        "inposY": "1",
+        "incolorR": "{{colorR}}",
+        "incolorG": "{{colorG}}",
+        "incolorB": "{{colorB}}",
+        "x": 830,
+        "y": 460,
+        "wires": [
+            [
+                "9b2241f524967919"
+            ]
+        ]
+    },
+    {
+        "id": "9b2241f524967919",
+        "type": "Bitmap Animation",
+        "z": "c3fd799b89f7e308",
+        "name": "Icône Météo",
+        "indata": "{{weatherIcon}}",
+        "inanimationDelay": "500",
+        "inrubberbanding": "false",
+        "inlimitLoops": "0",
+        "x": 1010,
+        "y": 460,
+        "wires": [
+            [
+                "67b67d4f4b094538"
+            ]
+        ]
+    },
+    {
+        "id": "67b67d4f4b094538",
+        "type": "Alert Screen",
+        "z": "c3fd799b89f7e308",
+        "name": "Afficher Météo",
+        "x": 1190,
+        "y": 460,
+        "wires": [
+            [
+                "483273d97f18e058"
+            ]
+        ]
+    },
+    {
+        "id": "d69f4143e4023a7a",
+        "type": "inject",
+        "z": "c3fd799b89f7e308",
+        "name": "Démarrer cycle",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "7",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "15",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 540,
+        "wires": [
+            [
+                "8a66aafb87a25221"
+            ]
+        ]
+    },
+    {
+        "id": "8a66aafb87a25221",
+        "type": "function",
+        "z": "c3fd799b89f7e308",
+        "name": "Cycle",
+        "func": "let cycle = context.get('cycle') || 0;\ncycle = (cycle + 1) % 3;\ncontext.set('cycle', cycle);\n\nswitch(cycle) {\n    case 0:\n        msg.topic = 'time';\n        break;\n    case 1:\n        msg.topic = 'date';\n        break;\n    case 2:\n        msg.topic = 'weather';\n        break;\n}\n\nnode.status({ fill: \"blue\", shape: \"dot\", text: `Cycle: ${msg.topic}` });\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 540,
+        "wires": [
+            [
+                "097713a790bb0d89"
+            ]
+        ]
+    },
+    {
+        "id": "097713a790bb0d89",
+        "type": "switch",
+        "z": "c3fd799b89f7e308",
+        "name": "Switch Cycle",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "time",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "date",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "weather",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 490,
+        "y": 540,
+        "wires": [
+            [
+                "d02bf3ae0b3b5f15"
+            ],
+            [
+                "f298381e71dc3601"
+            ],
+            [
+                "184bee0e0f945d51"
+            ]
+        ]
+    },
+    {
+        "id": "1726a3673872427d",
+        "type": "comment",
+        "z": "c3fd799b89f7e308",
+        "name": "1. TESTEZ D'ABORD : Bouton 'Test Simple' puis 'Test Heure', 'Test Date', 'Test Météo'",
+        "info": "Commencez par tester chaque écran individuellement avant d'activer le cycle automatique.",
+        "x": 330,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "28b12f559f6fcddf",
+        "type": "comment",
+        "z": "c3fd799b89f7e308",
+        "name": "2. CYCLE AUTO : Se déclenche automatiquement après 15 secondes",
+        "info": "Le cycle automatique démarre 15 secondes après le déploiement et change d'écran toutes les 7 secondes.",
+        "x": 260,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "f544618124c6f3c7",
+        "type": "comment",
+        "z": "c3fd799b89f7e308",
+        "name": "3. MÉTÉO : Configurez votre clé API OpenWeatherMap",
+        "info": "Remplacez VOTRE_API_KEY par votre vraie clé API pour avoir les données météo.",
+        "x": 240,
+        "y": 140,
+        "wires": []
+    }
+]
