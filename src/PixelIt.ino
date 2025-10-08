@@ -2227,6 +2227,16 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         // Position correction
         posY = posY + 6;
     }
+    else if (bigFont == 4)
+    {
+        // Set PixelitBigFont
+        matrix->setFont(&PixelItBigFont);
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 3;
+    }
     else
     {
         // Set small font
@@ -4359,4 +4369,5 @@ void Log(String function, String message)
             webSocket.sendTXT(i, payload);
         }
     }
+
 }
