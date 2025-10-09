@@ -46,6 +46,7 @@
 #include "Adafruit_SHT31.h"
 // PixelIT Stuff
 #include "PixelItFont.h"
+#include "PixelItFontFR.h"
 #include "Webinterface.h"
 #include "Tools.h"
 #include "UpdateScreen.h"
@@ -2227,6 +2228,46 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         // Position correction
         posY = posY + 6;
     }
+    else if (bigFont == 4)
+    {
+        // Set PixelitFRFont
+        matrix->setFont(&PixelItFRFont);
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 5;
+    }
+    else if (bigFont == 5)
+    {
+        // Set PixelitFRBigFont
+        matrix->setFont(&PixelItBigFRFont);
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 3;
+    }/*
+    else if (bigFont == 6)
+    {
+        // Set PixelitBigFont
+        matrix->setFont(&PixelItRUFont);
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 5;
+    }
+    else if (bigFont == 7)
+    {
+        // Set PixelitBigFont
+        matrix->setFont(&PixelItBigRUFont);
+        matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
+        xTextWidth = boundsw;
+
+        // Position correction
+        posY = posY + 3;
+    }*/
     else
     {
         // Set small font
@@ -4359,4 +4400,5 @@ void Log(String function, String message)
             webSocket.sendTXT(i, payload);
         }
     }
+
 }
