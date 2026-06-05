@@ -148,6 +148,11 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### 2.5.6 (2026-06-05)
+
+- (foorschtbar) Increased the timeout for the WiFi connection to 30 seconds.
+- (foorschtbar) A neat animation is now displayed during the Wifi connection process.
+- 
 ### 2.5.5 (2025-04-24)
 
 - (foorschtbar) Battery screen on boot can now be disabled

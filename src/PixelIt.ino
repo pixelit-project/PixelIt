@@ -24,6 +24,7 @@
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
+#include <Ticker.h>
 // MQTT
 #include <PubSubClient.h>
 // Matrix
@@ -190,6 +191,11 @@ WiFiClient wifiClientHTTP;
 WiFiUDP udp;
 PubSubClient client(wifiClientMQTT);
 WiFiManager wifiManager;
+Ticker connectingAnimTicker;
+int16_t connectingBarX = 0;
+int8_t connectingBarDir = 1;
+const uint8_t CONNECTING_TRAIL_LEN = 6;
+const uint8_t CONNECTING_TRAIL_BRIGHTNESS[] = {255, 180, 110, 60, 25, 10};
 #if defined(ESP8266)
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -436,12 +442,79 @@ void SetCurrentMatrixBrightness(int newBrightness)
     matrix->setBrightness(currentMatrixBrightness);
 }
 
+void ConnectingAnimationTick()
+{
+    // Bar moves every tick
+    connectingBarX += connectingBarDir;
+    if (connectingBarX >= MATRIX_WIDTH - 1)
+    {
+        connectingBarX = MATRIX_WIDTH - 1;
+        connectingBarDir = -1;
+    }
+    else if (connectingBarX <= 0)
+    {
+        connectingBarX = 0;
+        connectingBarDir = 1;
+    }
+
+    // Redraw static centered "WiFi" text (cleared each frame)
+    matrix->setFont(&PixelItFont);
+    matrix->setTextWrap(false);
+
+    int16_t bx, by;
+    uint16_t bw, bh;
+    matrix->getTextBounds("WiFi", 0, 0, &bx, &by, &bw, &bh);
+    int16_t textX = (MATRIX_WIDTH - (int16_t)(bw - 4)) / 2;
+
+    matrix->clear();
+    matrix->setTextColor(matrix->Color(255, 255, 255));
+    matrix->setCursor(textX, 6);
+    matrix->print("WiFi");
+
+    // Draw bouncing bar with fading trail on bottom row
+    for (uint8_t i = 0; i < CONNECTING_TRAIL_LEN; i++)
+    {
+        int16_t x = connectingBarX - connectingBarDir * (int8_t)i;
+        if (x >= 0 && x < MATRIX_WIDTH)
+        {
+            matrix->drawPixel(x, MATRIX_HEIGHT - 1, matrix->Color(0, 0, CONNECTING_TRAIL_BRIGHTNESS[i]));
+        }
+    }
+
+    matrix->show();
+}
+
 void EnteredHotspotCallback(WiFiManager *manager)
 {
+    connectingAnimTicker.detach();
     Log(F("Hotspot"), "Waiting for WiFi configuration");
     matrix->clear();
     DrawTextHelper("HOTSPOT", false, false, false, false, false, 255, 255, 255, 3, 1);
     FadeIn();
+}
+
+void ShowConnectingScreen()
+{
+    // Bar starts at left edge, moving right
+    connectingBarX = 0;
+    connectingBarDir = 1;
+
+    // Draw initial frame: centered "WiFi" text + bar head at left
+    matrix->setFont(&PixelItFont);
+    matrix->setTextWrap(false);
+    int16_t bx, by;
+    uint16_t bw, bh;
+    matrix->getTextBounds("WiFi", 0, 0, &bx, &by, &bw, &bh);
+    int16_t textX = (MATRIX_WIDTH - (int16_t)(bw - 4)) / 2;
+
+    matrix->clear();
+    matrix->setTextColor(matrix->Color(255, 255, 255));
+    matrix->setCursor(textX, 6);
+    matrix->print("WiFi");
+    matrix->drawPixel(0, MATRIX_HEIGHT - 1, matrix->Color(0, 0, CONNECTING_TRAIL_BRIGHTNESS[0]));
+    FadeIn();
+
+    connectingAnimTicker.attach_ms(60, ConnectingAnimationTick);
 }
 
 void SaveConfig()
@@ -3786,21 +3859,25 @@ void setup()
     WiFi.hostname(hostname);
     mqttDeviceTopic = mqttMasterTopic + hostname + "/";
 
+    ShowConnectingScreen();
+
     wifiManager.setAPCallback(EnteredHotspotCallback);
     wifiManager.setMinimumSignalQuality();
     // Timout for the wifi connection until the hotspot is set up
-    wifiManager.setTimeout(30);
+    wifiManager.setConnectTimeout(30);
     // Config menue timeout 180 seconds.
     wifiManager.setConfigPortalTimeout(180);
 
     if (!wifiManager.autoConnect("PIXELIT"))
     {
         Log(F("Setup"), F("Wifi failed to connect and hit timeout"));
+        connectingAnimTicker.detach();
         delay(3000);
         // Reset and try again, or maybe put it to deep sleep
         ESP.restart();
         delay(5000);
     }
+    connectingAnimTicker.detach();
 
     Log(F("Setup"), F("Wifi connected...yeey :)"));
 
