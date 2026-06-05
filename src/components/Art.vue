@@ -1,6 +1,14 @@
 <template>
     <div id="art" :style="{ width: getWidth(), height: getHeight() }">
-        <Pixel :coloring="color" :id="p" :func="func" :pixelDimensions="getPixelDimensions()" v-for="p in getPixelCount()" :key="p" />
+        <Pixel
+            :background="getPixelBackground(p)"
+            :coloring="color"
+            :id="p"
+            :func="func"
+            :pixelDimensions="getPixelDimensions()"
+            v-for="p in getPixelCount()"
+            :key="p"
+        />
     </div>
 </template>
 <script>
@@ -22,6 +30,10 @@ export default {
         },
         func: {
             type: Function,
+            required: true,
+        },
+        backgrounds: {
+            type: Array,
             required: true,
         },
     },
@@ -52,6 +64,9 @@ export default {
             } else {
                 return '25';
             }
+        },
+        getPixelBackground(pixelId) {
+            return this.backgrounds[pixelId - 1] || '#000000';
         },
     },
 };

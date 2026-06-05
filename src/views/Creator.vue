@@ -18,7 +18,7 @@
         <v-row v-if="pixelMode == 0">
             <v-col cols="12" lg="4" offset-lg="2">
                 <v-card class="pa-3" elevation="4">
-                    <Art :colors="colors" pixelCount="64" :func="onclick" />
+                    <Art :colors="colors" pixelCount="64" :func="onclick" :backgrounds="active8x8Background" />
                     <p></p>
                     <v-textarea filled outlined v-model="array8x8String" rows="5" hide-details></v-textarea>
                     <v-switch v-model="livedraw" label="Live draw" hide-details dense></v-switch>
@@ -36,16 +36,16 @@
         <v-row v-if="pixelMode == 1">
             <v-col cols="12" lg="8" offset-lg="0">
                 <v-card class="pa-3" elevation="4">
-                    <Art :colors="colors" pixelCount="256" :func="onclick" />
+                    <Art :colors="colors" pixelCount="256" :func="onclick" :backgrounds="active8x32Background" />
                     <p></p>
-                    <v-textarea filled outlined v-model="array8x32String" rows="9" hide-details></v-textarea>   
-                    <v-switch v-model="livedraw" label="Live draw" :disabled="!sockedIsConnected" hide-details dense></v-switch>  
-                    <div class="text-center" v-if="isAnimated" >    
+                    <v-textarea filled outlined v-model="array8x32String" rows="9" hide-details></v-textarea>
+                    <v-switch v-model="livedraw" label="Live draw" :disabled="!sockedIsConnected" hide-details dense></v-switch>
+                    <div class="text-center" v-if="isAnimated" >
                         <v-card-text><h3 class="red--text">No animated 8x32 bitmaps are supported!</h3></v-card-text>
-                    </div> 
-                    <div class="text-center">                        
+                    </div>
+                    <div class="text-center">
                         <ButtonSave color="green" text ="Save" icon="mdi-content-save" :data="array8x32String" :pixelMode="pixelMode" :condition="!isAnimated"></ButtonSave>
-                    </div>       
+                    </div>
                 </v-card>
             </v-col>
             <v-col cols="12" lg="4">
@@ -64,10 +64,10 @@ export default {
         return {
             colors: '#F44336',
             pixelMode: 0,
-            active8x8Background: {},
-            active8x32Background: {},
-            array8x8String: '',
-            array8x32String: '',
+            active8x8Background: Array.from({ length: 64 }, () => '#000000'),
+            active8x32Background: Array.from({ length: 256 }, () => '#000000'),
+            array8x8String: `[${Array.from({ length: 64 }, () => 0).join(',')}]`,
+            array8x32String: `[${Array.from({ length: 256 }, () => 0).join(',')}]`,
             livedraw: false,
         };
     },
@@ -83,40 +83,22 @@ export default {
             return this.cleaned8x32String.includes('],[');
         },
     },
+    watch: {
+        array8x8String(value) {
+            this.active8x8Background = parseBitmapString(value, 64);
+        },
+        array8x32String(value) {
+            this.active8x32Background = parseBitmapString(value, 256);
+        },
+    },
     methods: {
         onclick(id, color) {
-            if (Object.keys(this.active8x32Background).length < 256) {
-                for (let i = 1; i < 256; i++) {
-                    this.active8x32Background[i] = '000';
-                }
-            }
-
-            if (Object.keys(this.active8x8Background).length < 64) {
-                for (let i = 1; i < 64; i++) {
-                    this.active8x8Background[i] = '000';
-                }
-            }
-
             if (this.pixelMode == 0) {
-                this.active8x8Background[id] = color.replace('#', '');
-                this.array8x8String = '[';
-
-                for (const hex of Object.values(this.active8x8Background)) {
-                    this.array8x8String += rgb888ToRgb565(hexToRgb(hex)) + ',';
-                }
-
-                this.array8x8String = this.array8x8String.slice(0, -1);
-                this.array8x8String += ']';
+                this.$set(this.active8x8Background, id - 1, color);
+                this.array8x8String = bitmapArrayToString(this.active8x8Background);
             } else {
-                this.active8x32Background[id] = color.replace('#', '');
-                this.array8x32String = '[';
-
-                for (const hex of Object.values(this.active8x32Background)) {
-                    this.array8x32String += rgb888ToRgb565(hexToRgb(hex)) + ',';
-                }
-
-                this.array8x32String = this.array8x32String.slice(0, -1);
-                this.array8x32String += ']';
+                this.$set(this.active8x32Background, id - 1, color);
+                this.array8x32String = bitmapArrayToString(this.active8x32Background);
             }
 
             if (this.livedraw) {
@@ -161,8 +143,31 @@ export default {
     },
 };
 
+function parseBitmapString(value, size) {
+    const matches = value.match(/\d+/g);
+    const parsedValues = matches ? matches.slice(0, size).map((number) => rgb565ToHex(Number(number))) : [];
+
+    return Array.from({ length: size }, (_, index) => parsedValues[index] || '#000000');
+}
+
+function bitmapArrayToString(backgrounds) {
+    const values = backgrounds.map((hex) => rgb888ToRgb565(hexToRgb(hex.replace('#', ''))));
+
+    return `[${values.join(',')}]`;
+}
+
 function rgb888ToRgb565(rgbArray) {
     return ((rgbArray.r & 0xf8) << 8) + ((rgbArray.g & 0xfc) << 3) + (rgbArray.b >> 3);
+}
+
+function rgb565ToHex(rgb565) {
+    const red = ((rgb565 >> 11) & 0x1f) << 3;
+    const green = ((rgb565 >> 5) & 0x3f) << 2;
+    const blue = (rgb565 & 0x1f) << 3;
+
+    return `#${[red, green, blue]
+        .map((value) => value.toString(16).padStart(2, '0'))
+        .join('')}`;
 }
 
 function hexToRgb(hex) {

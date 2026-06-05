@@ -1,17 +1,13 @@
 <template>
-    <div class="pixel" :id="id" :style="{ background: activeBackground, height: getPixel(), width: getPixel() }" @click="changeColor"></div>
+    <div class="pixel" :id="id" :style="{ background: background, height: getPixel(), width: getPixel() }" @click="changeColor"></div>
 </template>
 <script>
 export default {
-    data() {
-        return {
-            activeBackground: '#000',
-        };
-    },
-    created() {
-        this.func(this.id, this.activeBackground);
-    },
     props: {
+        background: {
+            type: String,
+            required: true,
+        },
         coloring: {
             type: String,
             required: true,
@@ -31,12 +27,8 @@ export default {
     },
     methods: {
         changeColor() {
-            if (this.activeBackground == this.coloring) {
-                this.activeBackground = '#000';
-            } else {
-                this.activeBackground = this.coloring;
-            }
-            this.func(this.id, this.activeBackground);
+            const activeBackground = this.background === this.coloring ? '#000000' : this.coloring;
+            this.func(this.id, activeBackground);
         },
         getPixel() {
             return this.pixelDimensions + 'px';
