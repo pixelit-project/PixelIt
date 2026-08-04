@@ -55,7 +55,7 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
 
       - name: Set up Python 🐍
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
 
       - name: Download WebUI artifacts 💾
         uses: actions/download-artifact@v8
