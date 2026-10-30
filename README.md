@@ -158,8 +158,8 @@ Thanks to these great people for supporting this project.
 -   (o0shojo0o) Added isolated configuration drafts, unsaved-change warnings, discard controls and a sticky save toolbar for Options and Sensors & Buttons.
 -   (o0shojo0o) Added clear connection and action feedback, safer gallery uploads, loading placeholders, keyboard focus indicators and improved mobile accessibility.
 -   (o0shojo0o) Simplified the dashboard with collapsible system details and filterable, pausable logs; fixed inconsistent statistics colors after reloads and theme changes.
--   Pinned the ESP32 PlatformIO platform to 6.5.0 for compatibility with Arduino 2.0.14.
--   Improved CI build caching for PlatformIO dependencies and compiled objects, and updated GitHub Actions dependencies.
+-   (o0shojo0o) Pinned the ESP32 PlatformIO platform to 6.5.0 for compatibility with Arduino 2.0.14.
+-   (o0shojo0o) Improved CI build caching for PlatformIO dependencies and compiled objects, and updated GitHub Actions dependencies.
 
 ### 2.5.6 (2026-06-05)
 
