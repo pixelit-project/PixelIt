@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
-source = (root / 'src/PixelIt.ino').read_text()
+source = '\n'.join((root / 'src' / name).read_text()
+                   for name in ('Api.cpp', 'Display.cpp'))
 start = source.index('void AnimateBMP(bool isShowRequired)\n{')
 end = source.index('\nvoid DrawSingleBitmap(', start)
 publish_start = source.index('bool PublishMqtt(')
@@ -55,6 +56,8 @@ struct MqttClient {
   retained=retain; publishes++; return true;
  }
 } client;
+// The firmware declares the default argument in FirmwareFunctions.h.
+bool PublishMqtt(const char *topic, const char *payload, bool retained = false);
 ''' + source[publish_start:prepare_start] + source[prepare_start:prepare_end] + source[start:end] + r'''
 void validate(int count, int pixels, bool expected, int firstPixel=2) {
  DynamicJsonBuffer buffer;

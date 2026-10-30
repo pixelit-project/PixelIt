@@ -3,7 +3,7 @@ import os
 import re
 Import("env")
 
-SOURCECODE = "./src/PixelIt.ino"
+SOURCECODE = "./include/Firmware.h"
 
 # Access to global construction environment
 build_tag = env['PIOENV']

@@ -21,6 +21,37 @@ ESP8266 builds use espressif8266 4.2.1 / Arduino core 3.1.2 at 160 MHz,
 with WiFi modem sleep disabled and additional FastLED transfer retries.
 ESP32 builds use espressif32 6.5.0 for Arduino 2.0.14 compatibility.
 
+## Source layout
+
+The firmware uses ordinary C++ translation units; function declarations are explicit
+and do not depend on Arduino sketch preprocessing.
+
+| File | Responsibility |
+| --- | --- |
+| `src/Runtime.cpp` | Arduino `setup()` / `loop()`, scheduling and update checks |
+| `src/Configuration.cpp` | Persist, load, apply and serialize device settings |
+| `src/Api.cpp` | HTTP endpoints, WebSocket events and incoming MQTT messages |
+| `src/Mqtt.cpp` | Broker connection and Home Assistant discovery |
+| `src/ScreenContent.cpp` | Interpret screen JSON and prepare display content |
+| `src/Display.cpp` | Text, bitmap animation, clock and weekday rendering |
+| `src/Effects.cpp` | Fades, transitions and boot/battery screens |
+| `src/Hardware.cpp` | Battery readings, brightness and WiFi connection display |
+| `src/HardwareConfig.cpp` | Pin/sensor translation, color correction and audio setup |
+| `src/Sensors.cpp` | Sensor readings, device status and telemetry serialization |
+| `src/Notifications.cpp` | Publish device changes and live previews |
+| `src/TimeSync.cpp` | NTP requests and packet storage |
+| `src/System.cpp`, `src/Logging.cpp` | Reset reason, version comparison and logging |
+| `src/Tools.cpp`, `src/PixelItFont.cpp` | Utility implementations and font assets |
+| `src/Liveview.cpp` | Preview buffer and delivery scheduling |
+
+`include/Firmware.h` contains shared dependencies and build constants, including
+`VERSION`, which the release scripts update. `include/FirmwareFunctions.h` declares
+the internal function interfaces. `include/FirmwareState.h` declares shared state;
+its storage and initial values live exclusively in `src/FirmwareState.cpp`.
+The existing shared-state model is retained so this reorganization does not change
+initialization order or device behavior. Add definitions to `.cpp` files and only
+declarations to headers to avoid duplicate storage and implementations.
+
 ## Animation memory and scheduling
 
 Limits are defined in [AnimationLimits.h](../include/AnimationLimits.h).
