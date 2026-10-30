@@ -14,14 +14,29 @@ void Liveview::begin(FastLED_NeoMatrix *matrix, CRGB *leds, uint16_t interval)
     callbackFunction = nullptr;
 }
 
-void Liveview::setCallback(void (*func)(const char *, size_t))
+void Liveview::setCallback(bool (*func)(const char *, size_t, bool))
 {
     callbackFunction = func;
 }
 
-void Liveview::loop()
+void Liveview::loop(uint16_t frameInterval)
 {
-    if (_interval > 0 && (millis() - _lastUpdate) >= _interval)
+    // Complete queued fragments as soon as TCP has room. The sample interval
+    // controls new images, not the delivery of an image already in progress.
+    if (_pendingFrame && callbackFunction != nullptr)
+    {
+        fillBuffer();
+        return;
+    }
+    // Sample moving frames twice per frame, bounded to 20 preview updates/s.
+    uint16_t interval = _interval;
+    if (frameInterval > 0 && interval > 0)
+    {
+        const uint16_t previewInterval = frameInterval < 100 ? 50 : frameInterval / 2;
+        if (previewInterval < interval)
+            interval = previewInterval;
+    }
+    if (interval > 0 && (millis() - _lastUpdate) >= interval)
     {
         _lastUpdate = millis();
         if (callbackFunction != nullptr)
@@ -33,6 +48,16 @@ void Liveview::loop()
 
 void Liveview::fillBuffer()
 {
+    // Preserve the same bytes until every browser has received the fragments.
+    if (_pendingFrame)
+    {
+        if (callbackFunction(_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT, true))
+        {
+            _lastChecksum = _pendingChecksum;
+            _pendingFrame = false;
+        }
+        return;
+    }
     // set prefix
     memcpy(_liveviewBuffer, _LIVEVIEW_PREFIX, _LIVEVIEW_PREFIX_LENGHT);
 
@@ -54,8 +79,13 @@ void Liveview::fillBuffer()
     if (_lastChecksum != newChecksum)
     {
         // Serial.printf("Checksum (new/old): 0x%08X/0x%08X\n", newChecksum, _lastChecksum);
-        _lastChecksum = newChecksum;
-        // rise callback
-        callbackFunction(_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT);
+        // Keep retrying an unchanged final image if a slow browser was full.
+        if (callbackFunction(_liveviewBuffer, _LIVEVIEW_BUFFER_LENGHT, false))
+            _lastChecksum = newChecksum;
+        else
+        {
+            _pendingChecksum = newChecksum;
+            _pendingFrame = true;
+        }
     }
 }

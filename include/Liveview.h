@@ -17,8 +17,8 @@ class Liveview
 public:
     Liveview();
     void begin(FastLED_NeoMatrix *matrix, CRGB *leds, uint16_t interval);
-    void setCallback(void (*func)(const char *, size_t));
-    void loop();
+    void setCallback(bool (*func)(const char *, size_t, bool));
+    void loop(uint16_t frameInterval = 0);
 
 protected:
     FastLED_NeoMatrix *_matrix;
@@ -26,9 +26,11 @@ protected:
     uint16_t _interval;
     unsigned long _lastUpdate;
     uint32_t _lastChecksum;
+    uint32_t _pendingChecksum = 0;
+    bool _pendingFrame = false;
     char _liveviewBuffer[_LIVEVIEW_BUFFER_LENGHT];
 
-    void (*callbackFunction)(const char *, size_t);
+    bool (*callbackFunction)(const char *, size_t, bool);
     void fillBuffer();
 };
 

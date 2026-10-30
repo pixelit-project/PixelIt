@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <memory>
+#include <new>
 
 #if defined(ESP8266)
 #include <ESP8266WebServer.h>
@@ -20,7 +22,7 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_BME680.h>
 // WiFi & Web
-#include <WebSocketsServer.h>
+#include "PixelItWebSockets.h"
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
@@ -30,6 +32,11 @@
 // Matrix
 #include <Wire.h>
 #include <Adafruit_GFX.h>
+#if defined(ESP8266)
+#define FASTLED_DEBUG_COUNT_FRAME_RETRIES
+extern uint32_t _frame_cnt;
+extern uint32_t _retry_cnt;
+#endif
 #include <FastLED.h>
 #include <FastLED_NeoMatrix.h>
 // Misc
@@ -51,6 +58,7 @@
 #include "Tools.h"
 #include "UpdateScreen.h"
 #include "Liveview.h"
+#include "AnimationLimits.h"
 #include "BtnActions.h"
 #include "BtnStates.h"
 #include "TempSensor.h"
@@ -100,6 +108,7 @@ bool mqttUseDeviceTopic = true;
 bool mqttHAdiscoverable = true;
 int mqttPort = 1883;
 unsigned long mqttLastReconnectAttempt = 0; // will store last time reconnect to mqtt broker
+unsigned long mqttLastService = 0;
 const int MQTT_RECONNECT_INTERVAL = 15000;
 // #define MQTT_MAX_PACKET_SIZE 8000
 
@@ -207,7 +216,7 @@ Liveview liveview;
 // Store last frame (serializated)
 String currentScreenJsonBuffer;
 
-WebSocketsServer webSocket = WebSocketsServer(81);
+PixelItWebSockets webSocket(81);
 DFPlayerMini_Fast mp3Player;
 SoftwareSerial *softSerial;
 uint initialVolume = 10;
@@ -236,7 +245,7 @@ unsigned long lastScreenMessageMillis = 0;
 unsigned long lastGetBatteryPercent = 0;
 
 // Bmp Vars
-uint16_t bmpArray[64];
+std::unique_ptr<uint16_t[]> bmpArray;
 bool withBMP = false;
 int bmpWidth = 8;
 int bmpHeight = 8;
@@ -287,9 +296,17 @@ int scrollxAvailableTextSpace;
 String scrollTextString;
 
 // Animate BMP Vars
-uint16_t animationBmpList[10][64];
+std::unique_ptr<uint16_t[]> animationBmpList;
+size_t animationBmpPixels = 64;
+size_t animationBmpCount = 0;
 bool animateBMPAktivLoop = false;
 unsigned long animateBMPPrevMillis = 0;
+unsigned long animationLastRenderedMillis = 0;
+unsigned long animationMaxFrameGap = 0;
+uint32_t animationRenderedFrames = 0;
+uint32_t animationFailedLedFrames = 0;
+const char *animationSlowestTask = "none";
+unsigned long animationSlowestTaskMillis = 0;
 int animateBMPCounter = 0;
 bool animateBMPReverse = false;
 bool animateBMPRubberbandingAktiv = false;
@@ -984,19 +1001,91 @@ void HandleNotFound()
     server.send(302, F("text/plain"), "");
 }
 
+bool PublishMqtt(const char *topic, const char *payload, bool retained = false)
+{
+    if (!topic || !client.connected())
+        return false;
+    const size_t needed = MQTT_MAX_HEADER_SIZE + 2 + strlen(topic) + (payload ? strlen(payload) : 0);
+    if (needed > MQTT_BUFFER_SIZE)
+        return false;
+    const uint16_t previousSize = client.getBufferSize();
+    if (needed > previousSize && !client.setBufferSize(static_cast<uint16_t>(needed)))
+        return false;
+    const bool result = client.publish(topic, payload, retained);
+    if (client.getBufferSize() != previousSize)
+        client.setBufferSize(previousSize);
+    return result;
+}
+
+bool PrepareBitmapStorage()
+{
+    if (!bmpArray)
+        bmpArray.reset(new (std::nothrow) uint16_t[MAX_BITMAP_PIXELS]());
+    return static_cast<bool>(bmpArray);
+}
+
+bool PrepareBitmapAnimation(JsonObject &screen)
+{
+    if (!IsValidBitmapAnimation(screen))
+        return false;
+    if (screen.containsKey("bitmapAnimation") && !animationBmpList)
+    {
+        // Allocate while the incoming packet occupies the large heap block.
+        // Keeping pixel storage in the remaining heap avoids splitting the
+        // contiguous block needed by subsequent HTTP/MQTT/WebSocket packets.
+        animationBmpList.reset(new (std::nothrow) uint16_t[MAX_ANIMATION_PIXELS]);
+        if (!animationBmpList)
+            return false;
+    }
+    return !screen.containsKey("bitmapAnimation") || PrepareBitmapStorage();
+}
+
+void SendWebSocketJson(uint8_t num, const String &payload)
+{
+    webSocket.sendTXT(num, payload.c_str(), payload.length());
+}
+
 void HandleScreen()
 {
+    if (!server.hasArg("plain"))
+    {
+        server.send(400, F("application/json"), F("{\"response\":\"Missing request body\"}"));
+        return;
+    }
     DynamicJsonBuffer jsonBuffer;
-    String args = String(server.arg("plain").c_str());
-    JsonObject &json = jsonBuffer.parseObject(args.begin());
+#if defined(ESP8266)
+    // The server owns a mutable request String; reuse its buffer to avoid a
+    // second full copy of the animation in the ESP8266's limited heap.
+    String &args = const_cast<String &>(server.arg("plain"));
+    struct ReleaseRequestBody
+    {
+        String &body;
+        // Assigning an empty String retains capacity on this ESP8266 core.
+        // A null C string invalidates it and actually releases the POST buffer.
+        ~ReleaseRequestBody() { body = static_cast<const char *>(nullptr); }
+    } releaseBody{args};
+    char *payload = args.begin();
+#else
+    String args = server.arg("plain");
+    char *payload = args.begin();
+#endif
+    if (!PackAnimationData(payload, args.length()))
+    {
+        server.send(406, F("application/json"), F("{\"response\":\"Invalid animation data\"}"));
+        return;
+    }
+    JsonObject &json = jsonBuffer.parseObject(payload);
     server.sendHeader(F("Connection"), F("close"));
     server.sendHeader(F("Access-Control-Allow-Origin"), "*");
 
-    if (json.success())
+    if (json.success() && PrepareBitmapAnimation(json))
     {
-        server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
         Log(F("HandleScreen"), "Incoming JSON length: " + String(json.measureLength()));
         CreateFrames(json);
+        // Release the large input before acknowledging the command, so the
+        // sender cannot overlap its next request with this retained buffer.
+        args = static_cast<const char *>(nullptr);
+        server.send(200, F("application/json"), F("{\"response\":\"OK\"}"));
     }
     else
     {
@@ -1058,6 +1147,25 @@ void HandleGetButtons()
 {
     server.sendHeader(F("Connection"), F("close"));
     server.send(200, F("application/json"), GetButtons());
+}
+
+void HandleGetAnimationInfo()
+{
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &root = jsonBuffer.createObject();
+    root["animationDelay"] = animateBMPDelay;
+    root["animationRenderedFrames"] = animationRenderedFrames;
+    root["animationMaxFrameGap"] = animationMaxFrameGap;
+    root["animationFailedLedFrames"] = animationFailedLedFrames;
+    root["slowestTask"] = animationSlowestTask;
+    root["slowestTaskMillis"] = animationSlowestTaskMillis;
+#if defined(ESP8266)
+    root["ledFramesSent"] = _frame_cnt;
+    root["ledFrameRetries"] = _retry_cnt;
+#endif
+    String json;
+    root.printTo(json);
+    server.send(200, F("application/json"), json);
 }
 
 void HandleGetMatrixInfo()
@@ -1129,10 +1237,10 @@ void HandleAndSendButtonPress(uint button, bool state)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected())
     {
-        client.publish((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
+        PublishMqtt((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
         if (mqttUseDeviceTopic)
         {
-            client.publish((mqttDeviceTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
+            PublishMqtt((mqttDeviceTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
         }
     }
     // Prüfen ob über Websocket versendet werden muss
@@ -1140,7 +1248,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     {
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
+            SendWebSocketJson(i, "{\"buttons\":{\"" + btnAPINames[button] + "\":" + (state ? "true" : "false") + "}}");
         }
     }
 
@@ -1182,9 +1290,14 @@ void HandleAndSendButtonPress(uint button, bool state)
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
-    if (payload[0] == '{')
+    if (length > 0 && payload[0] == '{')
     {
         payload[length] = '\0';
+        if (!PackAnimationData(reinterpret_cast<char *>(payload), length))
+        {
+            Log(F("MQTT_callback"), F("Invalid animation data"));
+            return;
+        }
         String channel = String(topic);
         int lastSlashIndex = channel.lastIndexOf('/');
         if (lastSlashIndex != -1)
@@ -1197,7 +1310,7 @@ void callback(char *topic, byte *payload, unsigned int length)
 
         Log("MQTT_callback", "Incoming JSON (Topic: " + String(topic) + ", Cmd: " + channel + ", Bytes: " + String(length) + "/" + String(json.measureLength()) + ") ");
 
-        if (json.measureLength() == 2)
+        if (!json.success() || json.measureLength() == 2)
         {
             Log("MQTT_callback", "JSON message empty or too long");
             return;
@@ -1208,26 +1321,26 @@ void callback(char *topic, byte *payload, unsigned int length)
         }
         else if (channel.equals("getLuxsensor"))
         {
-            client.publish((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
+            PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
             if (mqttUseDeviceTopic)
             {
-                client.publish((mqttDeviceTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
+                PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
             }
         }
         else if (channel.equals("getMatrixinfo"))
         {
-            client.publish((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
+            PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
             if (mqttUseDeviceTopic)
             {
-                client.publish((mqttDeviceTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
+                PublishMqtt((mqttDeviceTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
             }
         }
         else if (channel.equals("getConfig"))
         {
-            client.publish((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
+            PublishMqtt((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
             if (mqttUseDeviceTopic)
             {
-                client.publish((mqttDeviceTopic + "config").c_str(), GetConfig().c_str());
+                PublishMqtt((mqttDeviceTopic + "config").c_str(), GetConfig().c_str());
             }
         }
         else if (channel.equals("setConfig"))
@@ -1243,12 +1356,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     {
     case WStype_DISCONNECTED:
     {
+        webSocket.resetPreview(num);
         Log("WebSocketEvent", "[" + String(num) + "] Disconnected!");
         websocketConnection[num] = "";
         break;
     }
     case WStype_CONNECTED:
     {
+        webSocket.resetPreview(num);
         // Remember for what the connection was established
         websocketConnection[num] = String((char *)payload);
 
@@ -1263,23 +1378,36 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         SendLDR(true);
         SendSensor(true);
         SendConfig();
-        webSocket.sendTXT(num, "{\"buttons\":" + GetButtons() + "}");
-        webSocket.sendTXT(num, "{\"telemetry\":" + GetTelemetry() + "}");
+        SendWebSocketJson(num, "{\"buttons\":" + GetButtons() + "}");
+        SendWebSocketJson(num, "{\"telemetry\":" + GetTelemetry() + "}");
         break;
     }
     case WStype_TEXT:
     {
-        if (((char *)payload)[0] == '{')
+        if (length > 0)
         {
+            size_t first = 0;
+            while (first < length && AnimationWhitespace(static_cast<char>(payload[first])))
+                first++;
+            // The WebUI also sends non-JSON heartbeats. Preserve the original
+            // behavior of ignoring them, while accepting whitespace before JSON.
+            if (first == length || payload[first] != '{')
+                break;
+            if (length > MAX_SCREEN_MESSAGE_SIZE || !PackAnimationData(reinterpret_cast<char *>(payload), length))
+            {
+                webSocket.sendTXT(num, "{\"response\":\"Invalid or oversized animation data\"}");
+                return;
+            }
             DynamicJsonBuffer jsonBuffer;
             JsonObject &json = jsonBuffer.parseObject(payload);
             int forcedDuration = 0;
 
             // Logging
             Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(length) + "/" + String(json.measureLength()) + ")");
-            if (length != json.measureLength())
+            if (!json.success())
             {
-                Log("MQTT_callback", "JSON length mismatch! JSON Message to long :(");
+                Log(F("WebSocketEvent"), F("Invalid JSON or insufficient memory"));
+                webSocket.sendTXT(num, "{\"response\":\"Invalid JSON or insufficient memory\"}");
                 return;
             }
 
@@ -1290,7 +1418,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 
             if (json.containsKey("setScreen"))
             {
-                CreateFrames(json["setScreen"], forcedDuration);
+                JsonObject &screen = json["setScreen"].as<JsonObject>();
+                if (!screen.success() || !PrepareBitmapAnimation(screen))
+                {
+                    webSocket.sendTXT(num, "{\"response\":\"Invalid animation: maximum 28 frames, 256 pixels per frame, 1792 pixels total\"}");
+                    return;
+                }
+                CreateFrames(screen, forcedDuration);
+                webSocket.sendTXT(num, "{\"response\":\"OK\"}");
             }
             else if (json.containsKey("setConfig"))
             {
@@ -1345,6 +1480,12 @@ void CreateFrames(JsonObject &json)
 
 void CreateFrames(JsonObject &json, int forceDuration)
 {
+    if (!PrepareBitmapAnimation(json))
+    {
+        Log(F("BitmapAnimation"), F("Rejected: invalid dimensions, pixels or frame/pixel budget (28 frames, 1792 pixels total)"));
+        return;
+    }
+
     bool sendMatrixInfo = false;
 
     String logMessage = F("JSON contains ");
@@ -1732,9 +1873,9 @@ void CreateFrames(JsonObject &json, int forceDuration)
         if (json.containsKey("withBMPRestore"))
         {
             withBMP = json["withBMPRestore"];
-            if (withBMP == true)
+            if (withBMP && bmpArray)
             {
-                matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray, bmpWidth, bmpHeight);
+                matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray.get(), bmpWidth, bmpHeight);
             }
         }
 
@@ -1783,26 +1924,24 @@ void CreateFrames(JsonObject &json, int forceDuration)
             withBMP = true;
 
             logMessage += F("BitmapAnimation, ");
-            // animationBmpList zurücksetzten um das ende nacher zu finden -1 (habe aktuell keine bessere Lösung)
-            for (int i = 0; i < 10; i++)
+            JsonArray &frames = json["bitmapAnimation"]["data"].as<JsonArray>();
+            animationBmpCount = frames.size();
+            animationBmpPixels = static_cast<size_t>(bmpWidth) * bmpHeight;
+            size_t counter = 0;
+            for (JsonVariant frame : frames)
             {
-                animationBmpList[i][0] = 2;
-            }
-
-            int counter = 0;
-            for (JsonVariant x : json["bitmapAnimation"]["data"].as<JsonArray>())
-            {
-                // JsonArray in IntArray konvertieren
-                x.as<JsonArray>().copyTo(bmpArray);
-                // Speichern für die Ausgabe
-                for (int i = 0; i < 64; i++)
+                uint16_t *storedFrame = animationBmpList.get() + counter * animationBmpPixels;
+                if (frame.is<const char *>())
                 {
-                    animationBmpList[counter][i] = bmpArray[i];
+                    const char *pixels = frame.as<const char *>();
+                    DecodeAnimationPixels(pixels, strlen(pixels), storedFrame);
+                }
+                else
+                {
+                    frame.as<JsonArray>().copyTo(storedFrame, animationBmpPixels);
                 }
                 counter++;
             }
-
-            // Serial.printf("Counter: %d\n", counter);
 
             animateBMPDelay = json["bitmapAnimation"]["animationDelay"];
             animateBMPRubberbandingAktiv = json["bitmapAnimation"]["rubberbanding"];
@@ -1818,6 +1957,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
             animateBMPLoopCount = 0;
             animateBMPAktivLoop = true;
             animateBMPReverse = false;
+            animationRenderedFrames = 0;
+            animationFailedLedFrames = 0;
+            animationSlowestTaskMillis = 0;
+            animationSlowestTask = "none";
+            animationMaxFrameGap = 0;
             animateBMPPrevMillis = millis();
             AnimateBMP(false);
         }
@@ -1938,14 +2082,15 @@ String GetConfig()
 
     if (configFile)
     {
-        // Log(F("GetConfig"), F("Opened config file"));
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
+        // Parse the stream directly: the old file-sized char buffer had no
+        // null terminator and could be read past its allocation on WebUI connect.
         DynamicJsonBuffer jsonBuffer;
-        JsonObject &root = jsonBuffer.parseObject(buf.get());
+        JsonObject &root = jsonBuffer.parseObject(configFile);
+        if (!root.success())
+        {
+            Log(F("GetConfig"), F("Invalid config or insufficient memory"));
+            return "{}";
+        }
 
         // add current vbat pin to show button on webinterface or not
         root["showBatteryBtn"] = VBAT_PIN > 0 ? true : false;
@@ -2158,6 +2303,9 @@ String GetMatrixInfo()
 #if defined(ESP8266)
     root["sketchSize"] = ESP.getSketchSize();
     root["chipID"] = ESP.getChipId();
+    root["maxFreeBlock"] = ESP.getMaxFreeBlockSize();
+    root["heapFragmentation"] = ESP.getHeapFragmentation();
+    root["resetInfo"] = ESP.getResetInfo();
 #elif defined(ESP32)
     root["chipID"] = uint64ToString(ESP.getEfuseMac());
 #endif
@@ -2166,6 +2314,13 @@ String GetMatrixInfo()
     root["sleepMode"] = sleepMode;
     root["uptime"] = millis() / 1000;
     root["resetReason"] = ResetReason();
+    root["animationFrames"] = animationBmpCount;
+    root["maxAnimationFrames"] = MAX_ANIMATION_FRAMES;
+    root["maxAnimationPixels"] = MAX_ANIMATION_PIXELS;
+    root["maxBitmapPixels"] = MAX_BITMAP_PIXELS;
+    root["mqttBufferSize"] = client.getBufferSize();
+    root["mqttConnected"] = client.connected();
+    root["mqttState"] = client.state();
     JsonObject &matrix = root.createNestedObject("matrixsize");
     matrix["cols"] = MATRIX_WIDTH;
     matrix["rows"] = MATRIX_HEIGHT;
@@ -2376,9 +2531,9 @@ void ScrollText(bool isFadeInRequired)
             matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
         }
 
-        if (withBMP)
+        if (withBMP && bmpArray)
         {
-            matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray, bmpWidth, bmpHeight);
+            matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray.get(), bmpWidth, bmpHeight);
         }
 
         if (isFadeInRequired)
@@ -2398,11 +2553,16 @@ void ScrollText(bool isFadeInRequired)
 
 void AnimateBMP(bool isShowRequired)
 {
-    // Prüfen auf 2, 2 ist mein Platzhalter für leeres obj!
-    if (animationBmpList[animateBMPCounter][0] == 2)
+    if (animationBmpCount == 0 || !animationBmpList || !bmpArray)
+    {
+        animateBMPAktivLoop = false;
+        return;
+    }
+
+    if (animateBMPCounter >= static_cast<int>(animationBmpCount))
     {
         // Ist ein Repeat Limit übergeben worden.
-        if (animateBMPLimitLoops > 0 && !animateBMPRubberbandingAktiv)
+        if (animateBMPLimitLoops > 0 && (!animateBMPRubberbandingAktiv || animationBmpCount == 1))
         {
             animateBMPLoopCount++;
 
@@ -2452,12 +2612,15 @@ void AnimateBMP(bool isShowRequired)
 
     ClearBMPArea();
 
-    matrix->drawRGBBitmap(bmpPosX, bmpPosY, animationBmpList[animateBMPCounter], bmpWidth, bmpHeight);
+    const unsigned long frameMillis = millis();
+    if (animationRenderedFrames > 0 && frameMillis - animationLastRenderedMillis > animationMaxFrameGap)
+        animationMaxFrameGap = frameMillis - animationLastRenderedMillis;
+    animationLastRenderedMillis = frameMillis;
+    animationRenderedFrames++;
 
-    for (int y = 0; y < 64; y++)
-    {
-        bmpArray[y] = animationBmpList[animateBMPCounter][y];
-    }
+    matrix->drawRGBBitmap(bmpPosX, bmpPosY, animationBmpList.get() + animateBMPCounter * animationBmpPixels, bmpWidth, bmpHeight);
+
+    memcpy(bmpArray.get(), animationBmpList.get() + animateBMPCounter * animationBmpPixels, animationBmpPixels * sizeof(uint16_t));
 
     // Soll der Loop wieder zurücklaufen?
     if (animateBMPReverse)
@@ -2471,7 +2634,14 @@ void AnimateBMP(bool isShowRequired)
 
     if (isShowRequired)
     {
+#if defined(ESP8266)
+        const uint32_t sentBefore = _frame_cnt;
+#endif
         matrix->show();
+#if defined(ESP8266)
+        if (_frame_cnt == sentBefore)
+            animationFailedLedFrames++;
+#endif
     }
 }
 
@@ -2482,6 +2652,17 @@ void DrawSingleBitmap(JsonObject &json)
     int16_t x = json["position"]["x"].as<int16_t>();
     int16_t y = json["position"]["y"].as<int16_t>();
 
+    if (w <= 0 || h <= 0 || w > MATRIX_WIDTH || h > MATRIX_HEIGHT ||
+        !json["data"].is<JsonArray>() || json["data"].as<JsonArray>().size() != static_cast<size_t>(w * h))
+    {
+        Log(F("Bitmap"), F("Invalid dimensions or pixel count"));
+        return;
+    }
+    if (!PrepareBitmapStorage())
+    {
+        Log(F("Bitmap"), F("Insufficient snapshot memory"));
+        return;
+    }
     bmpHeight = h;
     bmpWidth = w;
     bmpPosX = x;
@@ -2500,7 +2681,7 @@ void DrawSingleBitmap(JsonObject &json)
     // JsonArray in IntArray konvertieren
     // dies ist nötig für diverse kleine Logiken z.B. Scrolltext
     // bei Multibitmaps landet hier nur eine der Bitmaps - das ist aber egal, da dann eh nicht gescrollt wird
-    json["data"].as<JsonArray>().copyTo(bmpArray);
+    json["data"].as<JsonArray>().copyTo(bmpArray.get(), MAX_BITMAP_PIXELS);
 }
 
 void DrawClock(bool fromJSON)
@@ -2755,10 +2936,10 @@ boolean MQTTreconnect()
             client.subscribe((mqttDeviceTopic + "setConfig").c_str());
         }
         // ... and publish state ....
-        client.publish((mqttMasterTopic + "state").c_str(), "connected", true);
+        PublishMqtt((mqttMasterTopic + "state").c_str(), "connected", true);
         if (mqttUseDeviceTopic)
         {
-            client.publish((mqttDeviceTopic + "state").c_str(), "connected", true);
+            PublishMqtt((mqttDeviceTopic + "state").c_str(), "connected", true);
         }
 
         // ... and provide discovery information
@@ -2821,7 +3002,7 @@ boolean MQTTreconnect()
                 payload.replace(F("#STATETOPIC#"), F("sensor"));
                 payload.replace(F("#UNIT#"), "°C");
                 payload.replace(F("#VALUENAME#"), F("temperature"));
-                client.publish(topic.c_str(), payload.c_str(), true);
+                PublishMqtt(topic.c_str(), payload.c_str(), true);
 
                 topic = configTopicTemplate;
                 topic.replace(F("#COMPONENT#"), F("sensor"));
@@ -2833,7 +3014,7 @@ boolean MQTTreconnect()
                 payload.replace(F("#STATETOPIC#"), F("sensor"));
                 payload.replace(F("#UNIT#"), "%");
                 payload.replace(F("#VALUENAME#"), F("humidity"));
-                client.publish(topic.c_str(), payload.c_str(), true);
+                PublishMqtt(topic.c_str(), payload.c_str(), true);
             }
             if (tempSensor == TempSensor_BME280 || tempSensor == TempSensor_BMP280 || tempSensor == TempSensor_BME680)
             {
@@ -2848,7 +3029,7 @@ boolean MQTTreconnect()
                 payload.replace(F("#STATETOPIC#"), F("sensor"));
                 payload.replace(F("#UNIT#"), "hPa");
                 payload.replace(F("#VALUENAME#"), F("pressure"));
-                client.publish(topic.c_str(), payload.c_str(), true);
+                PublishMqtt(topic.c_str(), payload.c_str(), true);
             }
 
             if (tempSensor == TempSensor_BME680)
@@ -2864,7 +3045,7 @@ boolean MQTTreconnect()
                 payload.replace(F("#STATETOPIC#"), F("sensor"));
                 payload.replace(F("#UNIT#"), "kOhm");
                 payload.replace(F("#VALUENAME#"), F("gas"));
-                client.publish(topic.c_str(), payload.c_str(), true);
+                PublishMqtt(topic.c_str(), payload.c_str(), true);
             }
             topic = configTopicTemplate;
             topic.replace(F("#COMPONENT#"), F("sensor"));
@@ -2877,7 +3058,7 @@ boolean MQTTreconnect()
             payload.replace(F("#STATETOPIC#"), F("luxsensor"));
             payload.replace(F("#UNIT#"), "lx");
             payload.replace(F("#VALUENAME#"), F("lux"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             configPayloadTemplate = String(F(
                 "{"
@@ -2925,7 +3106,7 @@ boolean MQTTreconnect()
                     payload.replace(F("#SENSORID#"), String(F("Button")) + String(n));
                     payload.replace(F("#SENSORNAME#"), String(btnLogNames[n]));
                     payload.replace(F("#STATETOPIC#"), String(F("buttons/button")) + String(n));
-                    client.publish(topic.c_str(), payload.c_str(), true);
+                    PublishMqtt(topic.c_str(), payload.c_str(), true);
                 }
             }
 
@@ -2979,7 +3160,7 @@ boolean MQTTreconnect()
             payload.replace(F("#UNIT#"), "dBm");
             payload.replace(F("#VALUENAME#"), F("wifiRSSI"));
             payload.replace(F("#ICON#"), F("signal"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // Wifi Quality sensor
             configPayloadTemplate = String(F(
@@ -3029,7 +3210,7 @@ boolean MQTTreconnect()
             payload.replace(F("#UNIT#"), "%");
             payload.replace(F("#VALUENAME#"), F("wifiQuality"));
             payload.replace(F("#ICON#"), F("signal"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // CPU Freq.
             topic = configTopicTemplate;
@@ -3043,7 +3224,7 @@ boolean MQTTreconnect()
             payload.replace(F("#UNIT#"), "MHz");
             payload.replace(F("#VALUENAME#"), F("cpuFreqMHz"));
             payload.replace(F("#ICON#"), F("developer-board"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // Wifi SSID
             configPayloadTemplate = String(F(
@@ -3091,7 +3272,7 @@ boolean MQTTreconnect()
             payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
             payload.replace(F("#VALUENAME#"), F("wifiSSID"));
             payload.replace(F("#ICON#"), F("wifi"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // Wifi BSSID
             topic = configTopicTemplate;
@@ -3104,7 +3285,7 @@ boolean MQTTreconnect()
             payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
             payload.replace(F("#VALUENAME#"), F("wifiBSSID"));
             payload.replace(F("#ICON#"), F("wifi"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // Chip ID
             topic = configTopicTemplate;
@@ -3117,7 +3298,7 @@ boolean MQTTreconnect()
             payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
             payload.replace(F("#VALUENAME#"), F("chipID"));
             payload.replace(F("#ICON#"), F("developer-board"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             // LED Matrix on/off + brightness light
             configPayloadTemplate = String(F(
@@ -3167,7 +3348,7 @@ boolean MQTTreconnect()
             payload.replace(F("#STATETOPIC#"), F("matrixinfo"));
             payload.replace(F("#COMMANDTOPIC#"), F("setScreen"));
             payload.replace(F("#ICON#"), F("led-strip"));
-            client.publish(topic.c_str(), payload.c_str(), true);
+            PublishMqtt(topic.c_str(), payload.c_str(), true);
 
             Log(F("MQTTreconnect"), F("MQTT discovery information published"));
         }
@@ -3590,10 +3771,10 @@ void ClearTextArea()
 
 void ClearBMPArea()
 {
-    int16_t h = 8;
-    int16_t w = 8;
-    int16_t x = 0;
-    int16_t y = 0;
+    int16_t h = bmpHeight;
+    int16_t w = bmpWidth;
+    int16_t x = bmpPosX;
+    int16_t y = bmpPosY;
 
     for (int16_t j = 0; j < h; j++, y++)
     {
@@ -3878,6 +4059,10 @@ void setup()
         delay(5000);
     }
     connectingAnimTicker.detach();
+#if defined(ESP8266)
+    // Avoid modem-sleep wakeup delays in network yields during playback.
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#endif
 
     Log(F("Setup"), F("Wifi connected...yeey :)"));
 
@@ -3899,6 +4084,7 @@ void setup()
     server.on(F("/api/sensor"), HTTP_GET, HandleGetSensor);
     server.on(F("/api/buttons"), HTTP_GET, HandleGetButtons);
     server.on(F("/api/matrixinfo"), HTTP_GET, HandleGetMatrixInfo);
+    server.on(F("/api/animationinfo"), HTTP_GET, HandleGetAnimationInfo);
     // server.on(F("/api/soundinfo"), HTTP_GET, HandleGetSoundInfo);
     server.on(F("/api/config"), HTTP_POST, HandleSetConfig);
     server.on(F("/api/config"), HTTP_GET, HandleGetConfig);
@@ -3922,7 +4108,15 @@ void setup()
     {
         client.setServer(mqttServer.c_str(), mqttPort);
         client.setCallback(callback);
-        client.setBufferSize(8000);
+#if defined(ESP8266)
+        const uint16_t initialMqttBufferSize = MQTT_IDLE_BUFFER_SIZE;
+#else
+        const uint16_t initialMqttBufferSize = MQTT_BUFFER_SIZE;
+#endif
+        if (!client.setBufferSize(initialMqttBufferSize))
+        {
+            Log(F("Setup"), F("Failed to allocate MQTT buffer"));
+        }
         Log(F("Setup"), F("MQTT started"));
     }
 
@@ -3992,10 +4186,29 @@ void checkUpdate()
     }
 }
 
+void RecordAnimationWork(const char *task, unsigned long started)
+{
+    const unsigned long elapsed = millis() - started;
+    if (animateBMPAktivLoop && elapsed > animationSlowestTaskMillis)
+    {
+        animationSlowestTaskMillis = elapsed;
+        animationSlowestTask = task;
+    }
+}
+
 void loop()
 {
-    server.handleClient();
-    webSocket.loop();
+    // MQTT retains only its small idle buffer while HTTP/WebSocket run.
+    {
+        const unsigned long started = millis();
+        server.handleClient();
+        RecordAnimationWork("HTTP", started);
+    }
+    {
+        const unsigned long started = millis();
+        webSocket.loop();
+        RecordAnimationWork("WebSocket", started);
+    }
 
     // Update Battery level
     if (millis() - batteryLevelPrevMillis >= UPDATE_BATTERY_LEVEL_INTERVAL)
@@ -4024,8 +4237,10 @@ void loop()
     if (checkUpdateScreen == true)
     {
 
+        // Defer blocking internet requests while pixels or text are moving.
         // Check new FW Version first time after 30.5 seconds
-        if ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL)
+        if (!animateBMPAktivLoop && !scrollTextAktivLoop &&
+            ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL))
         {
             checkUpdatePrevMillis = millis();
             checkUpdate();
@@ -4049,7 +4264,7 @@ void loop()
 
     // Send Telemetry data first time after 30.3 seconds
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (sendTelemetry == true && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
+    if (sendTelemetry == true && !animateBMPAktivLoop && !scrollTextAktivLoop && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
@@ -4057,23 +4272,32 @@ void loop()
 
     if (mqttAktiv == true)
     {
-        if (!client.connected())
+        const unsigned long nowMillis = millis();
+        const bool connected = client.connected();
+        const bool reconnectDue = !connected && (mqttLastReconnectAttempt == 0 || nowMillis - mqttLastReconnectAttempt >= MQTT_RECONNECT_INTERVAL);
+        const bool receiveDue = connected && (wifiClientMQTT.available() > 0 || nowMillis - mqttLastService >= 1000);
+        // Resize only before entering PubSubClient. Its read functions retain
+        // pointers into the buffer, so resizing from Client::available is unsafe.
+        if ((reconnectDue || receiveDue) && client.setBufferSize(MQTT_BUFFER_SIZE))
         {
-            // MQTT connect
-            if (mqttLastReconnectAttempt == 0 || (millis() - mqttLastReconnectAttempt) >= MQTT_RECONNECT_INTERVAL)
+            mqttLastService = nowMillis;
+            if (reconnectDue)
             {
-                mqttLastReconnectAttempt = millis();
-
-                // try to reconnect
+                mqttLastReconnectAttempt = nowMillis;
                 if (MQTTreconnect())
-                {
                     mqttLastReconnectAttempt = 0;
+            }
+            else
+            {
+                {
+                    const unsigned long started = millis();
+                    client.loop();
+                    RecordAnimationWork("MQTT", started);
                 }
             }
-        }
-        else
-        {
-            client.loop();
+#if defined(ESP8266)
+            client.setBufferSize(MQTT_IDLE_BUFFER_SIZE);
+#endif
         }
     }
 
@@ -4209,31 +4433,51 @@ void loop()
     if (millis() - sendLuxPrevMillis >= SEND_LUX_INTERVAL)
     {
         sendLuxPrevMillis = millis();
-        SendLDR(false);
+        {
+            const unsigned long started = millis();
+            SendLDR(false);
+            RecordAnimationWork("LuxPublish", started);
+        }
     }
 
     // Send Sensor values non-foreced
     if (millis() - sendSensorPrevMillis >= SEND_SENSOR_INTERVAL)
     {
         sendSensorPrevMillis = millis();
-        SendSensor(false);
+        {
+            const unsigned long started = millis();
+            SendSensor(false);
+            RecordAnimationWork("Sensor", started);
+        }
     }
 
     // liveview
-    liveview.loop();
+    {
+        const unsigned long started = millis();
+        liveview.loop(animateBMPAktivLoop ? animateBMPDelay : 0);
+        RecordAnimationWork("Liveview", started);
+    }
 
     // send matrix info
     if (millis() - sendInfoPrevMillis >= SEND_MATRIXINFO_INTERVAL)
     {
         sendInfoPrevMillis = millis();
-        SendMatrixInfo();
+        {
+            const unsigned long started = millis();
+            SendMatrixInfo();
+            RecordAnimationWork("MatrixInfo", started);
+        }
         // SendMp3PlayerInfo(false);
     }
 
     if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
     {
         animateBMPPrevMillis = millis();
-        AnimateBMP(true);
+        {
+            const unsigned long started = millis();
+            AnimateBMP(true);
+            RecordAnimationWork("LED", started);
+        }
     }
 
     if (!sleepMode && (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay))
@@ -4253,10 +4497,10 @@ void SendMatrixInfo()
         // Check if sending via MQTT is required
         if (mqttAktiv == true && client.connected())
         {
-            client.publish((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+            PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
             if (mqttUseDeviceTopic)
             {
-                client.publish((mqttDeviceTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
+                PublishMqtt((mqttDeviceTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
             }
         }
         // Check if sending via websocket is required
@@ -4264,7 +4508,7 @@ void SendMatrixInfo()
         {
             for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
             {
-                webSocket.sendTXT(i, "{\"sysinfo\":" + matrixInfo + "}");
+                SendWebSocketJson(i, "{\"sysinfo\":" + matrixInfo + "}");
             }
         }
     }
@@ -4287,10 +4531,10 @@ void SendLDR(bool force)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
     {
-        client.publish((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+        PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
         if (mqttUseDeviceTopic)
         {
-            client.publish((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+            PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
         }
     }
     // Prüfen ob über Websocket versendet werden muss
@@ -4298,21 +4542,26 @@ void SendLDR(bool force)
     {
         for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"sensor\":" + luxSensor + "}");
+            SendWebSocketJson(i, "{\"sensor\":" + luxSensor + "}");
         }
     }
 
     oldGetLuxSensor = luxSensor;
 }
-void sendLiveview(const char *data, size_t length)
+bool sendLiveview(const char *data, size_t length, bool retry)
 {
+    if (!retry)
+        webSocket.beginPreview(data, length);
+    bool delivered = true;
     if (webSocket.connectedClients() > 0)
     {
         for (unsigned int i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, data, length);
+            if (webSocket.clientIsConnected(i) && !webSocket.sendPreview(i, data, length))
+                delivered = false;
         }
     }
+    return delivered;
 }
 
 void SendSensor(bool force)
@@ -4332,12 +4581,12 @@ void SendSensor(bool force)
     // Prüfen ob über MQTT versendet werden muss
     if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
     {
-        client.publish((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
-        client.publish((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
+        PublishMqtt((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
+        PublishMqtt((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
         if (mqttUseDeviceTopic)
         {
-            client.publish((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
-            client.publish((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true);
+            PublishMqtt((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
+            PublishMqtt((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true);
         }
     }
     // Prüfen ob über Websocket versendet werden muss
@@ -4345,7 +4594,7 @@ void SendSensor(bool force)
     {
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
-            webSocket.sendTXT(i, "{\"sensor\":" + Sensor + "}");
+            SendWebSocketJson(i, "{\"sensor\":" + Sensor + "}");
         }
     }
 
@@ -4359,7 +4608,7 @@ void SendConfig()
         for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
         {
             String config = GetConfig();
-            webSocket.sendTXT(i, "{\"config\":" + config + "}");
+            SendWebSocketJson(i, "{\"config\":" + config + "}");
         }
     }
 }
