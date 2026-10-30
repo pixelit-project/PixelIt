@@ -34,6 +34,8 @@ jobs:
   build-fw:
     needs: build-webui
     runs-on: ubuntu-latest
+    env:
+      PLATFORMIO_BUILD_CACHE_DIR: ${{ github.workspace }}/.pio/cache
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v7
@@ -44,18 +46,33 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pip-py311-v1
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Cache PlatformIO 💾
         uses: actions/cache@v6
         with:
-          path: ~/.platformio
-          key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+            .pio/libdeps
+          key: ${{ runner.os }}-${{ runner.arch }}-pio-deps-v1-${{ hashFiles('platformio.ini', '.github/workflows/build-and-release.yml') }}
+
+      - name: Cache compiled objects 💾
+        uses: actions/cache@v6
+        with:
+          path: .pio/cache
+          # Cache entries are immutable; save updated objects after each run.
+          key: ${{ runner.os }}-${{ runner.arch }}-pio-build-v1-${{ hashFiles('platformio.ini', 'extra_script.py', '.github/workflows/build-and-release.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-pio-build-v1-${{ hashFiles('platformio.ini', 'extra_script.py', '.github/workflows/build-and-release.yml') }}-
 
       - name: Set up Python 🐍
         uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
 
       - name: Download WebUI artifacts 💾
         uses: actions/download-artifact@v8
