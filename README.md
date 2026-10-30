@@ -148,6 +148,19 @@ Thanks to these great people for supporting this project.
 
 <!-- ** WORK IN PROGRESS ** -->
 
+### Unreleased
+
+-   (o0shojo0o) Extended the WebUI Pixel Creator with 8x8 animation editing, frame reordering, adjustable preview timing, onion skin and live playback controls.
+-   (o0shojo0o) Added drawing tools, undo/redo, bitmap input validation and separate local draft recovery for both Pixel Creator canvas sizes.
+-   (o0shojo0o) Improved WebUI Pixel Gallery performance with lazy bitmap rendering, automatic infinite scrolling, early rendering of upcoming cards and placeholders for smoother scrolling.
+-   (o0shojo0o) Reuse loaded gallery data when reopening the gallery and pause bitmap animations outside the visible area or while the browser tab is hidden.
+
+-   (o0shojo0o) Refreshed the WebUI with wider responsive layouts, consistent cards and compact controls while preserving the original sidebar highlighting.
+-   (o0shojo0o) Improved manual firmware updates with hardware-specific release downloads, image compatibility warnings, configuration backup prompts, upload progress and reconnect/error feedback.
+-   (o0shojo0o) Added isolated configuration drafts, unsaved-change warnings, discard controls and a sticky save toolbar for Options and Sensors & Buttons.
+-   (o0shojo0o) Added clear connection and action feedback, safer gallery uploads, loading placeholders, keyboard focus indicators and improved mobile accessibility.
+-   (o0shojo0o) Simplified the dashboard with collapsible system details and filterable, pausable logs; fixed inconsistent statistics colors after reloads and theme changes.
+
 ### 2.5.6 (2026-06-05)
 
 - (foorschtbar) Increased the timeout for the WiFi connection to 30 seconds.
