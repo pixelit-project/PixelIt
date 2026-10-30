@@ -43,6 +43,10 @@
                     </v-card-title>
 
                     <prism-editor class="editor" v-model="testarea.image" :highlight="highlighter"></prism-editor>
+                    <p class="text-caption text--secondary mt-2">
+                        Size detected automatically: 64 values = 8×8 (up to 28 frames),
+                        256 values = 32×8 (up to 7 frames). Separate animation frames with commas.
+                    </p>
                     <br />
                     <div class="text-center">
                         <ButtonCondition color="info" :condition="sockedIsConnected" text="Send Bitmap" icon="mdi-cloud-upload" :onclick="sendBitmap" />
@@ -107,11 +111,35 @@ export default {
             });
         },
         sendBitmap() {
+            const input = this.testarea.image.trim().replace(/,$/, '');
+            let frames;
+            try {
+                const parsed = JSON.parse(input);
+                frames = Array.isArray(parsed) && typeof parsed[0] === 'number' ? [parsed] : parsed;
+            } catch (error) {
+                frames = JSON.parse(`[${input}]`);
+            }
+            if (!Array.isArray(frames) || !frames.length || !Array.isArray(frames[0]) ||
+                ![64, 256].includes(frames[0].length)) {
+                throw new Error('Each bitmap frame must contain 64 (8×8) or 256 (32×8) RGB565 values.');
+            }
+            const size = frames[0].length;
+            const width = size === 64 ? 8 : 32;
+            const limit = size === 64 ? 28 : 7;
+            if (frames.length > limit) throw new Error(`Maximum ${limit} frames for ${width}×8.`);
+            if (!frames.every(frame => Array.isArray(frame) && frame.length === size &&
+                frame.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 65535))) {
+                throw new Error('All frames must have the same size and contain RGB565 integers from 0 to 65535.');
+            }
+            const dimensions = { size: { width, height: 8 }, position: { x: 0, y: 0 } };
             this.$socket.sendObj({
                 forcedDuration: 5000,
-                setScreen: {
+                setScreen: width === 32 && frames.length === 1 ? {
+                    bitmap: { ...dimensions, data: frames[0] },
+                } : {
                     bitmapAnimation: {
-                        data: JSON.parse(`[${this.testarea.image}]`),
+                        ...dimensions,
+                        data: frames,
                         animationDelay: 200,
                     },
                 },

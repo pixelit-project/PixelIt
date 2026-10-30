@@ -15,8 +15,8 @@
                 </v-bottom-navigation>
             </v-col>
         </v-row>
-        <v-row v-if="pixelMode == 0">
-            <v-col cols="12" lg="4" offset-lg="2">
+        <v-row>
+            <v-col cols="12" :lg="pixelMode === 0 ? 4 : 8" :offset-lg="pixelMode === 0 ? 2 : 0">
                 <v-card class="ui-panel" elevation="2">
                     <div class="editor-tools mb-3">
                         <v-btn-toggle v-model="tool" mandatory dense color="primary">
@@ -30,48 +30,56 @@
                             <v-btn icon small :disabled="!redoStack.length" aria-label="Redo" title="Redo" @click="redo"><v-icon>mdi-redo</v-icon></v-btn>
                         </div>
                     </div>
-                    <div class="pixel-editor" role="group" aria-label="8 by 8 pixel editor">
+                    <div class="wide-editor-scroll">
+                    <div class="pixel-editor" :class="{ 'pixel-editor-wide': pixelMode === 1 }" role="group" :aria-label="canvasWidth + ' by 8 pixel editor'"
+                        @pointerdown="startPaintStroke" @pointermove="continuePaintStroke" @pointerup="endPaintStroke"
+                        @pointercancel="endPaintStroke" @lostpointercapture="endPaintStroke">
                         <button v-for="(pixel, index) in frames[selectedFrame]" :key="index" type="button" class="editor-pixel"
-                            :style="{ backgroundColor: pixelColor(pixel) }" :aria-label="'Pixel ' + (index + 1)" @click="paintPixel(index)">
+                            :style="{ backgroundColor: pixelColor(pixel) }" :aria-label="'Pixel ' + (index + 1)" :data-pixel-index="index" @click="keyboardPaint($event, index)">
                             <span v-if="onionSkin && selectedFrame > 0 && pixel === 0" class="onion-pixel"
                                 :style="{ backgroundColor: pixelColor(frames[selectedFrame - 1][index]) }"></span>
                         </button>
+                    </div>
                     </div>
                     <div class="editor-options">
                         <v-switch v-model="onionSkin" label="Previous frame overlay" :disabled="selectedFrame === 0" dense hide-details class="mt-0"></v-switch>
                         <v-btn small text :disabled="!!animationError || !frames[selectedFrame].some(pixel => pixel !== 0)" @click="clearFrame">Clear frame</v-btn>
                     </div>
                     <div class="text-caption text--secondary mt-2" role="status">{{ draftStatus }}</div>
+                    <v-alert v-if="frames.length >= frameLimit" dense text :type="frameLimitExceeded ? 'error' : 'info'" class="mt-3">
+                        {{ frameLimitExceeded ? 'This draft exceeds the frame limit. Delete frames to enable playback and saving.' : 'Frame limit reached.' }}
+                        Maximum: {{ frameLimit }} frames for {{ canvasWidth }}×8.
+                    </v-alert>
                     <section class="animation-studio mt-5">
                         <div class="studio-heading">
                             <div>
                                 <div class="text-overline primary--text">ANIMATION</div>
                                 <div class="text-subtitle-1 font-weight-bold">Bring your pixels to life</div>
                             </div>
-                            <v-chip small outlined>{{ frames.length }} {{ frames.length === 1 ? 'frame' : 'frames' }}</v-chip>
+                            <v-chip small outlined>{{ frames.length }} / {{ frameLimit }} frames</v-chip>
                         </div>
                         <div class="frame-list" :class="{ 'frame-list-dragging': draggedFrame !== null }" role="group" aria-label="Animation frames">
                             <button v-for="(frame, index) in frames" :key="index" type="button"
-                                class="frame-tile" :class="{ 'frame-tile-active': selectedFrame === index, 'frame-dragging': draggedFrame === index,
+                                class="frame-tile" :class="{ 'frame-tile-wide': pixelMode === 1, 'frame-tile-active': selectedFrame === index, 'frame-dragging': draggedFrame === index,
                                     'frame-reorderable': !animationError && frames.length > 1, 'frame-drop-before': dropPosition === index, 'frame-drop-after': dropPosition === frames.length && index === frames.length - 1 }"
                                 :draggable="false" :data-frame-index="index"
                                 @dragstart.prevent @pointerdown="startFrameDrag($event, index)"
                                 @pointermove="overFrame" @pointerup="dropFrame"
                                 @pointercancel="endFrameDrag" @lostpointercapture="endFrameDrag"
                                 :aria-label="'Edit frame ' + (index + 1)" :aria-pressed="selectedFrame === index" @click="selectFrameFromClick(index)">
-                                <span class="frame-thumbnail">
+                                <span :class="['frame-thumbnail', { 'frame-thumbnail-wide': pixelMode === 1 }]">
                                     <span v-for="(pixel, pixelIndex) in frame" :key="pixelIndex" :style="{ backgroundColor: pixelColor(pixel) }"></span>
                                 </span>
                                 <span class="frame-caption">{{ String(index + 1).padStart(2, '0') }}</span>
                             </button>
-                            <button type="button" class="frame-tile frame-add" aria-label="Add empty frame" :disabled="!!animationError" @click="addFrame(false)">
+                            <button type="button" class="frame-tile frame-add" aria-label="Add empty frame" :disabled="!!animationError || frames.length >= frameLimit" @click="addFrame(false)">
                                 <v-icon>mdi-plus</v-icon>
                                 <span class="frame-caption">New</span>
                             </button>
                         </div>
-                        <div v-if="draggedFrame !== null" class="frame-tile frame-drag-preview" aria-hidden="true"
+                        <div v-if="draggedFrame !== null" class="frame-tile frame-drag-preview" :class="{ 'frame-tile-wide': pixelMode === 1 }" aria-hidden="true"
                             :style="{ left: frameDragPosition.x + 'px', top: frameDragPosition.y + 'px' }">
-                            <span class="frame-thumbnail">
+                            <span :class="['frame-thumbnail', { 'frame-thumbnail-wide': pixelMode === 1 }]">
                                 <span v-for="(pixel, pixelIndex) in frames[draggedFrame]" :key="pixelIndex" :style="{ backgroundColor: pixelColor(pixel) }"></span>
                             </span>
                             <span class="frame-caption">{{ String(draggedFrame + 1).padStart(2, '0') }}</span>
@@ -81,18 +89,18 @@
                             <div class="frame-actions">
                                 <v-btn icon small :disabled="selectedFrame === 0 || !!animationError" aria-label="Move selected frame left" title="Move frame left" @click="moveFrame(-1)"><v-icon small>mdi-arrow-left</v-icon></v-btn>
                                 <v-btn icon small :disabled="selectedFrame === frames.length - 1 || !!animationError" aria-label="Move selected frame right" title="Move frame right" @click="moveFrame(1)"><v-icon small>mdi-arrow-right</v-icon></v-btn>
-                                <v-btn small text :disabled="!!animationError" @click="addFrame(true)"><v-icon small left>mdi-content-copy</v-icon>Duplicate</v-btn>
+                                <v-btn small text :disabled="!!animationError || frames.length >= frameLimit" @click="addFrame(true)"><v-icon small left>mdi-content-copy</v-icon>Duplicate</v-btn>
                                 <v-btn icon small :disabled="frames.length === 1 || !!animationError" aria-label="Delete selected frame" title="Delete selected frame" @click="deleteFrame"><v-icon small>mdi-trash-can-outline</v-icon></v-btn>
                             </div>
                         </div>
                         <div class="preview-panel">
-                            <div class="animation-preview" aria-label="Animation preview">
+                            <div :class="['animation-preview', { 'animation-preview-wide': pixelMode === 1 }]" aria-label="Animation preview">
                                 <div v-for="(color, index) in previewBackground" :key="index" :style="{ backgroundColor: color }"></div>
                             </div>
                             <div class="preview-controls">
                                 <div class="text-subtitle-2">{{ playing ? 'Playing animation' : 'Animation preview' }}</div>
                                 <div class="text-caption text--secondary mb-3">{{ frames.length > 1 ? (1000 / previewDelay).toFixed(1) + ' fps · Loop' : 'Add a frame to start animating' }}</div>
-                                <v-btn small rounded depressed color="primary" :disabled="frames.length < 2 || !!animationError" @click="togglePreview">
+                                <v-btn small rounded depressed color="primary" :disabled="frames.length < 2 || !!animationError || frameLimitExceeded" @click="togglePreview">
                                     <v-icon small left>{{ playing ? 'mdi-pause' : 'mdi-play' }}</v-icon>
                                     {{ playing ? 'Pause' : 'Play animation' }}
                                 </v-btn>
@@ -104,67 +112,20 @@
                         <v-expansion-panel>
                             <v-expansion-panel-header class="px-2 text-caption">RGB565 data</v-expansion-panel-header>
                             <v-expansion-panel-content>
-                                <v-textarea outlined v-model="array8x8String" label="RGB565 frames" :error-messages="animationError" rows="4" class="bitmap-data"></v-textarea>
+                                <v-textarea outlined v-model="bitmapText" label="RGB565 frames" :error-messages="animationError" rows="4" class="bitmap-data"></v-textarea>
                             </v-expansion-panel-content>
                         </v-expansion-panel>
                     </v-expansion-panels>
                     <v-alert v-if="animationError" dense text type="error" class="mt-2">{{ animationError }}</v-alert>
                     <div class="creator-footer">
                         <v-switch class="mt-0 pt-0" v-model="livedraw" label="Live draw" :disabled="!sockedIsConnected || !!animationError" hide-details dense></v-switch>
-                        <ButtonSave color="green" text="Save" icon="mdi-content-save" :data="array8x8String" :pixelMode="pixelMode" :condition="!animationError"></ButtonSave>
+                        <ButtonSave color="green" text="Save" icon="mdi-content-save" :data="bitmapText" :pixelMode="pixelMode" :condition="!animationError && !frameLimitExceeded"></ButtonSave>
                     </div>
                 </v-card>
             </v-col>
             <v-col cols="12" lg="4">
                 <v-card class="ui-panel" elevation="2">
                     <v-color-picker v-model="colors" mode="hexa" dot-size="20" show-swatches swatches-max-height="280"></v-color-picker>
-                </v-card>
-            </v-col>
-        </v-row>
-        <v-row v-if="pixelMode == 1">
-            <v-col cols="12" lg="8" offset-lg="0">
-                <v-card class="ui-panel" elevation="2">
-                    <div class="editor-tools mb-3">
-                        <v-btn-toggle v-model="tool" mandatory dense color="primary">
-                            <v-btn value="pen" aria-label="Pencil" title="Pencil"><v-icon small>mdi-pencil</v-icon></v-btn>
-                            <v-btn value="eraser" aria-label="Eraser" title="Eraser"><v-icon small>mdi-eraser</v-icon></v-btn>
-                            <v-btn value="fill" aria-label="Flood fill" title="Flood fill"><v-icon small>mdi-format-color-fill</v-icon></v-btn>
-                            <v-btn value="picker" aria-label="Pick color" title="Pick color"><v-icon small>mdi-eyedropper</v-icon></v-btn>
-                        </v-btn-toggle>
-                        <div>
-                            <v-btn icon small :disabled="!undoStack32.length" aria-label="Undo" title="Undo" @click="undo32"><v-icon>mdi-undo</v-icon></v-btn>
-                            <v-btn icon small :disabled="!redoStack32.length" aria-label="Redo" title="Redo" @click="redo32"><v-icon>mdi-redo</v-icon></v-btn>
-                        </div>
-                    </div>
-                    <div class="wide-editor-scroll">
-                        <div class="pixel-editor pixel-editor-wide" role="group" aria-label="32 by 8 pixel editor">
-                            <button v-for="(pixel, index) in bitmap32" :key="index" type="button" class="editor-pixel"
-                                :style="{ backgroundColor: pixelColor(pixel) }" :aria-label="'Pixel ' + (index + 1)" @click="paintPixel(index)"></button>
-                        </div>
-                    </div>
-                    <div class="editor-options">
-                        <span class="text-caption text--secondary">32 × 8 pixels</span>
-                        <v-btn small text :disabled="!!bitmap32Error || !bitmap32.some(pixel => pixel !== 0)" @click="clearBitmap32">Clear image</v-btn>
-                    </div>
-                    <div class="text-caption text--secondary mt-2" role="status">{{ draft32Status }}</div>
-                    <v-expansion-panels flat class="mt-3">
-                        <v-expansion-panel>
-                            <v-expansion-panel-header class="px-2 text-caption">RGB565 data</v-expansion-panel-header>
-                            <v-expansion-panel-content>
-                                <v-textarea outlined v-model="array8x32String" label="RGB565 bitmap" :error-messages="bitmap32Error" rows="5" class="bitmap-data"></v-textarea>
-                            </v-expansion-panel-content>
-                        </v-expansion-panel>
-                    </v-expansion-panels>
-                    <v-alert v-if="bitmap32Error" dense text type="error" class="mt-2">{{ bitmap32Error }}</v-alert>
-                    <div class="creator-footer">
-                        <v-switch class="mt-0 pt-0" v-model="livedraw" label="Live draw" :disabled="!sockedIsConnected || !!bitmap32Error" hide-details dense></v-switch>
-                        <ButtonSave color="green" text="Save" icon="mdi-content-save" :data="array8x32String" :pixelMode="pixelMode" :condition="!bitmap32Error"></ButtonSave>
-                    </div>
-                </v-card>
-            </v-col>
-            <v-col cols="12" lg="4">
-                <v-card class="ui-panel" elevation="2">
-                    <v-color-picker v-model="colors" mode="hexa" dot-size="20" show-swatches swatches-max-height="270"></v-color-picker>
                 </v-card>
             </v-col>
         </v-row>
@@ -177,33 +138,21 @@ export default {
         return {
             colors: '#F44336',
             pixelMode: 0,
-            active8x8Background: Array.from({ length: 64 }, () => '#000000'),
-            bitmap32: Array(256).fill(0),
-            bitmap32Error: '',
-            undoStack32: [],
-            redoStack32: [],
-            draft32Status: 'Draft saved automatically in this browser',
-            array8x8String: `[${Array.from({ length: 64 }, () => 0).join(',')}]`,
-            array8x32String: `[${Array.from({ length: 256 }, () => 0).join(',')}]`,
+            canvases: [createCanvas(64), createCanvas(256)],
+            array8x8String: `[${Array(64).fill(0).join(',')}]`,
+            array8x32String: `[${Array(256).fill(0).join(',')}]`,
             livedraw: false,
-            frames: [Array(64).fill(0)],
-            selectedFrame: 0,
             previewFrame: 0,
             playing: false,
             previewTimer: null,
-            animationError: '',
             draggedFrame: null,
             framePointer: null,
             frameDragPosition: { x: 0, y: 0 },
             suppressFrameClick: false,
             dropPosition: null,
             tool: 'pen',
-            onionSkin: false,
-            previewDelay: 200,
+            paintStroke: null,
             livePreview: false,
-            undoStack: [],
-            redoStack: [],
-            draftStatus: 'Draft saved automatically in this browser',
         };
     },
     components: {
@@ -211,13 +160,34 @@ export default {
     },
     mounted() {
         this.restoreDraft();
-        this.restoreDraft32();
+        this.restoreDraft(1);
+        window.addEventListener('blur', this.endPaintStroke);
     },
     beforeDestroy() {
+        this.endPaintStroke();
+        if (typeof window !== 'undefined') window.removeEventListener('blur', this.endPaintStroke);
         this.endFrameDrag();
         this.stopPreview();
     },
     computed: {
+        frames: canvasProperty('frames'),
+        selectedFrame: canvasProperty('selectedFrame'),
+        animationError: canvasProperty('animationError'),
+        onionSkin: canvasProperty('onionSkin'),
+        previewDelay: canvasProperty('previewDelay'),
+        undoStack: canvasProperty('undoStack'),
+        redoStack: canvasProperty('redoStack'),
+        draftStatus: canvasProperty('draftStatus'),
+        frameLimit() { return this.pixelMode === 0 ? 28 : 7; },
+        frameLimitExceeded() { return this.frames.length > this.frameLimit; },
+        canvasWidth() { return this.pixelMode === 0 ? 8 : 32; },
+        bitmapText: {
+            get() { return this.pixelMode === 0 ? this.array8x8String : this.array8x32String; },
+            set(value) {
+                if (this.pixelMode === 0) this.array8x8String = value;
+                else this.array8x32String = value;
+            },
+        },
         sockedIsConnected() {
             return this.$store.state.socket.isConnected;
         },
@@ -228,96 +198,30 @@ export default {
     watch: {
         onionSkin() { this.saveDraft(); },
         previewDelay() { this.saveDraft(); },
-        array8x8String(value) {
-            try {
-                const parsed = JSON.parse(`[${value.trim().replace(/,$/, '')}]`);
-                if (!validFrames(parsed)) {
-                    throw new Error('Invalid frames');
-                }
-                if (JSON.stringify(parsed) !== JSON.stringify(this.frames)) {
-                    this.recordHistory();
-                    this.stopPreview();
-                    this.frames = parsed;
-                    this.selectedFrame = Math.min(this.selectedFrame, parsed.length - 1);
-                    this.active8x8Background = parsed[this.selectedFrame].map(rgb565ToHex);
-                }
-                this.saveDraft();
-                this.animationError = '';
-            } catch (error) {
-                this.stopPreview();
-                this.animationError = 'Enter frames of 64 RGB565 values (0–65535), separated by commas.';
-            }
-        },
-        array8x32String(value) {
-            try {
-                const parsed = JSON.parse(value.trim().replace(/,$/, ''));
-                if (!validBitmap(parsed, 256)) throw new Error('Invalid bitmap');
-                if (JSON.stringify(parsed) !== JSON.stringify(this.bitmap32)) {
-                    this.recordHistory32();
-                    this.bitmap32 = parsed;
-                }
-                this.bitmap32Error = '';
-                this.saveDraft32();
-            } catch (error) {
-                this.bitmap32Error = 'Enter one bitmap of 256 RGB565 values (0–65535). Animations are not supported for 8×32.';
-            }
-        },
+        array8x8String(value) { this.importFrames(value, 0); },
+        array8x32String(value) { this.importFrames(value, 1); },
     },
     methods: {
         pixelColor: rgb565ToHex,
-        recordHistory32() {
-            this.undoStack32.push(this.bitmap32.slice());
-            if (this.undoStack32.length > 100) this.undoStack32.shift();
-            this.redoStack32 = [];
-        },
-        undo32() {
-            if (!this.undoStack32.length) return;
-            this.redoStack32.push(this.bitmap32.slice());
-            this.bitmap32 = this.undoStack32.pop();
-            this.bitmap32Error = '';
-            this.commitBitmap32();
-        },
-        redo32() {
-            if (!this.redoStack32.length) return;
-            this.undoStack32.push(this.bitmap32.slice());
-            this.bitmap32 = this.redoStack32.pop();
-            this.bitmap32Error = '';
-            this.commitBitmap32();
-        },
-        commitBitmap32() {
-            this.array8x32String = JSON.stringify(this.bitmap32);
-            this.saveDraft32();
-            if (this.livedraw && this.sockedIsConnected && this.pixelMode === 1 && !this.bitmap32Error) {
-                this.$socket.sendObj({ setScreen: { bitmap: {
-                    data: this.bitmap32.slice(), position: { x: 0, y: 0 }, size: { width: 32, height: 8 },
-                } } });
-            }
-        },
-        clearBitmap32() {
-            if (this.bitmap32Error || !this.bitmap32.some(pixel => pixel !== 0)) return;
-            this.recordHistory32();
-            this.bitmap32 = Array(256).fill(0);
-            this.commitBitmap32();
-        },
-        saveDraft32() {
+        importFrames(value, mode) {
+            const canvas = this.canvases[mode];
             try {
-                localStorage.setItem('pixelit-creator-8x32-v1', JSON.stringify(this.bitmap32));
-                this.draft32Status = 'Draft saved in this browser';
+                const parsed = JSON.parse(`[${value.trim().replace(/,$/, '')}]`);
+                const unchanged = JSON.stringify(parsed) === JSON.stringify(canvas.frames);
+                if (!validFrames(parsed, mode === 0 ? 64 : 256, !unchanged)) throw new Error('Invalid frames');
+                if (!unchanged) {
+                    if (this.pixelMode === mode) this.stopPreview();
+                    canvas.undoStack.push({ frames: canvas.frames.map(frame => frame.slice()), selectedFrame: canvas.selectedFrame });
+                    if (canvas.undoStack.length > 100) canvas.undoStack.shift();
+                    canvas.redoStack = [];
+                    canvas.frames = parsed;
+                    canvas.selectedFrame = Math.min(canvas.selectedFrame, parsed.length - 1);
+                }
+                canvas.animationError = '';
+                this.saveDraft(mode);
             } catch (error) {
-                this.draft32Status = 'Draft could not be saved. Browser storage is unavailable or full.';
-            }
-        },
-        restoreDraft32() {
-            try {
-                const value = localStorage.getItem('pixelit-creator-8x32-v1');
-                if (!value) return;
-                const bitmap = JSON.parse(value);
-                if (!validBitmap(bitmap, 256)) throw new Error('Invalid draft');
-                this.bitmap32 = bitmap;
-                this.array8x32String = JSON.stringify(bitmap);
-                this.draft32Status = 'Draft restored · Changes saved automatically';
-            } catch (error) {
-                this.draft32Status = 'Saved draft could not be restored.';
+                if (this.pixelMode === mode) this.stopPreview();
+                canvas.animationError = `Enter at most ${mode === 0 ? 28 : 7} frames of ${mode === 0 ? 64 : 256} RGB565 values (0–65535), separated by commas.`;
             }
         },
         snapshot() {
@@ -333,7 +237,6 @@ export default {
             this.frames = snapshot.frames.map(frame => frame.slice());
             this.selectedFrame = snapshot.selectedFrame;
             this.animationError = '';
-            this.active8x8Background = this.frames[this.selectedFrame].map(rgb565ToHex);
             this.serializeFrames();
             this.sendLiveFrame(this.selectedFrame);
         },
@@ -347,38 +250,104 @@ export default {
             this.undoStack.push(this.snapshot());
             this.restoreSnapshot(this.redoStack.pop());
         },
-        saveDraft() {
+        saveDraft(mode = this.pixelMode) {
+            const canvas = this.canvases[mode];
             try {
-                localStorage.setItem('pixelit-creator-8x8-v1', JSON.stringify({
-                    ...this.snapshot(), previewDelay: this.previewDelay, onionSkin: this.onionSkin,
+                localStorage.setItem(mode === 0 ? 'pixelit-creator-8x8-v1' : 'pixelit-creator-8x32-v2', JSON.stringify({
+                    frames: canvas.frames, selectedFrame: canvas.selectedFrame,
+                    previewDelay: canvas.previewDelay, onionSkin: canvas.onionSkin,
                 }));
-                this.draftStatus = 'Draft saved in this browser';
+                canvas.draftStatus = 'Draft saved in this browser';
             } catch (error) {
-                this.draftStatus = 'Draft could not be saved. Browser storage is unavailable or full.';
+                canvas.draftStatus = 'Draft could not be saved. Browser storage is unavailable or full.';
             }
         },
-        restoreDraft() {
+        restoreDraft(mode = this.pixelMode) {
+            const canvas = this.canvases[mode];
             try {
-                const value = localStorage.getItem('pixelit-creator-8x8-v1');
+                let value = localStorage.getItem(mode === 0 ? 'pixelit-creator-8x8-v1' : 'pixelit-creator-8x32-v2');
+                if (!value && mode === 1) {
+                    const legacy = localStorage.getItem('pixelit-creator-8x32-v1');
+                    if (legacy) value = JSON.stringify({ frames: [JSON.parse(legacy)] });
+                }
                 if (!value) return;
                 const draft = JSON.parse(value);
-                if (!validFrames(draft.frames)) throw new Error('Invalid draft');
-                this.frames = draft.frames;
-                this.selectedFrame = Number.isInteger(draft.selectedFrame) ? Math.max(0, Math.min(draft.selectedFrame, draft.frames.length - 1)) : 0;
-                this.previewDelay = Number.isInteger(draft.previewDelay) && draft.previewDelay >= 50 && draft.previewDelay <= 1000 ? draft.previewDelay : 200;
-                this.onionSkin = draft.onionSkin === true;
-                this.active8x8Background = this.frames[this.selectedFrame].map(rgb565ToHex);
-                this.serializeFrames();
-                this.draftStatus = 'Draft restored · Changes saved automatically';
+                if (!validFrames(draft.frames, mode === 0 ? 64 : 256, false)) throw new Error('Invalid draft');
+                canvas.frames = draft.frames;
+                canvas.selectedFrame = Number.isInteger(draft.selectedFrame) ? Math.max(0, Math.min(draft.selectedFrame, draft.frames.length - 1)) : 0;
+                canvas.previewDelay = Number.isInteger(draft.previewDelay) && draft.previewDelay >= 50 && draft.previewDelay <= 1000 ? draft.previewDelay : 200;
+                canvas.onionSkin = draft.onionSkin === true;
+                const text = canvas.frames.map(frame => JSON.stringify(frame)).join(',\n');
+                if (mode === 0) this.array8x8String = text;
+                else this.array8x32String = text;
+                canvas.draftStatus = 'Draft restored · Changes saved automatically';
             } catch (error) {
-                this.draftStatus = 'Saved draft could not be restored.';
+                canvas.draftStatus = 'Saved draft could not be restored.';
             }
         },
-        paintPixel(index) {
-            const wide = this.pixelMode === 1;
-            if (wide ? this.bitmap32Error : this.animationError) return;
-            const frame = wide ? this.bitmap32 : this.frames[this.selectedFrame];
-            const width = wide ? 32 : 8;
+        keyboardPaint(event, index) {
+            if (event.detail === 0) this.paintPixel(index);
+        },
+        startPaintStroke(event) {
+            if (event.button !== 0 || !event.isPrimary || this.animationError) return;
+            const pixel = event.target.closest('[data-pixel-index]');
+            if (!pixel) return;
+            event.preventDefault();
+            const index = Number(pixel.dataset.pixelIndex);
+            this.endPaintStroke();
+            if (this.tool !== 'pen' && this.tool !== 'eraser') {
+                this.paintPixel(index);
+                return;
+            }
+            this.paintStroke = {
+                pointerId: event.pointerId, mode: this.pixelMode, frame: this.selectedFrame,
+                tool: this.tool, last: index, recorded: false,
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+            this.paintPixel(index);
+        },
+        continuePaintStroke(event) {
+            const stroke = this.paintStroke;
+            if (!stroke || stroke.pointerId !== event.pointerId) return;
+            if (!(event.buttons & 1) || stroke.mode !== this.pixelMode || stroke.frame !== this.selectedFrame || stroke.tool !== this.tool) {
+                this.endPaintStroke();
+                return;
+            }
+            event.preventDefault();
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const x = Math.floor((event.clientX - bounds.left) / bounds.width * this.canvasWidth);
+            const y = Math.floor((event.clientY - bounds.top) / bounds.height * 8);
+            if (x < 0 || x >= this.canvasWidth || y < 0 || y >= 8) {
+                stroke.last = null;
+                return;
+            }
+            const index = y * this.canvasWidth + x;
+            if (stroke.last === index) return;
+            // Interpolate skipped cells so fast strokes remain continuous.
+            let fromX = stroke.last === null ? x : stroke.last % this.canvasWidth;
+            let fromY = stroke.last === null ? y : Math.floor(stroke.last / this.canvasWidth);
+            const dx = Math.abs(x - fromX), dy = -Math.abs(y - fromY);
+            const stepX = fromX < x ? 1 : -1, stepY = fromY < y ? 1 : -1;
+            let error = dx + dy;
+            for (let remaining = this.canvasWidth + 8; remaining > 0; remaining--) {
+                this.paintPixel(fromY * this.canvasWidth + fromX, false);
+                if (fromX === x && fromY === y) break;
+                const doubled = 2 * error;
+                if (doubled >= dy) { error += dy; fromX += stepX; }
+                if (doubled <= dx) { error += dx; fromY += stepY; }
+            }
+            stroke.last = index;
+            this.serializeFrames();
+            this.sendLiveFrame(this.selectedFrame);
+        },
+        endPaintStroke(event) {
+            if (event && event.pointerId !== undefined && this.paintStroke && event.pointerId !== this.paintStroke.pointerId) return;
+            this.paintStroke = null;
+        },
+        paintPixel(index, commit = true) {
+            if (this.animationError) return;
+            const frame = this.frames[this.selectedFrame];
+            const width = this.canvasWidth;
             if (this.tool === 'picker') {
                 this.colors = pixelColorFull(frame[index]);
                 this.tool = 'pen';
@@ -386,8 +355,10 @@ export default {
             }
             const color = this.tool === 'eraser' ? 0 : rgb888ToRgb565(hexToRgb(this.colors));
             if (frame[index] === color) return;
-            if (wide) this.recordHistory32();
-            else this.recordHistory();
+            if (!this.paintStroke || !this.paintStroke.recorded) {
+                this.recordHistory();
+                if (this.paintStroke) this.paintStroke.recorded = true;
+            }
             this.stopPreview();
             if (this.tool === 'fill') {
                 const original = frame[index];
@@ -404,10 +375,7 @@ export default {
             } else {
                 this.$set(frame, index, color);
             }
-            if (wide) {
-                this.commitBitmap32();
-            } else {
-                this.active8x8Background = frame.map(rgb565ToHex);
+            if (commit) {
                 this.serializeFrames();
                 this.sendLiveFrame(this.selectedFrame);
             }
@@ -416,16 +384,22 @@ export default {
             if (this.animationError || !this.frames[this.selectedFrame].some(pixel => pixel !== 0)) return;
             this.recordHistory();
             this.stopPreview();
-            this.$set(this.frames, this.selectedFrame, Array(64).fill(0));
-            this.active8x8Background = this.frames[this.selectedFrame].map(rgb565ToHex);
+            this.$set(this.frames, this.selectedFrame, Array(this.canvasWidth * 8).fill(0));
             this.serializeFrames();
             this.sendLiveFrame(this.selectedFrame);
         },
         sendLiveFrame(index, force = false) {
-            if ((!this.livedraw && !force) || !this.sockedIsConnected || this.pixelMode !== 0 || this.animationError) return;
-            this.$socket.sendObj({ setScreen: { bitmapAnimation: {
-                data: [this.frames[index].slice()], animationDelay: this.previewDelay,
-            } } });
+            if ((!this.livedraw && !force) || !this.sockedIsConnected || this.animationError || this.frameLimitExceeded) return;
+            const data = this.frames[index].slice();
+            if (this.pixelMode === 1) {
+                this.$socket.sendObj({ setScreen: { bitmap: {
+                    data, position: { x: 0, y: 0 }, size: { width: 32, height: 8 },
+                } } });
+            } else {
+                this.$socket.sendObj({ setScreen: { bitmapAnimation: {
+                    data: [data], animationDelay: this.previewDelay,
+                } } });
+            }
         },
         restartPreview() {
             if (!this.playing) return;
@@ -502,12 +476,11 @@ export default {
         togglePreview() {
             if (this.playing) {
                 this.selectedFrame = this.previewFrame;
-                this.active8x8Background = this.frames[this.selectedFrame].map(rgb565ToHex);
                 this.stopPreview();
                 this.saveDraft();
                 return;
             }
-            if (this.animationError || this.frames.length < 2 || this.pixelMode !== 0) return;
+            if (this.animationError || this.frames.length < 2 || this.frameLimitExceeded) return;
             if (this.livedraw && this.sockedIsConnected) {
                 this.livePreview = true;
                 this.$socket.sendObj({
@@ -515,6 +488,8 @@ export default {
                         bitmapAnimation: {
                             data: this.frames.map(frame => frame.slice()),
                             animationDelay: this.previewDelay,
+                            size: { width: this.canvasWidth, height: 8 },
+                            position: { x: 0, y: 0 },
                         },
                     },
                 });
@@ -526,13 +501,13 @@ export default {
             }, this.previewDelay);
         },
         selectFrame(index) {
+            this.endPaintStroke();
             this.stopPreview();
             this.selectedFrame = index;
-            this.active8x8Background = this.frames[index].map(rgb565ToHex);
             this.saveDraft();
         },
         serializeFrames() {
-            this.array8x8String = this.frames.map(frame => JSON.stringify(frame)).join(',\n');
+            this.bitmapText = this.frames.map(frame => JSON.stringify(frame)).join(',\n');
             this.saveDraft();
         },
         moveFrame(direction) {
@@ -546,10 +521,10 @@ export default {
             this.serializeFrames();
         },
         addFrame(duplicate) {
-            if (this.animationError) return;
+            if (this.animationError || this.frames.length >= this.frameLimit) return;
             this.recordHistory();
             this.stopPreview();
-            this.frames.splice(this.selectedFrame + 1, 0, duplicate ? this.frames[this.selectedFrame].slice() : Array(64).fill(0));
+            this.frames.splice(this.selectedFrame + 1, 0, duplicate ? this.frames[this.selectedFrame].slice() : Array(this.canvasWidth * 8).fill(0));
             this.selectFrame(this.selectedFrame + 1);
             this.serializeFrames();
         },
@@ -562,9 +537,14 @@ export default {
             this.serializeFrames();
         },
         changePixelModeTo8x8() {
+            this.endPaintStroke();
+            this.endFrameDrag();
+            this.stopPreview();
             this.pixelMode = 0;
         },
         changePixelModeTo8x32() {
+            this.endPaintStroke();
+            this.endFrameDrag();
             this.stopPreview();
             this.pixelMode = 1;
         },
@@ -575,8 +555,23 @@ function validBitmap(bitmap, size) {
     return Array.isArray(bitmap) && bitmap.length === size && bitmap.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 65535);
 }
 
-function validFrames(frames) {
-    return Array.isArray(frames) && frames.length > 0 && frames.every(frame => validBitmap(frame, 64));
+function createCanvas(size) {
+    return {
+        frames: [Array(size).fill(0)], selectedFrame: 0, animationError: '',
+        onionSkin: false, previewDelay: 200, undoStack: [], redoStack: [],
+        draftStatus: 'Draft saved automatically in this browser',
+    };
+}
+
+function canvasProperty(key) {
+    return {
+        get() { return this.canvases[this.pixelMode][key]; },
+        set(value) { this.canvases[this.pixelMode][key] = value; },
+    };
+}
+
+function validFrames(frames, size = 64, enforceLimit = true) {
+    return Array.isArray(frames) && frames.length > 0 && (!enforceLimit || frames.length <= (size === 64 ? 28 : 7)) && frames.every(frame => validBitmap(frame, size));
 }
 
 function pixelColorFull(value) {
@@ -626,6 +621,8 @@ function hexToRgb(hex) {
     aspect-ratio: 1;
     margin: auto;
     border: 1px solid #666;
+    touch-action: none;
+    user-select: none;
 }
 .wide-editor-scroll { overflow-x: auto; }
 .pixel-editor-wide {
@@ -706,6 +703,10 @@ function hexToRgb(hex) {
     background: #000;
 }
 .frame-thumbnail { width: 60px; height: 60px; border-radius: 3px; }
+.frame-tile-wide { flex-basis: 140px; }
+.frame-thumbnail-wide { width: 124px; height: 31px; grid-template-columns: repeat(32, 1fr); }
+.frame-drag-preview.frame-tile-wide { width: 140px; }
+.animation-preview.animation-preview-wide { width: 224px; height: 56px; grid-template-columns: repeat(32, 1fr); }
 .frame-caption { display: block; margin-top: 6px; font-size: 11px; font-weight: 600; }
 .frame-add { display: flex; flex-direction: column; align-items: center; justify-content: center; border-style: dashed; }
 .frame-add:disabled { opacity: .4; cursor: default; }
@@ -714,6 +715,7 @@ function hexToRgb(hex) {
 .frame-actions { display: flex; align-items: center; }
 .preview-panel {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 20px;
     padding: 16px;

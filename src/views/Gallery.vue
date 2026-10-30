@@ -136,12 +136,15 @@ export default {
             if (rgB565Array.endsWith(',')) {
                 rgB565Array = rgB565Array.slice(0, -1);
             }
-            if (sizeX == 8) {
+            const frames = JSON.parse(`[${rgB565Array}]`);
+            if (sizeX == 8 || frames.length > 1) {
                 this.$socket.sendObj({
                     setScreen: {
                         bitmapAnimation: {
-                            data: JSON.parse(`[${rgB565Array}]`),
+                            data: frames,
                             animationDelay: 200,
+                            size: { width: Number(sizeX), height: 8 },
+                            position: { x: 0, y: 0 },
                         },
                     },
                 });

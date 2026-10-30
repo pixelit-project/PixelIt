@@ -17,7 +17,7 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="green darken-1" text @click="agreeWraper" :loading="saving" :disabled="(saving || (!isValid) || (getSizeX == 32 && isAnimated == true))">
+                    <v-btn color="green darken-1" text @click="agreeWraper" :loading="saving" :disabled="(saving || !isValid)">
                         Save into Database              
                     </v-btn>
                     <v-btn color="red darken-1" text :disabled="saving" @click="disagreeWraper">
