@@ -2,13 +2,13 @@
 
 ### Unreleased
 
--   Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8 across HTTP, MQTT and WebUI.
--   Added full-display animations and a ready-to-send 32×8 example.
--   Reduced memory usage for large uploads and reject malformed or oversized animations safely.
--   Fixed animation loop boundaries, reverse playback and stuttering LED playback on ESP8266.
--   Improved browser liveview delivery and acknowledgements for WebUI animation uploads.
--   Updated the ESP8266 platform and improved WiFi, MQTT buffer management and LED transfer reliability.
--   Added playback diagnostics and regression tests.
+-   (o0shojo0o) Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8 across HTTP, MQTT and WebUI.
+-   (o0shojo0o) Added full-display animations and a ready-to-send 32×8 example.
+-   (o0shojo0o) Reduced memory usage for large uploads and reject malformed or oversized animations safely.
+-   (o0shojo0o) Fixed animation loop boundaries, reverse playback and stuttering LED playback on ESP8266.
+-   (o0shojo0o) Improved browser liveview delivery and acknowledgements for WebUI animation uploads.
+-   (o0shojo0o) Updated the ESP8266 platform and improved WiFi, MQTT buffer management and LED transfer reliability.
+-   (o0shojo0o) Added playback diagnostics and regression tests.
 
 ### 2.6.0 (2026-10-30)
 
