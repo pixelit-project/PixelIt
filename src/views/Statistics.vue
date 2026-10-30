@@ -1,9 +1,10 @@
 <template>
-    <v-container class="statistics">
-        <div v-if="statsError || sendStatistics == false">
+    <v-container class="statistics app-page">
+        <v-alert v-if="statsError && sendStatistics !== false" type="error" text role="alert">Statistics could not be loaded. Check the connection and reload this page to try again.</v-alert>
+        <div v-else-if="sendStatistics === false">
             <v-row>
                 <v-col cols="12" lg="12">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-text class="text-md-center">
                             <h2>Activate the telemetry data to see the statistics.</h2>
                             <br>
@@ -14,10 +15,12 @@
                 </v-col>
             </v-row>
         </div>
+        <v-skeleton-loader v-else-if="!statsReady" type="article, image, image" aria-label="Loading statistics" />
         <div v-else>
+            <v-alert v-if="!countryStats.length" type="info" text>No country statistics are available yet.</v-alert>
             <v-row>
                 <v-col cols="12" lg="12">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-text class="text-md-center">
                             These statistics are created with the telemetry data of the PixelIts that have reported in the last 30 days.<br>
                                 <b>Thanks to everyone who shares this data with us!</b>
@@ -27,60 +30,54 @@
             </v-row>
             <v-row>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-1" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Boards</h2>
                         </v-card-title>
-                        <hr />              
                         <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="buildStats"></apexchart>
                     </v-card>                   
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Versions</h2>
                         </v-card-title>
-                        <hr />                      
-                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="versionStats"></apexchart>                  
+                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="versionStats"></apexchart>
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Sensors</h2>
                         </v-card-title>
-                        <hr />                      
-                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="sensorStats"></apexchart>                  
+                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="sensorStats"></apexchart>
                     </v-card>
                 </v-col>
             </v-row>
             <v-row>
                 <v-col cols="12" lg="8">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Countries</h2>
                         </v-card-title>
-                        <hr />                    
-                        <apexchart height="600px" type="donut" :options="countryChartOptions" :series="countryStats"></apexchart>     
+                        <apexchart height="600px" type="donut" :options="countryChartOptions" :series="countryStats"></apexchart>
                     </v-card>               
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Matrix Types</h2>
                         </v-card-title>
-                        <hr />                      
-                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="matrixStats"></apexchart>                  
+                        <apexchart height="600px" width="100%" type="bar" :options="chartOptions" :series="matrixStats"></apexchart>
                     </v-card>
                 </v-col>
             </v-row>
             <v-row>
                 <v-col cols="12" lg="12">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Usermap</h2>
                         </v-card-title>
-                        <hr />                        
                         <p></p>
                         <UserMap :mapZoom= 3  :coords="userMapData" height="600px" />
                     </v-card>
@@ -93,6 +90,9 @@
 <script>
 import UserMap from '../components/UserMap';
 
+// Explicit colors survive ApexCharts theme updates during asynchronous data loads.
+const statisticsColors = ['#A300D6', '#7D02EB', '#5653FE', '#2983FF', '#00B1F2'];
+
 export default {
     name: 'Statistics',
      data: () => ({        
@@ -101,6 +101,9 @@ export default {
         UserMap,
     },
     computed: {
+        statsReady() {
+            return ['buildStats', 'versionStats', 'sensorStats', 'countryStats', 'matrixStats'].every(key => Array.isArray(this.$store.state.statistics[key]));
+        },
         userMapData() {
             return this.$store.state.userMapData.coords;
         },
@@ -144,6 +147,7 @@ export default {
         },
         countryChartOptions(){
             return { 
+                colors: statisticsColors.slice(),
                 labels: this.$store.state.statistics.countryStats ? this.$store.state.statistics.countryStats.map(x=> x.country) : [],
                 theme: {
                     mode: this.$vuetify.theme.dark ? 'dark' : 'light',
@@ -169,7 +173,8 @@ export default {
             };
         },
         chartOptions(){
-            return {                
+            return {
+                colors: statisticsColors.slice(),
                 plotOptions: {
                     bar: {
                         horizontal: false,
@@ -207,7 +212,7 @@ export default {
     },
 };
 </script>
-<style>
+<style scoped>
 ul {
     margin-top: 10px;
 }

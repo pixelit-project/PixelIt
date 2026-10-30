@@ -1,6 +1,6 @@
 <template>
     <div class="Liveview">
-        <canvas ref="canvas" canvas :width="canvasSize.width" :height="canvasSize.height"></canvas>
+        <canvas ref="canvas" role="img" aria-label="Live preview of the PixelIt display" canvas :width="canvasSize.width" :height="canvasSize.height"></canvas>
     </div>
 </template>
 
@@ -86,4 +86,8 @@ export default {
     border-radius: 5px;
     max-width: 100%;
 }
+</style>
+
+<style scoped>
+canvas { max-width: 100%; height: auto; }
 </style>

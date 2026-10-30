@@ -17,10 +17,10 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="green darken-1" text @click="agreeWraper" :disabled="((!isValid) || (getSizeX == 32 && isAnimated == true))">
+                    <v-btn color="green darken-1" text @click="agreeWraper" :loading="saving" :disabled="(saving || (!isValid) || (getSizeX == 32 && isAnimated == true))">
                         Save into Database              
                     </v-btn>
-                    <v-btn color="red darken-1" text @click="disagreeWraper">
+                    <v-btn color="red darken-1" text :disabled="saving" @click="disagreeWraper">
                         Abort
                     </v-btn>
                 </v-card-actions>
@@ -30,10 +30,12 @@
 </template>
 
 <script>
+import { notify } from '../utils/feedback';
 export default {
     data() {        
         return {
             dialog: false,
+            saving: false,
             isValid: false,
             bitmapName: ' ',
             userName: this.$cookies.get('userNameForUpload') || '',                        
@@ -83,22 +85,28 @@ export default {
         disagreeWraper() {
             this.dialog = false;
         },
-        agreeWraper() {     
-             
-            // send new bitmap
-            fetch(`${this.$apiServerBaseURL}/SaveBitmap`, {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'Client': this.$client},
-                body: JSON.stringify({
-                    rgb565array: this.cleanedData,
-                    userName: this.userName != '' ? this.userName : 'Not specified',
-                    name: this.bitmapName,
-                    sizeX: this.getSizeX,
-                    sizeY: 8,
-                    animated: this.isAnimated
-                })
-            });
-            this.dialog = false;
+        async agreeWraper() {
+            if (this.saving || !this.isValid) return;
+            this.saving = true;
+            try {
+                const response = await fetch(`${this.$apiServerBaseURL}/SaveBitmap`, {
+                    method: 'POST',
+                    headers: { Accept: 'application/json', 'Content-Type': 'application/json', Client: this.$client },
+                    body: JSON.stringify({
+                        rgb565array: this.cleanedData,
+                        userName: this.userName || 'Not specified',
+                        name: this.bitmapName,
+                        sizeX: this.getSizeX,
+                        sizeY: 8,
+                        animated: this.isAnimated,
+                    }),
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                this.dialog = false;
+                notify('Bitmap upload accepted by the gallery.', 'success');
+            } catch (error) {
+                notify('Bitmap upload failed. Your drawing is still available; please try again.', 'error');
+            } finally { this.saving = false; }
         },
         changeUserName(){
             this.$cookies.set('userNameForUpload', this.userName)

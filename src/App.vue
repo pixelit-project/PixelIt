@@ -1,22 +1,21 @@
 <template>
     <v-app>
         <!-- Sidebar -->
-        <v-navigation-drawer v-model="drawer" app>
+        <v-navigation-drawer v-model="drawer" class="app-navigation" app>
             <v-img class="mt-3" max-height="100" src="./assets/logo.png" contain></v-img>
             <nav-links :items="getNavLinks" />
         </v-navigation-drawer>
         <!-- Bar -->
         <v-app-bar app>
-            <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-            <v-toolbar-title><b>PixelIt</b> - The Matrix Display</v-toolbar-title>
-            <v-spacer>
-                <v-toolbar-title v-if="!sockedIsConnected && !isDemoMode" class="text-center message">Reconnecting...</v-toolbar-title>
-            </v-spacer>
-            <div  v-if="displayHostname != ''" class="hostname padded" :title="`Hostname: ${this.displayHostname}`" v-text="displayHostname"></div>
-            <v-icon v-if="sockedIsConnected" color="green" class="padded" :title="`Connected to ${this.$socket.url}`">mdi-lan-connect </v-icon>
-            <v-icon v-if="isDemoMode" color="green" class="padded" :title="`Connected to demo data source`">mdi-lan-connect</v-icon>
-            <v-icon v-if="!sockedIsConnected && !isDemoMode" color="red" class="padded" :title="`Disconnected from ${this.$socket.url}`">mdi-lan-disconnect</v-icon>
-            <v-btn icon @click="changeTheme" title="Change theme">
+            <v-app-bar-nav-icon aria-label="Toggle navigation" @click="drawer = !drawer"></v-app-bar-nav-icon>
+            <v-toolbar-title><b>PixelIt</b><span class="brand-subtitle"> - The Matrix Display</span></v-toolbar-title>
+            <v-spacer />
+            <div v-if="displayHostname" class="hostname padded" :title="`Hostname: ${displayHostname}`">{{ displayHostname }}</div>
+            <v-chip small outlined class="connection-status mr-2" :color="isDemoMode ? 'info' : sockedIsConnected ? 'success' : connectionFailed ? 'error' : 'warning'" role="status" aria-live="polite">
+                <v-icon left small>{{ sockedIsConnected || isDemoMode ? 'mdi-lan-connect' : 'mdi-lan-disconnect' }}</v-icon>
+                {{ isDemoMode ? 'Demo' : sockedIsConnected ? 'Connected' : connectionFailed ? 'Offline' : 'Connecting…' }}
+            </v-chip>
+            <v-btn icon @click="changeTheme" title="Change theme" aria-label="Change theme">
                 <v-icon v-if="darkModeActive">mdi-brightness-4</v-icon>
                 <v-icon v-else>mdi-brightness-4</v-icon>
             </v-btn>
@@ -25,16 +24,23 @@
         <v-main app>
             <router-view />
         </v-main>
+        <v-snackbar v-model="feedback.visible" :color="feedback.color" :timeout="feedback.color === 'error' ? 10000 : 5000" bottom>
+            <span role="status" aria-live="polite">{{ feedback.message }}</span>
+            <template v-slot:action="{ attrs }"><v-btn icon v-bind="attrs" aria-label="Dismiss message" @click="feedback.visible = false"><v-icon>mdi-close</v-icon></v-btn></template>
+        </v-snackbar>
     </v-app>
 </template>
 
 <script>
 import NavLinks from './components/NavLinks';
+import { feedback } from './utils/feedback';
+import './styles/ui.css';
 export default {
     created: function () {
         // Get style cookie
         this.$vuetify.theme.dark = this.$cookies.get('theme_dark') ? this.$cookies.get('theme_dark') === 'true' : true;
 
+        this.trackConnection(this.sockedIsConnected);
         getCurrentGitReleaseData(this);    
         sendTelemetry(this);
         getStatistics(this);
@@ -58,7 +64,10 @@ export default {
         NavLinks,
     },
     data: () => ({
-        drawer: true,
+        drawer: null,
+        feedback,
+        connectionFailed: false,
+        connectionTimer: null,
     }),
     computed: {
         darkModeActive() {
@@ -77,13 +86,20 @@ export default {
             return this.$store.state.displayHostname;
         },
     },
+    beforeDestroy() { clearTimeout(this.connectionTimer); },
     methods: {
+        trackConnection(connected) {
+            clearTimeout(this.connectionTimer);
+            this.connectionFailed = false;
+            if (!connected && !this.isDemoMode) this.connectionTimer = setTimeout(() => { this.connectionFailed = true; }, 15000);
+        },
         changeTheme() {
             this.$vuetify.theme.dark = !this.$vuetify.theme.dark;
             this.$cookies.set('theme_dark', this.$vuetify.theme.dark);
         },
     },
     watch: {
+        sockedIsConnected: 'trackConnection',
         '$store.state.gitVersion': function (newVal) {
             if (this.$store.state.version) {
                 //this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
@@ -142,8 +158,11 @@ async function getStatistics(vue) {
     }
    
     try {      
-        vue.$store.state.statistics = await (await fetch(`${vue.$apiServerBaseURL}/statistics?uuid=${uuid}`)).json();
+        const response = await fetch(`${vue.$apiServerBaseURL}/statistics?uuid=${uuid}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        vue.$store.state.statistics = await response.json();
     } catch (error) {
+        vue.$store.state.statistics = { error: true };
         console.log(`getStatistics: error (${error})`);
     }
 }
@@ -213,11 +232,6 @@ const compareVersions = ((prep, l, i, r) => (a, b) =>{
 }
 </style>
 <style scoped>
-.container {
-    max-width: 100vw;
-    padding: 10px;
-}
-
 .message {
     color: orange;
     font-size: 20px;

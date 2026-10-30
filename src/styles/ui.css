@@ -1,0 +1,75 @@
+/* Shared page and panel layout, scoped away from dialogs and pixel canvases. */
+.v-application .app-page {
+    max-width: 1920px;
+    padding: 20px 16px;
+}
+
+.v-application .app-page .ui-panel {
+    padding: 24px;
+    border-radius: 10px;
+    min-width: 0;
+}
+.ui-panel > .v-card__title {
+    padding: 0;
+    margin-bottom: 20px;
+    word-break: normal;
+    line-height: 1.4;
+}
+.app-page .v-card__title h2 { font-size: 18px; font-weight: 500; line-height: 1.4; }
+.ui-panel > h3 { font-size: 14px; font-weight: 500; margin: 16px 0 8px; }
+.ui-panel > .v-card__text { padding: 0; }
+.ui-panel + .ui-panel { margin-top: 24px; }
+.ui-panel > .v-input:last-child { margin-bottom: 0; }
+.app-page .v-btn { border-radius: 6px; }
+.page-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.page-actions .v-btn { margin: 0; }
+.page-actions .action-spacer { flex: 1; }
+.app-page .gallery-card { height: 100%; }
+.app-page .v-bottom-navigation { border-radius: 10px; box-shadow: none; }
+@media (max-width: 599px) {
+    .v-application .app-page { padding: 16px 12px; }
+    .v-application .app-page .ui-panel { padding: 16px; }
+    .page-actions { gap: 8px; }
+    .page-actions .action-spacer { display: none; }
+}
+
+/* Keyboard focus is visible in both themes and does not alter pixel previews. */
+.v-application a:focus-visible,
+.v-application button:focus-visible,
+.v-application [role="button"]:focus-visible,
+.v-application input:focus-visible,
+.v-application textarea:focus-visible {
+    outline: 3px solid #2196f3;
+    outline-offset: 3px;
+}
+.v-application .config-actions {
+    position: sticky;
+    top: 76px;
+    z-index: 5;
+    padding: 12px 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+}
+.theme--dark .config-actions { background: #242424; }
+.theme--light .config-actions { background: #fff; }
+.theme--dark .text--secondary { color: rgba(255, 255, 255, .75) !important; }
+.theme--light .text--secondary { color: rgba(0, 0, 0, .68) !important; }
+.app-page canvas { max-width: 100%; }
+.app-page .v-data-table__wrapper { overflow-x: auto; }
+@media (max-width: 599px) {
+    .brand-subtitle { display: none; }
+    .v-application .config-actions { top: 64px; padding: 12px; }
+    .config-actions > .v-btn { min-height: 40px; }
+}
+
+.device-actions { display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 599px) {
+    .config-actions > .text-caption { order: 3; flex-basis: 100%; }
+    .config-actions > .v-btn--icon { margin-left: auto; }
+}

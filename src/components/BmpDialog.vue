@@ -1,7 +1,7 @@
 <template>
     <v-dialog v-model="dialog" width="500">
         <template v-slot:activator="{ on, attrs }">
-            <v-btn icon v-bind="attrs" v-on="on" class="float-left" title="More information">
+            <v-btn icon v-bind="attrs" v-on="on" class="float-left" title="More information" aria-label="More information">
                 <v-icon>mdi-information-outline</v-icon>
             </v-btn>
         </template>
@@ -21,7 +21,7 @@
                 Added on: {{ bmp.dateTime.split('T')[0] }}<br />
                 Animated: {{ bmp.animated ? 'Yes' : 'No' }}<br />
                 <br />
-                <v-textarea filled outlined v-model="bmp.rgB565Array" readonly rows="8"></v-textarea>
+                <v-textarea filled outlined :value="bmp.rgB565Array" readonly rows="8"></v-textarea>
             </v-card-text>
             <v-divider></v-divider>
             <v-card-actions>

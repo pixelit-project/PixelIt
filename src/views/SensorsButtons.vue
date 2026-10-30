@@ -1,19 +1,19 @@
 <template>
-    <v-container class="options">
-        <v-row>
-            <v-col cols="12" lg="12" class="text-center">
-                <ButtonCondition color="success" :condition="isValid && sockedIsConnected" text="Save config" :onclick="save" icon="mdi-content-save" />
-            </v-col>
-        </v-row>
-        <v-form v-model="isValid">
+    <v-container class="options app-page">
+        <div class="page-actions config-actions">
+            <ButtonCondition color="success" :condition="configReady && hasUnsavedChanges && isValid && sockedIsConnected && !$demoMode" text="Save config" :onclick="save" icon="mdi-content-save" />
+            <span class="text-caption" role="status">{{ !configReady ? 'Loading configuration…' : hasUnsavedChanges ? 'Unsaved changes' : 'No unsaved changes' }}</span>
+            <v-btn v-if="hasUnsavedChanges" small text @click="resetDraft()">Discard changes</v-btn>
+        </div>
+        <v-skeleton-loader v-if="!configReady" type="article, article" />
+        <v-form v-else v-model="isValid">
             <v-row>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Sensor units and offsets</h2>
                         </v-card-title>
-                        <hr />
-                        <br />
+
                         <v-select :items="temperatureUnits" v-model="config.temperatureUnit" label="Temperature unit"></v-select>
                         <v-text-field v-model="config.temperatureOffset" type="number" label="Temperature sensor offset" :rules="[rules.required]"></v-text-field>
                         <v-text-field v-model="config.humidityOffset" type="number" label="Humidity sensor offset" :rules="[rules.required]"></v-text-field>
@@ -24,12 +24,11 @@
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Sensor hardware</h2>
                         </v-card-title>
-                        <hr />
-                        <br />
+
                         <h3>I²C sensors</h3>
                         <v-card-text>If you use BH1750, BME280 or BME680 sensors, these need two pins to communicate. You can use both Lux and Temperature sensors at the same time: just connect them in parallel. If there are no sensors at all, just select any two open pins. </v-card-text>
                         <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.SCLPin" type="number" label="SCL pin" hint="Pick any value when using no I²C sensors"></v-select>
@@ -45,12 +44,11 @@
                     </v-card>
                 </v-col>
                 <v-col cols="12" lg="4">
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Button hardware</h2>
                         </v-card-title>
-                        <hr />
-                        <br />
+
                         <v-switch v-model="config.btn0Enabled" label="Left button enabled" dense hide-details></v-switch>
                         <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.btn0Pin" type="number" label="Pin for left button" :disabled="!config.btn0Enabled"></v-select>
                         <v-select :items="btnLowHigh" v-model="config.btn0PressedLevel" type="number" label="Left button signal type" :disabled="!config.btn0Enabled"></v-select>
@@ -63,13 +61,11 @@
                         <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.btn2Pin" type="number" label="Pin for right button" :disabled="!config.btn2Enabled"></v-select>
                         <v-select :items="btnLowHigh" v-model="config.btn2PressedLevel" type="number" label="Right button signal type" :disabled="!config.btn2Enabled"></v-select>
                     </v-card>
-                    <br />
-                    <v-card class="pa-2" elevation="4">
+                    <v-card class="ui-panel" elevation="2">
                         <v-card-title>
                             <h2>Button actions</h2>
                         </v-card-title>
-                        <hr />
-                        <br />
+
                         <v-select :items="btnActions" v-model="config.btn0Action" type="number" label="Left button action" :disabled="!config.btn0Enabled"></v-select>
                         <v-select :items="btnActions" v-model="config.btn1Action" type="number" label="Middle button action" :disabled="!config.btn1Enabled"></v-select>
                         <v-select :items="btnActions" v-model="config.btn2Action" type="number" label="Right button action" :disabled="!config.btn2Enabled"></v-select>
@@ -82,8 +78,10 @@
 
 <script>
 import ButtonCondition from '../components/ButtonCondition';
+import configDraft from '../mixins/configDraft';
 export default {
     name: 'SensorsButtons',
+    mixins: [configDraft],
     data: () => ({
         isValid: true,
     }),
@@ -93,9 +91,6 @@ export default {
     computed: {
         rules() {
             return this.$store.state.rules;
-        },
-        config() {
-            return this.$store.state.configData;
         },
         sockedIsConnected() {
             return this.$store.state.socket.isConnected;
@@ -107,7 +102,7 @@ export default {
             return this.$store.state.ldrDevices;
         },
         isESP8266() {
-            return this.$store.state.config.isESP8266;
+            return this.config.isESP8266;
         },
         btnLowHigh() {
             return this.$store.state.btnLowHigh;
@@ -123,12 +118,7 @@ export default {
         },
     },
     methods: {
-        save() {
-            this.$socket.sendObj({ setConfig: this.config });
-            setTimeout(() => {
-                this.$socket.close();
-            }, 3000);
-        },
+        save() { this.saveDraftConfig(); },
     },
 };
 </script>

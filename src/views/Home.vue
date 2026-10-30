@@ -1,63 +1,61 @@
 <template>
-    <v-container class="home">
+    <v-container class="home app-page">
         <v-row>
             <v-col cols="12" lg="3">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>System</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <div class="text-center updateMessage" v-if="newVersionAvailable && !isDemoMode">
                         <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a>
                         <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
                     </div>
-                    <ListInfo :items="systemItems" />
+                    <v-skeleton-loader v-if="!systemItems.length" type="list-item-two-line@4" />
+                    <ListInfo v-else :items="primarySystemItems" />
+                    <v-expansion-panels v-if="technicalSystemItems.length" flat class="mt-4">
+                        <v-expansion-panel>
+                            <v-expansion-panel-header>Technical details</v-expansion-panel-header>
+                            <v-expansion-panel-content><ListInfo :items="technicalSystemItems" /></v-expansion-panel-content>
+                        </v-expansion-panel>
+                    </v-expansion-panels>
                 </v-card>
             </v-col>
             <v-col cols="12" lg="3">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Liveview</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <Liveview class="text-center" :data="liveview" :options="liveviewCanvasSettings" />
                 </v-card>
-                <br />
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Sensors</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
-                    <ListInfo :items="sensorItems" />
+
+                    <ListInfo v-if="sensorItems.length" :items="sensorItems" /><p v-else class="text--secondary mb-0">Waiting for sensor data…</p>
                 </v-card>
-                <br />
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Buttons</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
-                    <ListInfo :items="buttonItems" />
+
+                    <ListInfo v-if="buttonItems.length" :items="buttonItems" /><p v-else class="text--secondary mb-0">No button data available.</p>
                 </v-card>
             </v-col>
             <v-col cols="12" lg="6">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Logs</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <Log :log="log" />
                 </v-card>
-                <br />
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Usermap</h2>
                     </v-card-title>
-                    <hr />
                     <v-card-text class="text-md-center" v-if="userMapError || sendStatistics == false">
                         <h2>Activate the telemetry data to see the usermap.</h2>
                         <br>
@@ -89,6 +87,13 @@ export default {
         Liveview,
     },
     computed: {
+        primarySystemItems() {
+            const names = ['PixelIt Version', 'Hostname', 'Note', 'IP-Address', 'Wifi quality', 'Uptime', 'Current Brightness'];
+            return this.systemItems.filter(item => names.includes(item.name));
+        },
+        technicalSystemItems() {
+            return this.systemItems.filter(item => !this.primarySystemItems.includes(item));
+        },
         systemItems() {
             return this.$store.state.sysInfoData;
         },

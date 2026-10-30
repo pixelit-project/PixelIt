@@ -1,22 +1,19 @@
 <template>
-    <v-container class="home">
+    <v-container class="home app-page">
         <v-row>
             <v-col cols="12" lg="4">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Liveview</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <Liveview class="text-center" :data="liveview" :options="liveviewCanvasSettings" />
                 </v-card>
-                <br />
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>JSON String</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <prism-editor class="editor" v-model="testarea.json" :highlight="highlighter" line-numbers></prism-editor>
                     <br />
                     <div class="text-center">
@@ -25,12 +22,11 @@
                 </v-card>
             </v-col>
             <v-col cols="12" lg="4">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Text / Brightness</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <span class="text-h2 font-weight-light" v-text="testarea.brightness"></span>
                     <span class="subheading font-weight-light mr-1">Brightness</span>
                     <v-slider v-model="testarea.brightness" max="255" min="0" @end="sendBrightness"></v-slider>
@@ -41,12 +37,11 @@
                 </v-card>
             </v-col>
             <v-col cols="12" lg="4">
-                <v-card class="pa-2" elevation="4">
+                <v-card class="ui-panel" elevation="2">
                     <v-card-title>
                         <h2>Bitmap Array</h2>
                     </v-card-title>
-                    <hr />
-                    <br />
+
                     <prism-editor class="editor" v-model="testarea.image" :highlight="highlighter"></prism-editor>
                     <br />
                     <div class="text-center">
@@ -59,6 +54,7 @@
 </template>
 
 <script>
+import actionFeedback from '../mixins/actionFeedback';
 import ButtonCondition from '../components/ButtonCondition';
 import { PrismEditor } from 'vue-prism-editor';
 import 'vue-prism-editor/dist/prismeditor.min.css';
@@ -69,6 +65,8 @@ import 'prismjs/themes/prism-tomorrow.css';
 import Liveview from '../components/Liveview';
 
 export default {
+    mixins: [actionFeedback],
+    feedbackActions: { sendJson: 'JSON command sent.', sendText: 'Text sent to PixelIt.', sendBitmap: 'Bitmap sent to PixelIt.', sendBrightness: null },
     name: 'TestArea',
     components: { ButtonCondition, PrismEditor, Liveview },
     computed: {
