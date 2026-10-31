@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Reduced WebUI Pixel Gallery memory usage during long scrolling sessions by unloading offscreen cards, canvases and parsed animation frames while preserving scroll space and open information dialogs.
+-   (o0shojo0o) Fixed WebUI Pixel Gallery search rendering for fewer than 24 results, including empty results, and added regression tests.
 -   (o0shojo0o) Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8 across HTTP, MQTT and WebUI.
 -   (o0shojo0o) Added full-display animations and a ready-to-send 32×8 example.
 -   (o0shojo0o) Reduced memory usage for large uploads and reject malformed or oversized animations safely.
