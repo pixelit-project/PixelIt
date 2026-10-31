@@ -184,6 +184,8 @@ String GetMatrixInfo()
     JsonObject &root = jsonBuffer.createObject();
 
     root["pixelitVersion"] = VERSION;
+    root["latestReleaseVersion"] = compareVersions(lastReleaseVersion.c_str(), VERSION) > 0 ? lastReleaseVersion : String(VERSION);
+    root["updateCheckCompleted"] = firmwareUpdateChecked;
     //// Matrix Config
     root["note"] = note;
     root["hostname"] = hostname;
@@ -210,6 +212,15 @@ String GetMatrixInfo()
 
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
     root["sleepMode"] = sleepMode;
+    root["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
+    root["clockAutoFallbackActive"] = clockAutoFallbackActive;
+    root["clockAutoFallbackTime"] = clockAutoFallbackTime;
+    root["displayText"] = haDisplayText;
+    root["textMessage"] = haTextMessage;
+    root["textColor"] = haTextColor;
+    root["textFont"] = haTextFont;
+    root["textAlignment"] = haTextAlignment;
+    root["textScroll"] = haTextScroll;
     root["uptime"] = millis() / 1000;
     root["resetReason"] = ResetReason();
     root["animationFrames"] = animationBmpCount;

@@ -122,6 +122,7 @@ void SetConfig(JsonObject &json)
 {
     SetConfigVariables(json);
     SaveConfig();
+    RequestHADiscovery();
 }
 
 void SetConfigVariables(JsonObject &json)

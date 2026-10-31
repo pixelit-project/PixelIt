@@ -344,6 +344,8 @@ void checkUpdate()
     httpClient.get(CHECKUPDATE_SERVER_PATH);
     int statusCode = httpClient.responseStatusCode();
     String response = httpClient.responseBody();
+    // Version checks are hours apart; release the TCP buffers immediately.
+    httpClient.stop();
 
     // Serial.print("Status code: ");
     // Serial.println(statusCode);
@@ -354,9 +356,10 @@ void checkUpdate()
     {
         DynamicJsonBuffer jsonBuffer;
         JsonObject &root = jsonBuffer.parseObject(response);
-        if (root.containsKey("version"))
+        if (root.success() && root["version"].is<const char *>() && root["version"].as<String>().length() > 0)
         {
             lastReleaseVersion = root["version"].as<String>();
+            firmwareUpdateChecked = true;
 
             int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
 
@@ -368,11 +371,12 @@ void checkUpdate()
             {
                 Log(F("CheckUpdate"), "No new FW available " + String(VERSION) + " -> " + lastReleaseVersion);
             }
+            SendMatrixInfo();
         }
     }
     else
     {
-        Log(F("CheckUpdate"), "Error. HTTP Code: " + statusCode);
+        Log(F("CheckUpdate"), "Error. HTTP Code: " + String(statusCode));
     }
 }
 
@@ -424,7 +428,7 @@ void loop()
 
     // Check and display if new FW version is available.
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (checkUpdateScreen == true)
+    if (checkUpdateScreen || (mqttAktiv && mqttHAdiscoverable))
     {
 
         // Defer blocking internet requests while pixels or text are moving.
@@ -437,7 +441,7 @@ void loop()
         }
 
         // Display new FW Version
-        if (millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
+        if (checkUpdateScreen && millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
         {
             checkUpdateScreenPrevMillis = millis();
 
@@ -465,10 +469,10 @@ void loop()
         const unsigned long nowMillis = millis();
         const bool connected = client.connected();
         const bool reconnectDue = !connected && (mqttLastReconnectAttempt == 0 || nowMillis - mqttLastReconnectAttempt >= MQTT_RECONNECT_INTERVAL);
-        const bool receiveDue = connected && (wifiClientMQTT.available() > 0 || nowMillis - mqttLastService >= 1000);
+        const bool receiveDue = connected && (wifiClientMQTT.available() > 0 || nowMillis - mqttLastService >= 1000 || HADiscoveryDue());
         // Resize only before entering PubSubClient. Its read functions retain
         // pointers into the buffer, so resizing from Client::available is unsafe.
-        if ((reconnectDue || receiveDue) && client.setBufferSize(MQTT_BUFFER_SIZE))
+        if ((reconnectDue || receiveDue) && PrepareMqttServiceBuffer())
         {
             mqttLastService = nowMillis;
             if (reconnectDue)
@@ -482,36 +486,20 @@ void loop()
                 {
                     const unsigned long started = millis();
                     client.loop();
+                    ServiceHADiscovery();
                     RecordAnimationWork("MQTT", started);
                 }
             }
 #if defined(ESP8266)
             client.setBufferSize(MQTT_IDLE_BUFFER_SIZE);
 #endif
+            // Persist config only after releasing the large receive buffer.
+            ServiceMqttConfig();
+            ServiceHAText();
         }
     }
 
-    // Check buttons
-    for (uint button = 0; button < 3; button++)
-    {
-        if (btnEnabled[button])
-        {
-            if ((btnState[button] == btnState_Released) && (digitalRead(TranslatePin(btnPin[button])) == btnPressedLevel[button]))
-            {
-                btnState[button] = btnState_PressedNew;
-            }
-            if ((btnState[button] == btnState_PressedBefore) && (digitalRead(TranslatePin(btnPin[button])) != btnPressedLevel[button]))
-            {
-                btnState[button] = btnState_Released;
-                HandleAndSendButtonPress(button, false);
-            }
-            if (btnState[button] == btnState_PressedNew)
-            {
-                btnState[button] = btnState_PressedBefore;
-                HandleAndSendButtonPress(button, true);
-            }
-        }
-    }
+    ServiceButtons();
 
     // Clock Auto Fallback
     if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))

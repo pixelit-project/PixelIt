@@ -250,3 +250,13 @@ String OldGetMP3PlayerInfo;
 // Websoket Vars
 String websocketConnection[10];
 
+
+String haDisplayText;
+
+String haTextMessage;
+String haTextColor = "#FFFFFF";
+String haTextFont = "Small";
+String haTextAlignment = "Centered";
+String haTextScroll = "Auto";
+
+bool firmwareUpdateChecked = false;

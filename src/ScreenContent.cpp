@@ -498,6 +498,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         bool scrollTextAktiv = false;
         if (json.containsKey("text"))
         {
+            haDisplayText = json["text"]["textString"].as<String>();
             logMessage += F("Text, ");
             // Always assume the default delay first.
             scrollTextDelay = scrollTextDefaultDelay;

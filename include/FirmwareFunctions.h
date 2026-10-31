@@ -89,3 +89,21 @@ void SendConfig();
 time_t getNtpTime();
 void sendNTPpacket(String &address);
 void Log(String function, String message);
+
+void RequestHADiscovery();
+void ServiceHADiscovery();
+void ServiceButtons();
+void PublishButtonEvent(uint button, const char *event);
+
+bool HADiscoveryDue();
+
+void QueueMqttConfig(JsonObject &config);
+void ServiceMqttConfig();
+
+bool HandleHATextCommand(const char *topic, const byte *payload, unsigned int length);
+void ShowHAText();
+
+bool QueueHATextCommand(const char *topic, const byte *payload, unsigned int length);
+void ServiceHAText();
+
+bool PrepareMqttServiceBuffer();

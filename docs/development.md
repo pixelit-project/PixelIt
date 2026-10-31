@@ -1,6 +1,6 @@
 # Firmware development
 
-[Back to the README](../README.md) · [Animation usage](animations.md)
+[Back to the README](../README.md) · [Animation usage](animations.md) · [Home Assistant](home-assistant.md)
 
 ## Building
 
@@ -32,6 +32,8 @@ and do not depend on Arduino sketch preprocessing.
 | `src/Configuration.cpp` | Persist, load, apply and serialize device settings |
 | `src/Api.cpp` | HTTP endpoints, WebSocket events and incoming MQTT messages |
 | `src/Mqtt.cpp` | Broker connection and Home Assistant discovery |
+| `src/Buttons.cpp` | Debounced button inputs and MQTT gesture events |
+| `src/HAText.cpp` | Staged HA text settings and text rendering commands |
 | `src/ScreenContent.cpp` | Interpret screen JSON and prepare display content |
 | `src/Display.cpp` | Text, bitmap animation, clock and weekday rendering |
 | `src/Effects.cpp` | Fades, transitions and boot/battery screens |

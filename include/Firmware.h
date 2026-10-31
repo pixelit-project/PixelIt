@@ -66,7 +66,7 @@ extern uint32_t _retry_cnt;
 #include "Version.h"
 
 // Internal Config
-#define CHECKUPDATE_INTERVAL 1000 * 60 * 6 * 8      // 8 Hours
+#define CHECKUPDATE_INTERVAL 1000UL * 60 * 60 * 8  // 8 Hours
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30   // 30 Minutes
 #define CHECKUPDATESCREEN_DURATION 1000 * 5         // 5 Seconds
 #define CONTROL_BRIGHTNESS_INTERVAL 1000            // 1000 Milliseconds

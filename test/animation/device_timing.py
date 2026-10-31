@@ -49,6 +49,8 @@ try:
             'animationRenderedFrames', 'animationMaxFrameGap',
             'animationFailedLedFrames', 'ledFrameRetries', 'slowestTask', 'slowestTaskMillis')}, flush=True)
         assert state['uptime'] >= before['uptime'], 'Device rebooted'
+        assert state['animationFrames'] == len(animation['bitmapAnimation']['data']), 'Another client replaced the test animation'
+        assert state['animationDelay'] == animation['bitmapAnimation']['animationDelay'], 'Another client changed the animation speed'
         assert state['animationFailedLedFrames'] == 0, 'LED transfer dropped a frame'
         assert state['animationMaxFrameGap'] <= 400, 'Animation stalled'
     assert state['animationRenderedFrames'] >= args.seconds * 1000 / 150 * 0.9

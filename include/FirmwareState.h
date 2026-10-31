@@ -208,3 +208,9 @@ extern unsigned long checkUpdatePrevMillis;
 extern String lastReleaseVersion;
 extern String OldGetMP3PlayerInfo;
 extern String websocketConnection[10];
+
+extern String haDisplayText;
+
+extern String haTextMessage, haTextColor, haTextFont, haTextAlignment, haTextScroll;
+
+extern bool firmwareUpdateChecked;

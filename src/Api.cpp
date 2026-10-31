@@ -251,6 +251,7 @@ void SleepScreen(bool startSleep, bool forceClockOnWake)
 void HandleAndSendButtonPress(uint button, bool state)
 {
     btnLastPublishState[button] = state;
+    PublishButtonEvent(button, state ? "press" : "release");
     Log(F("Buttons"), btnLogNames[button] + " is now " + (state ? "true" : "false"));
 
     // Prüfen ob über MQTT versendet werden muss
@@ -309,6 +310,12 @@ void HandleAndSendButtonPress(uint button, bool state)
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
+    if (String(topic) == "homeassistant/status")
+    {
+        if (length == 6 && memcmp(payload, "online", 6) == 0) RequestHADiscovery();
+        return;
+    }
+    if (QueueHATextCommand(topic, payload, length)) return;
     if (length > 0 && payload[0] == '{')
     {
         payload[length] = '\0';
@@ -337,6 +344,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         if (channel.equals("setScreen"))
         {
             CreateFrames(json);
+            SendMatrixInfo();
         }
         else if (channel.equals("getLuxsensor"))
         {
@@ -364,7 +372,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         }
         else if (channel.equals("setConfig"))
         {
-            SetConfig(json);
+            QueueMqttConfig(json);
         }
     }
 }

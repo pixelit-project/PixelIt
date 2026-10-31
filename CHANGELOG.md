@@ -2,6 +2,13 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Expanded Home Assistant MQTT discovery with automatic brightness, clock fallback controls, uptime, free memory and restart reason diagnostics.
+-   (o0shojo0o) Added staged text messages with font size, alignment, scrolling, a synchronized HEX color field and RGB color picker, and a Show text button. Text is vertically centered using the selected font's glyph bounds.
+-   (o0shojo0o) Added a read-only Home Assistant firmware update entity with installed/latest version information and a release notes link. Version checks also run when the visual update reminder is disabled.
+-   (o0shojo0o) Added debounced button events for press, release, single press, double press and long press while preserving local button actions.
+-   (o0shojo0o) Fixed MQTT device-topic availability, humidity discovery IDs, sensor capabilities and temperature units; discovery now removes stale entities and republishes after Home Assistant restarts and configuration changes.
+-   (o0shojo0o) Spread discovery messages across animation frames, defer MQTT text/configuration processing until receive buffers are released, and keep small MQTT controls working when the full animation buffer cannot be allocated. Release version-check HTTP buffers and correct the update check interval to eight hours.
+-   (o0shojo0o) Added Home Assistant integration documentation, host regression tests and physical-device checks for text controls, discovery and animation timing.
 -   (o0shojo0o) Added animation and bitmap size filters to the WebUI Pixel Gallery, combinable with name and ID search across the full gallery. Available sizes are derived automatically from the gallery data.
 -   (o0shojo0o) Reduced WebUI Pixel Gallery memory usage during long scrolling sessions by unloading offscreen cards, canvases and parsed animation frames while preserving scroll space and open information dialogs.
 -   (o0shojo0o) Fixed WebUI Pixel Gallery search rendering for fewer than 24 results, including empty results, and added regression tests.
