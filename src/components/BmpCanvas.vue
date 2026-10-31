@@ -55,6 +55,7 @@ export default {
         if (this.preloadObserver) this.preloadObserver.disconnect();
         if (this.visibilityObserver) this.visibilityObserver.disconnect();
         document.removeEventListener('visibilitychange', this.updateAnimation);
+        this.frames = null;
     },
     watch: {
         bmp: {

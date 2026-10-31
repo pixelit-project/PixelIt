@@ -92,7 +92,8 @@ export default {
             return this.systemItems.filter(item => names.includes(item.name));
         },
         technicalSystemItems() {
-            return this.systemItems.filter(item => !this.primarySystemItems.includes(item));
+            const names = ['Device-ID', 'ChipID', 'CPU freq.', 'Build Section', 'Wifi SSID', 'Wifi BSSID', 'Wifi RSSI', 'Sketch size', 'Free Sketch Space', 'Free heap', 'Reset reason'];
+            return names.map(name => this.systemItems.find(item => item.name === name)).filter(Boolean);
         },
         systemItems() {
             return this.$store.state.sysInfoData;

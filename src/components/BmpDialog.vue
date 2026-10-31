@@ -44,6 +44,11 @@ export default {
     components: {
         BmpCanvas,
     },
+    watch: {
+        dialog(value) {
+            this.$emit('dialog-change', value);
+        },
+    },
     data: function () {
         return {
             dialog: false,

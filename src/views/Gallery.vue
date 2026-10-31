@@ -1,9 +1,19 @@
 <template>
     <v-container class="gallery app-page">
+        <v-sheet v-if="!isLoading" class="gallery-filters" :style="{ top: ($vuetify.application.top + 8) + 'px' }" rounded elevation="2">
+            <v-row dense>
+                <v-col cols="12" md="6">
+                    <v-text-field v-model="message" prepend-inner-icon="mdi-magnify" single-line outlined filled hide-details auto-grow label="Search for name or ID" type="text"></v-text-field>
+                </v-col>
+                <v-col cols="6" md="3">
+                    <v-select v-model="animationFilter" :items="animationFilters" label="Animation" prepend-inner-icon="mdi-animation-play" outlined filled hide-details></v-select>
+                </v-col>
+                <v-col cols="6" md="3">
+                    <v-select v-model="sizeFilter" :items="sizeFilters" label="Size" prepend-inner-icon="mdi-image-size-select-large" outlined filled hide-details></v-select>
+                </v-col>
+            </v-row>
+        </v-sheet>
         <v-row>
-            <v-col cols="12">
-                <v-text-field v-model="message" v-if="!isLoading" prepend-inner-icon="mdi-magnify" single-line outlined filled hide-details auto-grow label="Search for name or ID" type="text"></v-text-field>
-            </v-col>
             <v-col v-for="n in (isLoading ? 6 : 0)" :key="'loading-' + n" cols="6" md="4" lg="2">
                 <v-skeleton-loader type="image, article" aria-label="Loading gallery" />
             </v-col>
@@ -11,24 +21,26 @@
                 Could not load the gallery.
                 <v-btn text @click="loadBMPs">Retry</v-btn>
             </v-col>
-            <v-col v-for="bmp in visibleBMPs" :key="bmp.id" cols="6" lg="2">
-                <v-card class="ui-panel gallery-card" elevation="2">
-                    <div class="text-center">
-                        {{ bmp.name }}
-                    </div>
-                    <v-divider class="my-4" />
-                    <BmpCanvas :bmp="bmp" />
-                    <p></p>
-                    <div class="text-center">
-                        <BmpDialog :bmp="bmp" />
-                        <v-btn icon @click="sendBitmap(bmp.rgB565Array, bmp.sizeX)" :disabled="!sockedIsConnected" class="float-right" title="Show on PixelIt" aria-label="Show on PixelIt">
-                            <v-icon>mdi-arrow-right-circle-outline</v-icon>
-                        </v-btn>
-                    </div>
-                    <div class="text-center">
-                        <v-text-field prepend-inner-icon="mdi-identifier" rounded dense hide-details readonly :value="bmp.id" append-outer-icon="mdi-content-copy" @click:append-outer="copyText(bmp.id, $event)"></v-text-field>
-                    </div>
-                </v-card>
+            <v-col v-for="bmp in visibleBMPs" :key="filterRevision + ':' + bmp.id" cols="6" lg="2">
+                <GalleryViewportItem :pinned="openBitmapId === bmp.id">
+                    <v-card class="ui-panel gallery-card" elevation="2">
+                        <div class="text-center">
+                            {{ bmp.name }}
+                        </div>
+                        <v-divider class="my-4" />
+                        <BmpCanvas :bmp="bmp" />
+                        <p></p>
+                        <div class="text-center">
+                            <BmpDialog :bmp="bmp" @dialog-change="openBitmapId = $event ? bmp.id : null" />
+                            <v-btn icon @click="sendBitmap(bmp.rgB565Array, bmp.sizeX)" :disabled="!sockedIsConnected" class="float-right" title="Show on PixelIt" aria-label="Show on PixelIt">
+                                <v-icon>mdi-arrow-right-circle-outline</v-icon>
+                            </v-btn>
+                        </div>
+                        <div class="text-center">
+                            <v-text-field prepend-inner-icon="mdi-identifier" rounded dense hide-details readonly :value="bmp.id" append-outer-icon="mdi-content-copy" @click:append-outer="copyText(bmp.id, $event)"></v-text-field>
+                        </div>
+                    </v-card>
+                </GalleryViewportItem>
             </v-col>
             <v-col v-if="!isLoading && !loadError && getBMPs.length === 0" cols="12" class="text-center">
                 No matching bitmaps found.
@@ -36,7 +48,7 @@
             <v-col v-show="hasMoreBMPs" cols="12" class="text-center">
                 <div ref="loadMoreTrigger">
                     <v-row v-if="automaticLoading" aria-hidden="true">
-                        <v-col v-for="placeholder in Math.min(6, getBMPs.length - visibleCount)" :key="placeholder" cols="6" lg="2">
+                        <v-col v-for="placeholder in placeholderCount" :key="placeholder" cols="6" lg="2">
                             <div class="gallery-placeholder">
                                 <div class="placeholder-title"></div>
                                 <div class="placeholder-preview"></div>
@@ -56,6 +68,7 @@ import actionFeedback from '../mixins/actionFeedback';
 import { notify } from '../utils/feedback';
 import BmpCanvas from '../components/BmpCanvas';
 import BmpDialog from '../components/BmpDialog';
+import GalleryViewportItem from '../components/GalleryViewportItem';
 
 const BATCH_SIZE = 24;
 let pendingBMPsRequest = null;
@@ -83,6 +96,15 @@ export default {
     data: function () {
         return {
             message: '',
+            filterRevision: 0,
+            animationFilter: 'all',
+            sizeFilter: 'all',
+            animationFilters: [
+                { text: 'All bitmaps', value: 'all' },
+                { text: 'Animated', value: 'animated' },
+                { text: 'Not animated', value: 'static' },
+            ],
+            openBitmapId: null,
             visibleCount: BATCH_SIZE,
             automaticLoading: false,
             isLoading: false,
@@ -92,10 +114,17 @@ export default {
     components: {
         BmpCanvas,
         BmpDialog,
+        GalleryViewportItem,
     },
     watch: {
         message() {
-            this.visibleCount = BATCH_SIZE;
+            this.resetResults();
+        },
+        animationFilter() {
+            this.resetResults();
+        },
+        sizeFilter() {
+            this.resetResults();
         },
         visibleBMPs() {
             // Recheck after each batch, even when the trigger stays in a tall viewport.
@@ -103,6 +132,19 @@ export default {
         },
     },
     methods: {
+        resetResults() {
+            this.visibleCount = BATCH_SIZE;
+            // Drop retained viewport state when a bitmap moves within filtered results.
+            this.filterRevision++;
+            if (!this.$el || typeof window === 'undefined') return;
+            const top = Math.max(0, this.$el.getBoundingClientRect().top + window.scrollY
+                - this.$vuetify.application.top - 8);
+            if (window.scrollY > top) {
+                // Move before Vue patches the shorter list; smooth scrolling would
+                // temporarily leave the viewport below the new results.
+                window.scrollTo({ top, behavior: 'instant' });
+            }
+        },
         observeLoadMore() {
             if (!this.loadMoreObserver || this._isBeingDestroyed || this._isDestroyed) return;
             this.loadMoreObserver.disconnect();
@@ -168,14 +210,37 @@ export default {
         },
     },
     computed: {
+        sizeFilters() {
+            const sizes = new Map();
+            this.$store.state.bmpsFromAPI.forEach((bmp) => {
+                const width = Number(bmp.sizeX);
+                const height = Number(bmp.sizeY);
+                if (Number.isInteger(width) && width > 0 && Number.isInteger(height) && height > 0) {
+                    sizes.set(`${width}x${height}`, { width, height });
+                }
+            });
+            return [{ text: 'All sizes', value: 'all' }, ...Array.from(sizes.values())
+                .sort((a, b) => a.width - b.width || a.height - b.height)
+                .map(({ width, height }) => ({ text: `${width} × ${height}`, value: `${width}x${height}` }))];
+        },
         getBMPs() {
             const bmps = this.$store.state.bmpsFromAPI;
-            if (!this.message) return bmps;
+            if (!this.message && this.animationFilter === 'all' && this.sizeFilter === 'all') return bmps;
             const query = this.message.toLowerCase();
-            return bmps.filter((x) => x.name.toLowerCase().includes(query) || x.id == this.message);
+            return bmps.filter((bmp) => {
+                const matchesSearch = !query || bmp.name.toLowerCase().includes(query) || bmp.id == this.message;
+                const matchesAnimation = this.animationFilter === 'all'
+                    || Boolean(bmp.animated) === (this.animationFilter === 'animated');
+                const matchesSize = this.sizeFilter === 'all'
+                    || `${Number(bmp.sizeX)}x${Number(bmp.sizeY)}` === this.sizeFilter;
+                return matchesSearch && matchesAnimation && matchesSize;
+            });
         },
         hasMoreBMPs() {
             return this.visibleCount < this.getBMPs.length;
+        },
+        placeholderCount() {
+            return Math.max(0, Math.min(6, this.getBMPs.length - this.visibleCount));
         },
         visibleBMPs() {
             return this.getBMPs.slice(0, this.visibleCount);
@@ -204,6 +269,17 @@ function getBMPsFromAPI() {
 </script>
 
 <style scoped>
+.gallery {
+    overflow-anchor: none;
+}
+
+.gallery-filters {
+    position: sticky;
+    z-index: 4;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
 .gallery-card {
     animation: gallery-appear 160ms ease-out;
 }
