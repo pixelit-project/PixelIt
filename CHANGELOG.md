@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Added animation and bitmap size filters to the WebUI Pixel Gallery, combinable with name and ID search across the full gallery. Available sizes are derived automatically from the gallery data.
 -   (o0shojo0o) Reduced WebUI Pixel Gallery memory usage during long scrolling sessions by unloading offscreen cards, canvases and parsed animation frames while preserving scroll space and open information dialogs.
 -   (o0shojo0o) Fixed WebUI Pixel Gallery search rendering for fewer than 24 results, including empty results, and added regression tests.
 -   (o0shojo0o) Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8 across HTTP, MQTT and WebUI.
