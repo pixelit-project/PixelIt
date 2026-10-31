@@ -170,7 +170,9 @@ assert configs['TextColorPicker']['command_topic'] == 'master/setTextOptions/col
 assert all(key in configs['TextColorPicker'] for key in ('red_template', 'green_template', 'blue_template'))
 assert 'brightness_template' not in configs['TextColorPicker']
 assert configs['FirmwareUpdate']['device_class'] == 'firmware'
-assert configs['FirmwareUpdate']['latest_version_topic'] == 'master/matrixinfo'
+assert configs['FirmwareUpdate']['state_topic'] == 'master/matrixinfo'
+assert 'latest_version_topic' not in configs['FirmwareUpdate']
+assert configs['FirmwareUpdate']['value_template'] == "{{ {'installed_version': value_json.pixelitVersion, 'latest_version': value_json.latestReleaseVersion} | tojson }}"
 assert 'command_topic' not in configs['FirmwareUpdate']
 assert 'payload_install' not in configs['FirmwareUpdate']
 
@@ -299,6 +301,7 @@ struct HttpClient {
  HttpClient(int,const char*,int) {}
  void sendHeader(const char*,const char*) {}
  void setTimeout(int) {}
+ void setHttpResponseTimeout(int) {}
  void get(const char*) {}
  int responseStatusCode() { return httpStatus; }
  std::string responseBody() { return response; }

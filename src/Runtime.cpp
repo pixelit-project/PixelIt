@@ -341,9 +341,13 @@ void checkUpdate()
     HttpClient httpClient = HttpClient(wifiClientHTTP, CHECKUPDATE_SERVER_HOST, CHECKUPDATE_SERVER_PORT);
     httpClient.sendHeader("User-Agent", "PixelIt");
     httpClient.setTimeout(1500);
+    httpClient.setHttpResponseTimeout(1500);
     httpClient.get(CHECKUPDATE_SERVER_PATH);
     int statusCode = httpClient.responseStatusCode();
-    String response = httpClient.responseBody();
+    // A failed status read must not trigger another wait for headers/body.
+    String response;
+    if (statusCode == 200)
+        response = httpClient.responseBody();
     // Version checks are hours apart; release the TCP buffers immediately.
     httpClient.stop();
 

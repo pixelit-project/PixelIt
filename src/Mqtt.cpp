@@ -254,9 +254,8 @@ void PublishHAConfig(uint8_t step)
             root["device_class"] = "firmware";
             root["entity_category"] = "config";
             root["title"] = "PixelIt firmware";
-            root["value_template"] = F("{{ value_json.pixelitVersion }}");
-            root["latest_version_topic"] = base + "matrixinfo";
-            root["latest_version_template"] = F("{{ value_json.latestReleaseVersion }}");
+            // MQTT update accepts both versions in one JSON state message.
+            root["value_template"] = F("{{ {'installed_version': value_json.pixelitVersion, 'latest_version': value_json.latestReleaseVersion} | tojson }}");
             root["release_url"] = "https://github.com/pixelit-project/PixelIt/releases/latest";
         }
     }
