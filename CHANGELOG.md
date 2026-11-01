@@ -2,6 +2,10 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Added a labeled Report button to WebUI Pixel Gallery cards, with preset reasons, optional details and moderator review through PixelIt.API. Other reasons require details; reports do not delete icons immediately. Requires the API moderation endpoints to be deployed first.
+-   (o0shojo0o) Validate icon reports against the combined 1000-character limit, prevent duplicate submissions, handle rate limits and preserve open report dialogs while scrolling. Gallery reads and reports use the configured API base URL.
+-   (o0shojo0o) Fixed copying gallery icon IDs from device-hosted HTTP WebUIs by adding a clipboard fallback when the browser's secure-context clipboard API is unavailable.
+
 -   (o0shojo0o) Expanded Home Assistant MQTT discovery with automatic brightness, clock fallback controls, uptime, free memory and restart reason diagnostics.
 -   (o0shojo0o) Added staged text messages with font size, alignment, scrolling, a synchronized HEX color field and RGB color picker, and a Show text button. Text is vertically centered using the selected font's glyph bounds.
 -   (o0shojo0o) Added a read-only Home Assistant firmware update entity with installed/latest version information and a release notes link. Version checks also run when the visual update reminder is disabled.
