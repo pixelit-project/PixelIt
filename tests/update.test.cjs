@@ -18,7 +18,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/views/Update.vue'),
     .replace(/^import .*;$/gm, '').replace('export default', 'this.component ='), context);
 function create() {
     const c = context.component;
-    const instance = { ...c.data(), $store: { state: { version: '2.5.5', telemetryData: '{"buildSection":"ESP32_ulanzi"}', socket: { isConnected: true } } }, $pixelitHost: 'pixelit.local', $socket: { close() {} } };
+    const instance = { ...c.data(), $store: { state: { gitReleases: [], gitReleasesLoaded: false, version: '2.5.5', telemetryData: '{"buildSection":"ESP32_ulanzi"}', socket: { isConnected: true } } }, $pixelitHost: 'pixelit.local', $socket: { close() {} } };
     for (const [name, fn] of Object.entries(c.methods)) instance[name] = fn.bind(instance);
     for (const [name, fn] of Object.entries(c.computed)) Object.defineProperty(instance, name, { get: fn.bind(instance) });
     return instance;
@@ -26,8 +26,33 @@ function create() {
 const file = { name: 'firmware_v2.5.6_ESP32_ulanzi.bin', size: 100 };
 (async () => {
     const e = create();
-    e.latestRelease = { tag_name: '2.5.6', assets: [{ name: file.name }, { name: file.name.replace('.bin', '.full-upgrade.bin') }] };
-    assert.equal(e.matchingAsset.name, file.name);
+    assert.equal(e.latestRelease, null);
+    assert.equal(e.releaseError, '', 'No error while the shared API request is pending');
+    e.$store.state.gitReleasesLoaded = true;
+    assert(e.releaseError, 'Empty or failed API response must be visible');
+    e.$store.state.gitReleases = [null, { version: '2.6.0-beta', prerelease: true }, { version: '2.5.6', prerelease: false, downloadURL: 'https://github.com/pixelit-project/PixelIt/releases/tag/2.5.6' }];
+    assert.equal(e.latestRelease.version, '2.5.6');
+    assert.equal(e.releaseError, '', 'Late-arriving shared data clears the warning');
+    assert(e.latestRelease.downloadURL.endsWith('/2.5.6'));
+    assert.equal(e.matchingAsset, null, 'Older API deployments must not produce guessed download URLs');
+    const asset = { fileName: file.name, downloadURL: `https://github.com/pixelit-project/PixelIt/releases/download/2.5.6/${file.name}` };
+    e.latestRelease.fwdownloads = [
+        { ...asset, fileName: file.name.replace('.bin', '.full-upgrade.bin') },
+        { ...asset, fileName: file.name.replace('ESP32_ulanzi', 'ESP32_generic') },
+        { ...asset, downloadURL: '' }, asset,
+    ];
+    assert.equal(e.matchingAsset, asset);
+    const downloads = e.latestRelease.fwdownloads;
+    e.latestRelease.fwdownloads = downloads.slice(0, 3);
+    assert.equal(e.matchingAsset, null, 'Full-upgrade, wrong hardware and missing URL must not match');
+    e.latestRelease.fwdownloads = downloads;
+    e.$store.state.telemetryData = '{"buildSection":"ESP8266_d1_mini"}';
+    assert.equal(e.matchingAsset, null);
+    const esp8266Asset = { ...asset, fileName: file.name.replace('ESP32_ulanzi', 'ESP8266_d1_mini') };
+    e.latestRelease.fwdownloads.push(esp8266Asset);
+    assert.equal(e.matchingAsset, esp8266Asset);
+    e.$store.state.telemetryData = '{"buildSection":"ESP32_ulanzi"}';
+    assert(!context.component.created, 'Opening the update view must not start another release request');
     e.$store.state.telemetryData = 'invalid'; assert.equal(e.hardware, ''); assert.equal(e.matchingAsset, null);
     e.$store.state.telemetryData = '{"buildSection":"ESP32_ulanzi"}';
     e.prepareUpdate('firmware', { ...file, name: 'firmware_v2.5.6_ESP32_generic.bin' });
@@ -50,7 +75,6 @@ const file = { name: 'firmware_v2.5.6_ESP32_ulanzi.bin', size: 100 };
     context.component.watch.sockedIsConnected.call(e, false);
     context.component.watch.sockedIsConnected.call(e, true); assert.equal(e.updateStatus, 'connected');
     e.startUpdate(); r = context.request; r.status = 200; r.responseText = 'OK'; r.onload(); context.timer(); assert.equal(e.updateStatus, 'error');
-    await e.loadLatestRelease(); assert(e.releaseError, 'Release API errors must be visible');
     e.$demoMode = true; assert(!e.canUpdate);
     console.log('Update checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

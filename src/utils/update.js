@@ -10,6 +10,10 @@ export function firmwareWarning(file, hardware, kind) {
 }
 
 export function releaseAsset(release, hardware) {
-    if (!release || !hardware || !Array.isArray(release.assets)) return null;
-    return release.assets.find(asset => asset.name === `firmware_v${release.tag_name.replace(/^v/, '')}_${hardware}.bin`) || null;
+    if (!release || !hardware || !Array.isArray(release.fwdownloads)) return null;
+    return release.fwdownloads.find(asset => {
+        if (!asset || typeof asset.fileName !== 'string' || typeof asset.downloadURL !== 'string') return false;
+        const match = asset.fileName.match(/^firmware_v.+_(ESP(?:32|8266)_.+)\.bin$/i);
+        return match && match[1] === hardware && /^https:\/\/github\.com\/pixelit-project\/PixelIt\/releases\/download\//i.test(asset.downloadURL);
+    }) || null;
 }

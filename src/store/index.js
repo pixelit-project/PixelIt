@@ -39,6 +39,7 @@ export default new Vuex.Store({
         gitVersion: null,
         gitDownloadUrl: null,
         gitReleases: [],
+        gitReleasesLoaded: false,
         logData: [],
         sensorData: [],
         buttonData: [],

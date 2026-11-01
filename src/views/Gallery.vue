@@ -22,7 +22,7 @@
                 <v-btn text @click="loadBMPs">Retry</v-btn>
             </v-col>
             <v-col v-for="bmp in visibleBMPs" :key="filterRevision + ':' + bmp.id" cols="6" lg="2">
-                <GalleryViewportItem :pinned="openBitmapId === bmp.id">
+                <GalleryViewportItem :pinned="openBitmapId === bmp.id || openReportBitmapId === bmp.id">
                     <v-card class="ui-panel gallery-card" elevation="2">
                         <div class="text-center">
                             {{ bmp.name }}
@@ -38,6 +38,7 @@
                         </div>
                         <div class="text-center">
                             <v-text-field prepend-inner-icon="mdi-identifier" rounded dense hide-details readonly :value="bmp.id" append-outer-icon="mdi-content-copy" @click:append-outer="copyText(bmp.id, $event)"></v-text-field>
+                            <ButtonBMPReport :bmp="bmp" @dialog-change="openReportBitmapId = $event ? bmp.id : null" />
                         </div>
                     </v-card>
                 </GalleryViewportItem>
@@ -66,8 +67,10 @@
 <script>
 import actionFeedback from '../mixins/actionFeedback';
 import { notify } from '../utils/feedback';
+import { copyToClipboard } from '../utils/clipboard';
 import BmpCanvas from '../components/BmpCanvas';
 import BmpDialog from '../components/BmpDialog';
+import ButtonBMPReport from '../components/ButtonBMPReport';
 import GalleryViewportItem from '../components/GalleryViewportItem';
 
 const BATCH_SIZE = 24;
@@ -105,6 +108,7 @@ export default {
                 { text: 'Not animated', value: 'static' },
             ],
             openBitmapId: null,
+            openReportBitmapId: null,
             visibleCount: BATCH_SIZE,
             automaticLoading: false,
             isLoading: false,
@@ -114,6 +118,7 @@ export default {
     components: {
         BmpCanvas,
         BmpDialog,
+        ButtonBMPReport,
         GalleryViewportItem,
     },
     watch: {
@@ -160,7 +165,7 @@ export default {
             this.isLoading = true;
             this.loadError = false;
             try {
-                this.$store.state.bmpsFromAPI = await getBMPsFromAPI();
+                this.$store.state.bmpsFromAPI = await getBMPsFromAPI(this.$apiServerBaseURL);
             } catch (error) {
                 console.error('Could not load gallery', error);
                 this.loadError = true;
@@ -170,7 +175,7 @@ export default {
         },
         async copyText(value) {
             try {
-                await navigator.clipboard.writeText(String(value));
+                await copyToClipboard(value);
                 notify('Bitmap ID copied.', 'success');
             } catch (error) { notify('Could not copy the ID. Select and copy it manually.', 'error'); }
         },
@@ -251,9 +256,9 @@ export default {
     },
 };
 
-function getBMPsFromAPI() {
+function getBMPsFromAPI(baseURL) {
     if (!pendingBMPsRequest) {
-        pendingBMPsRequest = fetch('https://pixelit.bastelbunker.de/api/GetBMPAll')
+        pendingBMPsRequest = fetch(`${baseURL.replace(/\/$/, '')}/GetBMPAll`)
             .then((response) => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();

@@ -141,7 +141,7 @@ function create() {
     dialog.isValid = true; dialog.bitmapName = 'Wide animation'; await dialog.agreeWraper();
     assert.equal(upload.sizeX, 32); assert.equal(upload.sizeY, 8); assert(upload.animated);
     assert.equal(JSON.parse('[' + upload.rgb565array + ']')[1].length, 256); assert(!('animationDelay' in upload));
-    const gallery = loadComponent('src/views/Gallery.vue', { BmpCanvas: {}, BmpDialog: {}, actionFeedback: {} });
+    const gallery = loadComponent('src/views/Gallery.vue', { BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {}, actionFeedback: {} });
     let playback;
     const receiver = { $socket: { sendObj: value => { playback = value.setScreen; } } };
     gallery.methods.sendBitmap.call(receiver, migrated.array8x32String, 32);

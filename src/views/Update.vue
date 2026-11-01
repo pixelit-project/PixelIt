@@ -6,7 +6,7 @@
                     <v-card-text>
                         <div class="version-grid">
                             <div><span class="update-label">Installed version</span><strong>{{ installedVersion || 'Unknown' }}</strong></div>
-                            <div><span class="update-label">Latest stable release</span><strong>{{ latestRelease ? latestRelease.tag_name : 'Unavailable' }}</strong></div>
+                            <div><span class="update-label">Latest stable release</span><strong>{{ latestRelease ? latestRelease.version : 'Unavailable' }}</strong></div>
                             <div><span class="update-label">Detected hardware</span><strong>{{ hardware || 'Unknown' }}</strong></div>
                         </div>
                         <v-alert v-if="releaseError" class="mt-4 mb-0" type="warning" text dense>{{ releaseError }}</v-alert>
@@ -16,11 +16,11 @@
                         <div>
                             <div class="font-weight-medium text--primary">Get the right firmware</div>
                             <div class="text--secondary">Download the file for your hardware, then upload it below.</div>
-                            <div v-if="latestRelease && !matchingAsset" class="mt-1">No matching firmware found. Check the release notes.</div>
+                            <div v-if="latestRelease && !matchingAsset" class="mt-1">No matching firmware download available. Check the release notes.</div>
                         </div>
                         <div class="download-actions">
                         <v-btn text small href="https://github.com/pixelit-project/PixelIt/releases" target="_blank" rel="noopener noreferrer">Release notes <v-icon right small>mdi-open-in-new</v-icon></v-btn>
-                        <v-btn v-if="matchingAsset" color="primary" elevation="0" :href="matchingAsset.browser_download_url" target="_blank" rel="noopener noreferrer">
+                        <v-btn v-if="matchingAsset" color="primary" elevation="0" :href="matchingAsset.downloadURL" target="_blank" rel="noopener noreferrer">
                             <v-icon left>mdi-download</v-icon> Download firmware
                         </v-btn>
                         </div>
@@ -134,8 +134,6 @@ export default {
     components: { DownloadStats, ButtonCondition },
     data() {
         return {
-            latestRelease: null,
-            releaseError: '',
             updateDialog: false,
             pendingKind: '',
             pendingFile: null,
@@ -153,9 +151,6 @@ export default {
             ignoreRestoreWarnings: false,
             restoreWarnings: []
         };
-    },
-    created() {
-        this.loadLatestRelease();
     },
     beforeDestroy() {
         clearTimeout(this.restartTimer);
@@ -179,6 +174,13 @@ export default {
                 const telemetry = this.$store.state.telemetryData;
                 return (typeof telemetry === 'string' ? JSON.parse(telemetry) : telemetry).buildSection || '';
             } catch (error) { return ''; }
+        },
+        latestRelease() {
+            return this.gitReleases.find(release => release && typeof release.version === 'string' && release.version.trim() && release.prerelease !== true) || null;
+        },
+        releaseError() {
+            return this.$store.state.gitReleasesLoaded && !this.latestRelease
+                ? 'Latest release could not be loaded. Use the releases link to download firmware manually.' : '';
         },
         matchingAsset() { return releaseAsset(this.latestRelease, this.hardware); },
         updateBusy() { return ['uploading', 'installing', 'restarting'].includes(this.updateStatus); },
@@ -210,19 +212,6 @@ export default {
         },
     },
     methods: {
-        async loadLatestRelease() {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 15000);
-            try {
-                const response = await fetch('https://api.github.com/repos/pixelit-project/PixelIt/releases/latest', { signal: controller.signal });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const release = await response.json();
-                if (!release.tag_name || !Array.isArray(release.assets)) throw new Error('Invalid release data');
-                this.latestRelease = release;
-            } catch (error) {
-                this.releaseError = 'Latest release could not be loaded. Use the releases link to download firmware manually.';
-            } finally { clearTimeout(timer); }
-        },
         uploadFirmware() { this.prepareUpdate('firmware', this.firmwareFile); },
         uploadFilesystem() { this.prepareUpdate('filesystem', this.filesystemFile); },
         prepareUpdate(kind, file) {

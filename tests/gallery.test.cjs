@@ -85,7 +85,7 @@ function load(file, context) {
     };
     const galleryComponent = load('src/views/Gallery.vue', {
         window: scrollWindow,
-        actionFeedback: {}, notify() {}, BmpCanvas: {}, BmpDialog: {}, GalleryViewportItem: {},
+        actionFeedback: {}, notify() {}, BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {},
     });
     const gallerySource = fs.readFileSync(path.join(__dirname, '../src/views/Gallery.vue'), 'utf8');
     const compiled = require('vue-template-compiler').compileToFunctions(

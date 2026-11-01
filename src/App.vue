@@ -117,11 +117,17 @@ export default {
 
 async function getCurrentGitReleaseData(vue) {
     try {
-        vue.$store.state.gitReleases = await (await fetch(`${vue.$apiServerBaseURL}/releases`)).json();
-        vue.$store.state.gitVersion = vue.$store.state.gitReleases[0].version;
-        vue.$store.state.gitDownloadUrl = vue.$store.state.gitReleases[0].downloadURL;
+        const response = await fetch(`${vue.$apiServerBaseURL}/releases`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const releases = await response.json();
+        if (!Array.isArray(releases)) throw new Error('Invalid release data');
+        vue.$store.state.gitReleases = releases;
+        vue.$store.state.gitVersion = vue.$store.state.gitReleases[0] ? vue.$store.state.gitReleases[0].version : null;
+        vue.$store.state.gitDownloadUrl = vue.$store.state.gitReleases[0] ? vue.$store.state.gitReleases[0].downloadURL : null;
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);
+    } finally {
+        vue.$store.state.gitReleasesLoaded = true;
     }
 }
 
