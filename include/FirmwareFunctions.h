@@ -24,6 +24,7 @@ bool PrepareBitmapStorage();
 bool PrepareBitmapAnimation(JsonObject &screen);
 void SendWebSocketJson(uint8_t num, const String &payload);
 void HandleScreen();
+void ServiceDisplayFrames();
 void HandleSetConfig();
 void HandleGetConfig();
 void HandleGetLuxSensor();

@@ -1,6 +1,22 @@
 #include "FirmwareState.h"
 #include "Tools.h"
 #include "Webinterface.h"
+#include "PixelItHttpBody.h"
+
+namespace
+{
+class ScreenJsonBuffer : public DynamicJsonBuffer
+{
+public:
+    bool allocationFailed = false;
+    void *alloc(size_t bytes) override
+    {
+        void *memory = DynamicJsonBuffer::alloc(bytes);
+        if (!memory) allocationFailed = true;
+        return memory;
+    }
+};
+}
 
 void HandleGetMainPage()
 {
@@ -71,7 +87,7 @@ void HandleScreen()
         server.send(400, F("application/json"), F("{\"response\":\"Missing request body\"}"));
         return;
     }
-    DynamicJsonBuffer jsonBuffer;
+    ScreenJsonBuffer jsonBuffer;
 #if defined(ESP8266)
     // The server owns a mutable request String; reuse its buffer to avoid a
     // second full copy of the animation in the ESP8266's limited heap.
@@ -94,13 +110,28 @@ void HandleScreen()
         return;
     }
     JsonObject &json = jsonBuffer.parseObject(payload);
+#if defined(ESP8266)
+    SampleHttpUploadMemory();
+#endif
     server.sendHeader(F("Connection"), F("close"));
     server.sendHeader(F("Access-Control-Allow-Origin"), "*");
 
-    if (json.success() && PrepareBitmapAnimation(json))
+    const bool valid = json.success() && IsValidBitmapAnimation(json);
+    if (valid && !PrepareBitmapAnimation(json))
+    {
+#if defined(ESP8266)
+        httpUploadStats.status = 503;
+#endif
+        server.send(503, F("application/json"), F("{\"response\":\"Insufficient memory for animation storage\"}"));
+        return;
+    }
+    if (valid)
     {
         Log(F("HandleScreen"), "Incoming JSON length: " + String(json.measureLength()));
         CreateFrames(json);
+#if defined(ESP8266)
+        SampleHttpUploadMemory();
+#endif
         // Release the large input before acknowledging the command, so the
         // sender cannot overlap its next request with this retained buffer.
         args = static_cast<const char *>(nullptr);
@@ -108,7 +139,13 @@ void HandleScreen()
     }
     else
     {
-        server.send(406, F("application/json"), F("{\"response\":\"Not Acceptable\"}"));
+        const int status = jsonBuffer.allocationFailed ? 503 : 406;
+#if defined(ESP8266)
+        httpUploadStats.status = status;
+#endif
+        server.send(status, F("application/json"), jsonBuffer.allocationFailed ?
+                    F("{\"response\":\"Insufficient memory for screen JSON\"}") :
+                    F("{\"response\":\"Not Acceptable\"}"));
     }
 }
 
@@ -181,6 +218,21 @@ void HandleGetAnimationInfo()
 #if defined(ESP8266)
     root["ledFramesSent"] = _frame_cnt;
     root["ledFrameRetries"] = _retry_cnt;
+    root["httpUploadInputBytes"] = httpUploadStats.inputBytes;
+    root["httpUploadCompactBytes"] = httpUploadStats.compactBytes;
+    root["httpUploadMinHeap"] = httpUploadStats.minHeap;
+    root["httpUploadMinBlock"] = httpUploadStats.minBlock;
+    root["httpUploadStatus"] = httpUploadStats.status;
+    for (unsigned i = 0; i < 2; ++i)
+    {
+        JsonObject &transport = root.createNestedObject(i ? "webSocketReceive" : "mqttReceive");
+        transport["messages"] = transportReceiveStats[i].messages;
+        transport["status"] = transportReceiveStats[i].status;
+        transport["inputBytes"] = transportReceiveStats[i].inputBytes;
+        transport["compactBytes"] = transportReceiveStats[i].compactBytes;
+        transport["freeHeap"] = transportReceiveStats[i].freeHeap;
+        transport["maxBlock"] = transportReceiveStats[i].maxBlock;
+    }
 #endif
     String json;
     root.printTo(json);

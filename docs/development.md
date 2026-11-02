@@ -62,6 +62,7 @@ and do not depend on Arduino sketch preprocessing.
 | `src/Runtime.cpp` | Arduino `setup()` / `loop()`, scheduling and update checks |
 | `src/Configuration.cpp` | Persist, load, apply and serialize device settings |
 | `src/Api.cpp` | HTTP endpoints, WebSocket events and incoming MQTT messages |
+| `src/HttpScreenUpload.cpp` | Bounded ESP8266 HTTP screen reception, pixel compaction and upload memory samples |
 | `src/Mqtt.cpp` | Broker connection and Home Assistant discovery |
 | `src/Buttons.cpp` | Debounced button inputs and MQTT gesture events |
 | `src/HAText.cpp` | Staged HA text settings and text rendering commands |
@@ -103,6 +104,43 @@ ESP8266 HTTP server headers. The request body is moved instead of copied and
 receive capacity is reserved in advance. The installed framework is unchanged.
 Request storage is released before acknowledging a successful HTTP upload.
 
+For ESP8266 `POST /api/screen`, the local parser patch delegates the body to
+`ReadScreenHttpBody`. Pixel values in `bitmapAnimation.data` are compacted as
+they arrive into JSON-safe internal strings, before ArduinoJson sees the body.
+All uint16 RGB565 values round-trip exactly. Values 0–47 take one character;
+the rest take three. Seven 32×8 frames need at most 5,376 pixel characters plus
+metadata rather than a roughly 10.9 KB decimal array. The receiver initially
+reserves at most 6,144 bytes (less for small commands). Unusually large metadata
+can require more; the bounded request may still be rejected when RAM is scarce.
+No permanent request buffer or second animation pixel array is retained. The
+existing animation is replaced only after the full JSON and dimensions validate
+and pixel storage is available. MQTT and WebSocket wire formats remain unchanged.
+
+The receiver processes at most 128 incoming bytes before servicing due animation
+and scrolling frames and yielding to WiFi. It does not re-enter HTTP, MQTT or
+WebSocket handlers during receipt; those application services resume afterwards.
+An idle receive timeout is five seconds, with a ten-second total receive deadline.
+The supported HTTP screen request limit is 12,288 wire bytes, matching the existing
+screen-message budget. Rejected bodies are drained within those deadlines so
+normal clients can receive JSON instead of a silent connection reset. Responses
+include 413 for oversized payloads, 406 for invalid pixels/JSON, 503 for checked
+request/JSON/pixel-storage allocation failure, and 408 for receive timeout.
+Malformed or unavailable-memory requests preserve the existing display.
+
+`/api/animationinfo` adds ESP8266 diagnostics `httpUploadInputBytes`,
+`httpUploadCompactBytes`, `httpUploadMinHeap`, `httpUploadMinBlock` and
+`httpUploadStatus` for the last HTTP screen request. Memory is sampled before and
+after reserve, between receive batches, after JSON parsing and after commit.
+These stage samples are not allocator-level instrumentation of every transient
+allocation (including TCP internals and temporary strings).
+
+Companion inspection: Node-RED's HTTP client already rejects non-success HTTP
+statuses, and the WebUI uses the unchanged WebSocket screen envelope. No client
+or PixelIt.API code changes are required. External `PixelIt.Docs/src/api.md` needs
+the HTTP size/error behavior and optional diagnostics documented when this reaches
+stable; its repository requires regular docs to describe stable releases, so this
+unreleased behavior is recorded here rather than changing that 2.6.0 baseline.
+
 Blocking firmware checks and telemetry requests wait until animations and
 scrolling text stop. Browser previews sample animations at up to 20 updates
 per second. On ESP8266, previews use WebSocket fragments queued over multiple
@@ -116,6 +154,22 @@ After at least one PlatformIO build has installed ArduinoJson, run:
 
 ```sh
 python3 test/animation/run.py
+```
+
+For streaming compaction, exact RGB565 round-tripping, bounded allocations,
+rejection/draining and rendering service during reception:
+
+```sh
+python3 test/http/run.py
+```
+
+The designated-device upload test replaces display content and leaves the test
+animation active. It requires clock fallback to be disabled already; it does not
+change configuration. It checks pixel-exact previews, repeated 32×8 uploads,
+JSON errors, slow reception and continued playback during a rejected request:
+
+```sh
+python3 test/http/device_upload.py http://192.168.0.40 --uploads 60 --result /tmp/pixelit-upload-result.json
 ```
 
 The ESP8266 LED interruption policy has an additional host regression:
@@ -240,10 +294,189 @@ after installation only the stored firmware version differed in existing keys.
   or transient allocation-time minima. The candidate and test animation were
   left running; clock fallback remained disabled.
 
-The large-upload failure predates the LED timing correction, but remains an
-unresolved release-validation issue. Physical waveform capture, longer runs,
+At this stage the large-upload failure predated the LED timing correction and was
+an unresolved release-validation issue; the follow-up below addresses HTTP reception.
+Physical waveform capture, longer runs,
 controlled connection churn and allocation-time memory measurements under
 simultaneous large MQTT payloads are still outstanding.
+
+## Recorded HTTP upload correction — 2026-11-02
+
+Both user-designated D1 mini devices were updated to the final upload correction
+(`0.0.0-beta`, keeping the previously tested LED timing policy). All six board
+variants built, and HTTP, animation/preview, LED policy, Home Assistant and update
+host tests passed. The HTTP host suite covers all 65,536 RGB565 values and the
+actual receiver's bounded reserve failure, invalid/truncated input, draining and
+render-service calls. No framework/dependency version or animation limit changed.
+
+The final designated-device runs used 60 repeated seven-frame 32×8 HTTP uploads
+with a simultaneous WebSocket preview client and the existing active MQTT link:
+
+| Final run | Small SK6805-EC15 | Large WS2812B |
+| --- | ---: | ---: |
+| Repeated large uploads completed | 60 | 60 |
+| Complete preview messages | 572 | 575 |
+| Distinct frames checked pixel-for-pixel | 7 | 7 |
+| Pixel / preview protocol errors | 0 | 0 |
+| Failed LED frames | 0 | 0 |
+| Maximum reported frame interval (150 ms configured) | 156 ms | 151 ms |
+| Minimum sampled heap during successful upload processing | 7,344 B | 7,288 B |
+| Minimum sampled largest free block during successful upload processing | 3,904 B | 4,312 B |
+
+The unpadded example occupied 10,910 wire bytes and 5,548 compact bytes. Valid
+requests padded to exactly 12,288 bytes were accepted on both devices (5,549
+compact bytes). Malformed pixel values returned JSON HTTP 406; oversized
+12,289-byte bodies returned JSON HTTP 413, while preserving the running animation.
+A deliberately large unterminated metadata string induced HTTP 503 on the small
+device with its more fragmented heap, and HTTP 406 on the large device where the
+body fit but JSON remained incomplete. Both delivered JSON errors without a TCP
+reset, continued playback and accepted a subsequent valid request. The large
+malformed probe sampled as low as 5,224 B heap / 1,832 B largest block; these are
+separate from the successful-upload minima in the table.
+
+Accepted and rejected requests were also sent in 256-byte chunks with 50 ms
+pauses. During the slowly drained oversized request the prior animation advanced
+by at least ten frames rather than stalling until reception completed. Reported
+frame-gap counters reset on successful animation replacement, so the table is
+not an independent continuous trace of every display transition. MQTT remained
+connected in the sampled results; no dedicated large MQTT injection was made.
+An earlier 60-upload run on the small device also completed before the final
+small-command reserve refinement; the table describes the final binary's run.
+
+After the tests, both devices accepted another valid large animation, reported
+HTTP 200 / zero failed LED frames and remained reachable without an observed
+unexpected reboot. The software-restart status came from the intentional OTA
+updates. Both final builds and test animations were left running. No additional
+configuration changes were made; clock fallback remained disabled as requested.
+
+These results close the reproduced HTTP upload failure for the tested workloads.
+Remaining release checks include longer stress/connection-churn runs, allocator-
+level peak measurements, large simultaneous MQTT packets and physical signal
+capture. Large WebSocket command reception is unchanged by this HTTP-specific
+fix. Stage sampling and short runs do not establish an unlimited RAM/timing
+guarantee or validate every client/network pattern.
+
+## MQTT and WebSocket receive correction
+
+ESP8266 builds now also generate local build-only copies of the pinned
+PubSubClient 2.8.0 and WebSockets 2.4.1 translation units through guarded
+`transport_patches.py` transformations. Installed library sources are not edited.
+The generated object names retain `.cpp.o`, which the ESP8266 linker requires
+for normal flash placement. Dependency/framework versions remain pinned.
+
+MQTT screen payloads are compacted directly into the existing receive buffer,
+including when the wire packet is larger than that buffer. The receive allocation
+is 6,144 bytes, with the existing 2,048-byte small-control fallback; it shrinks to
+256 bytes after service. The original 11,264-byte *wire packet* limit still
+includes fixed header, topic and QoS message ID. Topic and message-ID offsets
+are preserved. QoS1 rejected deliveries still receive the MQTT delivery PUBACK,
+but do not reach application callbacks; PUBACK is not display acceptance.
+Non-screen topics (especially literal HA text, including strings starting with
+`{`) pass through byte-for-byte rather than being interpreted as JSON.
+Outgoing MQTT capacity/limits and ESP32 buffering remain unchanged.
+
+Complete text WebSocket messages are unmasked and compacted before the application
+callback; browsers keep sending the same `setScreen` envelope. Initial capacity
+is bounded to 6,144 bytes, with a smaller allocation for small messages, plus a
+terminator. The previous 12,288-byte wire limit is unchanged. Invalid, oversized
+and allocation-rejected messages are drained and receive a JSON `response` error
+without replacing the current display. Incomplete/timed-out frames disconnect to
+avoid treating remaining payload bytes as a new header. Control frames and the
+library's existing fragmented/binary event behavior are retained; this does not
+add application assembly of fragmented JSON commands.
+
+The display scheduler is serviced during MQTT byte waits, body batches,
+WebSocket header reads and TCP writes. WebSocket writes use at most 512 bytes
+and never more than `availableForWrite()` before servicing rendering again.
+These calls do not re-enter HTTP/MQTT/WebSocket parsing or update the preview
+snapshot, preserving message ordering and the existing preview backpressure.
+
+`/api/animationinfo` adds `mqttReceive` and `webSocketReceive` objects with
+`messages`, `status`, `inputBytes`, `compactBytes`, `freeHeap` and `maxBlock`.
+Status values 200/406/413/503 describe reception/compaction, not a new MQTT
+application acknowledgement protocol. Heap/block values are receive-completion
+samples while receive storage is held, not allocator-level minima during later
+JSON interpretation. Ordinary WebSocket heartbeats do not overwrite command
+diagnostics. No response topics, payload keys or client protocol changes are
+needed. Node-RED and WebUI keep their existing transports. External PixelIt.Docs
+needs these diagnostics/errors and unchanged wire limits described when stable;
+its normal 2.6.0 documentation is intentionally not changed for this unreleased
+firmware.
+
+Host verification and explicitly designated-device tests:
+
+```sh
+python3 test/transport/run.py
+python3 test/transport/device_upload.py http://192.168.0.40 --mode websocket --uploads 30 --result /tmp/pixelit-ws-result.json
+python3 test/transport/device_upload.py http://192.168.0.40 --mode mqtt --uploads 30 --result /tmp/pixelit-mqtt-result.json
+```
+
+Device tests replace display content and leave an animation active. MQTT tests
+require `mqttUseDeviceTopic` already enabled and use only that device's topic,
+never the shared master screen topic. Restore the original setting afterwards.
+Host tests exercise the actual patched MQTT packet reader (QoS0/1 and metadata),
+raw HA text, rejection/callback suppression, masked WebSocket body reception,
+allocation failure/timeouts and an actual patched WebSocket writer constrained
+to an eight-byte simulated send window. Existing HTTP, animation/preview, LED,
+Home Assistant (both receive-buffer policies) and update tests remain required.
+
+## Recorded MQTT / WebSocket validation — 2026-11-02
+
+Both designated devices were updated to the final transport build. For isolated
+MQTT tests, their originally disabled `mqttUseDeviceTopic` setting was temporarily
+enabled; publications used only each display's device topic. The shared master
+screen topic was never used. Both original configurations were restored and
+verified afterwards, excluding the expected stored firmware-version change.
+Configuration-triggered restarts and OTA restarts were intentional.
+
+The first WebSocket attempt was invalidated by another browser's heartbeat
+replacing the last receive diagnostic. Heartbeats now leave command diagnostics
+intact. A later small-device run completed uploads but failed the timing gate
+with a 286 ms interval (228 ms earlier in that run). That was not a passing
+run. Investigation identified TCP write calls that could wait without servicing
+the display. After bounding writes to current send room and servicing display
+work in read/write loops, the following final runs passed:
+
+| Test (150 ms configured) | Small SK6805-EC15 | Large WS2812B |
+| --- | ---: | ---: |
+| WebSocket large commands | 30 | 30 |
+| WebSocket complete previews | 301 | 304 |
+| WebSocket maximum reported interval | 159 ms | 160 ms |
+| MQTT QoS1 large commands | 30 | 30 |
+| MQTT QoS1 complete previews | 329 | 335 |
+| MQTT QoS1 maximum reported interval | 153 ms | 176 ms |
+| Additional MQTT QoS0 commands | 5 | 5 |
+| MQTT QoS0 maximum reported interval | 151 ms | 152 ms |
+| Final HTTP regression uploads | 10 | 10 |
+| Final HTTP maximum reported interval | 151 ms | 153 ms |
+
+All seven full-display frames matched the expected gamma-expanded RGB565 pixels
+in each run, with no observed pixel/protocol errors, transport disconnections or
+failed LED frames in the checked upload samples. MQTT QoS1 reception reduced
+10,910 payload bytes to 5,548 bytes; WebSocket reception reduced the 10,924-byte
+command envelope to 5,562 bytes. Receive-completion snapshots across the 30-upload
+runs reached minima of 10,408 / 10,608 bytes free heap for MQTT and 10,664 / 10,360
+bytes for WebSocket (small / large). These snapshots hold receive storage but do
+not measure every allocation during application JSON parsing. The final HTTP
+regression also repeated pixel checks, the 12,288-byte boundary and error probes.
+
+Both MQTT QoS levels and WebSocket rejected malformed pixels, oversized input
+and an intentionally unfit large metadata string with diagnostic 406/413/503
+statuses. WebSocket clients additionally received JSON response errors. Commands
+were drained without invoking application callbacks on receiver rejection; prior
+animation counters continued. Oversized requests sent in 256-byte chunks with
+50 ms pauses advanced the existing animation by at least ten frames. MQTT
+publisher PUBACK was treated only as broker delivery; tests waited for an
+increased device receive counter and matching diagnostic to verify processing.
+
+All six builds and HTTP, transport, animation/preview, LED, Home Assistant and
+update host suites passed. Both devices were left on the final development build
+with a valid animation, their original MQTT configuration and active broker links.
+No unexpected configuration changes were found. These are short designated-device
+runs; extended runtime/connection churn, simultaneous large packets from multiple
+clients, allocator-level peak tracing, physical waveforms and fragmented JSON
+command assembly remain outside this validation. The final measured maxima are
+not a guarantee for every network or workload.
 
 ## Update release channels
 

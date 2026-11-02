@@ -366,8 +366,11 @@ void ServiceMqttConfig()
 
 bool PrepareMqttServiceBuffer()
 {
-    // A fragmented ESP8266 heap may not have an 11 KB contiguous block while
-    // playing an animation. Keep small HA controls and MQTT keepalive working;
-    // the full animation buffer is still attempted first on every service.
+    // Compact incoming JSON in place; outgoing packet limits remain unchanged.
+    // Fall back for small controls/keepalive if even the 6 KB block is unavailable.
+#if defined(ESP8266)
+    return client.setBufferSize(6144) || client.setBufferSize(2048);
+#else
     return client.setBufferSize(MQTT_BUFFER_SIZE) || client.setBufferSize(2048);
+#endif
 }

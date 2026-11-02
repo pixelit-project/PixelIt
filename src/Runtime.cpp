@@ -652,6 +652,12 @@ void loop()
         // SendMp3PlayerInfo(false);
     }
 
+    ServiceDisplayFrames();
+}
+
+// Also called during chunked HTTP body reception; no HTTP/MQTT reentrancy.
+void ServiceDisplayFrames()
+{
     if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
     {
         animateBMPPrevMillis = millis();

@@ -3,6 +3,7 @@
 
 #include <ArduinoJson.h>
 #include <cstring>
+#include "ScreenJsonCompactor.h"
 
 static const size_t MAX_ANIMATION_FRAMES = 28;
 static const size_t MAX_ANIMATION_PIXELS = MAX_ANIMATION_FRAMES * 64;
@@ -15,6 +16,29 @@ static const uint16_t MQTT_IDLE_BUFFER_SIZE = 256;
 // Decode a frame without allocating a JSON node for every pixel.
 inline size_t DecodeAnimationPixels(const char *text, size_t length, uint16_t *pixels = nullptr)
 {
+    if (length > 0 && text[0] == '$')
+    {
+        size_t offset = 1, count = 0;
+        while (offset < length)
+        {
+            if (count == MAX_BITMAP_PIXELS) return 0;
+            int first = ScreenPixelValue(text[offset++]);
+            if (first < 0) return 0;
+            unsigned value;
+            if (first >= 16) value = first - 16;
+            else
+            {
+                if (length - offset < 2) return 0;
+                int middle = ScreenPixelValue(text[offset++]);
+                int last = ScreenPixelValue(text[offset++]);
+                if (middle < 0 || last < 0) return 0;
+                value = (first << 12) | (middle << 6) | last;
+            }
+            if (pixels) pixels[count] = static_cast<uint16_t>(value);
+            ++count;
+        }
+        return count;
+    }
     size_t offset = 0;
     size_t count = 0;
     while (offset < length)

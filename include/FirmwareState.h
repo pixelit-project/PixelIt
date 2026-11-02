@@ -1,5 +1,23 @@
 #pragma once
 
+#include <stdint.h>
+
+#if defined(ESP8266)
+struct HttpUploadStats
+{
+    uint32_t inputBytes = 0, compactBytes = 0, minHeap = 0, minBlock = 0;
+    uint16_t status = 0;
+};
+extern HttpUploadStats httpUploadStats;
+struct TransportReceiveStats
+{
+    uint32_t messages = 0;
+    uint32_t inputBytes = 0, compactBytes = 0, freeHeap = 0, maxBlock = 0;
+    uint16_t status = 0;
+};
+extern TransportReceiveStats transportReceiveStats[2];
+#endif
+
 #include "FirmwareFunctions.h"
 
 class SetGPIO

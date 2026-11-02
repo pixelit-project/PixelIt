@@ -1,5 +1,10 @@
 #include "FirmwareState.h"
 
+#if defined(ESP8266)
+HttpUploadStats httpUploadStats;
+TransportReceiveStats transportReceiveStats[2];
+#endif
+
 SetGPIO setGPIOReset[SET_GPIO_SIZE];
 
 //// MQTT Config
