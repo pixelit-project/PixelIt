@@ -62,3 +62,11 @@ A moderator decides whether to hide the icon. Reports do not delete it immediate
 Deploy the API's moderation endpoints before this WebUI. Gallery reads and reports
 use the configured `VUE_APP_API_SERVER` base URL. Reporting is disabled in demo mode.
 No report requests are sent to the display and no background polling is added.
+
+## Beta update searches
+
+Options → Defaults → **Include beta releases in update searches** opts into
+published prereleases for update hints and firmware downloads. Save the configuration
+to apply it; the default is off. Requires firmware with `includePrereleases` support
+and PixelIt.API with the `includePrereleases=true` release query. Older APIs keep
+returning stable releases. No additional release polling is introduced.

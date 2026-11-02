@@ -97,6 +97,7 @@
         "ldrSmoothing": 0,
         "initialVolume": 10,
         "sendTelemetry": false,
+        "includePrereleases": false,
         "checkUpdateScreen": true
     },
     "buttons": {

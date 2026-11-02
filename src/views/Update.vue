@@ -6,7 +6,7 @@
                     <v-card-text>
                         <div class="version-grid">
                             <div><span class="update-label">Installed version</span><strong>{{ installedVersion || 'Unknown' }}</strong></div>
-                            <div><span class="update-label">Latest stable release</span><strong>{{ latestRelease ? latestRelease.version : 'Unavailable' }}</strong></div>
+                            <div><span class="update-label">{{ includePrereleases ? 'Latest release (including beta)' : 'Latest stable release' }}</span><strong>{{ latestRelease ? latestRelease.version : 'Unavailable' }}</strong></div>
                             <div><span class="update-label">Detected hardware</span><strong>{{ hardware || 'Unknown' }}</strong></div>
                         </div>
                         <v-alert v-if="releaseError" class="mt-4 mb-0" type="warning" text dense>{{ releaseError }}</v-alert>
@@ -175,8 +175,9 @@ export default {
                 return (typeof telemetry === 'string' ? JSON.parse(telemetry) : telemetry).buildSection || '';
             } catch (error) { return ''; }
         },
+        includePrereleases() { return (this.$store.state.configData || {}).includePrereleases === true; },
         latestRelease() {
-            return this.gitReleases.find(release => release && typeof release.version === 'string' && release.version.trim() && release.prerelease !== true) || null;
+            return this.gitReleases.find(release => release && typeof release.version === 'string' && release.version.trim() && (this.includePrereleases || release.prerelease !== true)) || null;
         },
         releaseError() {
             return this.$store.state.gitReleasesLoaded && !this.latestRelease
@@ -199,7 +200,7 @@ export default {
             return this.$store.state.sensorData;
         },
         gitReleases() {
-            return this.$store.state.gitReleases;
+            return this.$store.state.gitReleases.filter(release => release && (this.includePrereleases || release.prerelease !== true));
         },
         inputFWCheck() {
             return this.firmwareFile != null && this.firmwareFile != undefined && this.firmwareFile != '';

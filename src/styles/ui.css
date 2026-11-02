@@ -48,6 +48,12 @@
     outline: 3px solid #2196f3;
     outline-offset: 3px;
 }
+/* Vuetify highlights the complete field, including selects' internal inputs.
+   An outline on the native input adds a second rectangle inside that field. */
+.v-application .v-text-field input:focus-visible,
+.v-application .v-text-field textarea:focus-visible {
+    outline: none;
+}
 .v-application .config-actions {
     position: sticky;
     top: 76px;

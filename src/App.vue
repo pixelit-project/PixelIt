@@ -100,6 +100,7 @@ export default {
     },
     watch: {
         sockedIsConnected: 'trackConnection',
+        '$store.state.configData.includePrereleases': function () { selectCurrentRelease(this); },
         '$store.state.gitVersion': function (newVal) {
             if (this.$store.state.version) {
                 //this.$store.state.newVersionAvailable = newVal != this.$store.state.version;
@@ -115,15 +116,21 @@ export default {
     },
 };
 
+function selectCurrentRelease(vue) {
+    const includePrereleases = (vue.$store.state.configData || {}).includePrereleases === true;
+    const release = vue.$store.state.gitReleases.find(release => release && (includePrereleases || release.prerelease !== true));
+    vue.$store.state.gitVersion = release ? release.version : null;
+    vue.$store.state.gitDownloadUrl = release ? release.downloadURL : null;
+}
+
 async function getCurrentGitReleaseData(vue) {
     try {
-        const response = await fetch(`${vue.$apiServerBaseURL}/releases`);
+        const response = await fetch(`${vue.$apiServerBaseURL}/releases?includePrereleases=true`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const releases = await response.json();
         if (!Array.isArray(releases)) throw new Error('Invalid release data');
         vue.$store.state.gitReleases = releases;
-        vue.$store.state.gitVersion = vue.$store.state.gitReleases[0] ? vue.$store.state.gitReleases[0].version : null;
-        vue.$store.state.gitDownloadUrl = vue.$store.state.gitReleases[0] ? vue.$store.state.gitReleases[0].downloadURL : null;
+        selectCurrentRelease(vue);
     } catch (error) {
         console.log(`getCurrentGitReleaseData: error (${error})`);
     } finally {
