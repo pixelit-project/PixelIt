@@ -93,6 +93,13 @@ firmware validator and playback function, frame boundaries, reverse playback,
 input and preview backpressure. The original 14-frame regression fixture is
 included in [test/animation](../test/animation/).
 
+Release-channel and version comparison regressions can also be checked with:
+
+```sh
+python3 test/update/run.py
+python3 test/homeassistant/run.py
+```
+
 ## Physical-device timing test
 
 Run only against a test ESP8266 with the current firmware:
@@ -115,3 +122,23 @@ and restores the clock afterwards. It does not change configuration.
 
 These results describe the tested device and run, rather than a timing guarantee
 for every network or workload.
+
+## Update release channels
+
+`includePrereleases` is an optional boolean setting, defaulting to `false`. Missing
+fields in existing configurations preserve the current setting. With opt-in enabled,
+version checks request `/api/lastversion?includePrereleases=true`; otherwise the
+existing stable endpoint is unchanged. The API must be deployed with this query
+support first. The response remains compact; release lists stay in the browser.
+Changing the channel invalidates the cached result and schedules a new check using
+the existing idle-only scheduler. No new polling or device buffers are introduced.
+WebUI Options exposes the setting and uses it for release hints/download selection.
+The WebUI must be rebuilt from its source repository before firmware packaging.
+The workflow still references the legacy `pixelit-project/WebUI` repository;
+GitHub redirects this to `pixelit-project/PixelIt.WebUI` (verified 2026-11-02).
+
+External user documentation needs the option and its default documented when this
+firmware reaches stable; PixelIt.Docs currently requires a stable-release baseline
+and excludes unsolicited documentation of unreleased features. Node-RED payloads
+and topics are unchanged. Device timing and ESP8266 peak-heap validation are still
+required for release verification.

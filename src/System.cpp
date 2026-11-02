@@ -36,11 +36,12 @@ String ResetReason()
 
 Version parseVersion(const char *versionStr)
 {
-    Version version;
+    Version version = {};
 
     memset(version.prerelease, 0, sizeof(version.prerelease));
 
-    sscanf(versionStr, "%d.%d.%d-%s", &version.major, &version.minor, &version.patch, version.prerelease);
+    if (*versionStr == 'v') ++versionStr;
+    sscanf(versionStr, "%d.%d.%d-%15s", &version.major, &version.minor, &version.patch, version.prerelease);
     return version;
 }
 
@@ -81,7 +82,28 @@ int compareVersions(const char *version1, const char *version2)
     }
     else
     {
-        return strcmp(v1.prerelease, v2.prerelease); // Compare prerelease strings
+        // SemVer compares numeric prerelease identifiers numerically (beta.10 > beta.2).
+        const char *a = v1.prerelease;
+        const char *b = v2.prerelease;
+        while (*a && *b)
+        {
+            const size_t aLength = strcspn(a, ".+");
+            const size_t bLength = strcspn(b, ".+");
+            const bool aNumeric = aLength && strspn(a, "0123456789") >= aLength;
+            const bool bNumeric = bLength && strspn(b, "0123456789") >= bLength;
+            if (aNumeric != bNumeric) return aNumeric ? -1 : 1;
+            if (aNumeric && aLength != bLength) return aLength > bLength ? 1 : -1;
+            const int result = strncmp(a, b, aLength < bLength ? aLength : bLength);
+            if (result) return result;
+            if (aLength != bLength) return aLength > bLength ? 1 : -1;
+            a += aLength;
+            b += bLength;
+            if (*a == '+') a += strlen(a);
+            if (*b == '+') b += strlen(b);
+            if (*a == '.') ++a;
+            if (*b == '.') ++b;
+        }
+        return (*a != 0) - (*b != 0);
     }
 }
 

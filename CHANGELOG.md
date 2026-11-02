@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Added an optional, persisted beta/prerelease update channel (off by default), with matching WebUI downloads and Home Assistant release links. Requires companion API and WebUI updates.
+
 -   (o0shojo0o) Added a labeled Report button to WebUI Pixel Gallery cards, with preset reasons, optional details and moderator review through PixelIt.API. Other reasons require details; reports do not delete icons immediately. Requires the API moderation endpoints to be deployed first.
 -   (o0shojo0o) Validate icon reports against the combined 1000-character limit, prevent duplicate submissions, handle rate limits and preserve open report dialogs while scrolling. Gallery reads and reports use the configured API base URL.
 -   (o0shojo0o) Fixed copying gallery icon IDs from device-hosted HTTP WebUIs by adding a clipboard fallback when the browser's secure-context clipboard API is unavailable.

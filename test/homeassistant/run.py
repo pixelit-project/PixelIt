@@ -75,6 +75,7 @@ program = r'''
 #define VERSION "test"
 using uint = unsigned int;
 std::string mqttDeviceTopic="device/", mqttMasterTopic="master/", deviceID="PixelIt-test", hostname="Test device";
+bool includePrereleases=false;
 bool mqttUseDeviceTopic=false, mqttHAdiscoverable=true, animateBMPAktivLoop=false;
 bool btnEnabled[3]={true,true,true}, btnLastPublishState[3]={false,true,false};
 const char *btnLogNames[3]={"Left","Middle","Right"};
@@ -296,13 +297,14 @@ program = r'''
 #define CHECKUPDATE_SERVER_PATH "/api/lastversion"
 int wifiClientHTTP=0, httpStatus=200, notifications=0, closed=0;
 std::string response=R"({"version":"2.8.0"})", lastReleaseVersion=VERSION;
-bool firmwareUpdateChecked=false;
+bool firmwareUpdateChecked=false, includePrereleases=false;
+std::string requestedPath;
 struct HttpClient {
  HttpClient(int,const char*,int) {}
  void sendHeader(const char*,const char*) {}
  void setTimeout(int) {}
  void setHttpResponseTimeout(int) {}
- void get(const char*) {}
+ void get(const char *path) { requestedPath=path; }
  int responseStatusCode() { return httpStatus; }
  std::string responseBody() { return response; }
  void stop() { ++closed; }
@@ -322,6 +324,9 @@ int main() {
  response=R"({"version":"2.7.0"})"; checkUpdate();
  assert(firmwareUpdateChecked && lastReleaseVersion=="2.7.0" && notifications==2);
  assert(closed==7);
+ assert(requestedPath=="/api/lastversion");
+ includePrereleases=true; checkUpdate();
+ assert(requestedPath=="/api/lastversion?includePrereleases=true");
 }
 '''
 with tempfile.TemporaryDirectory() as temp:

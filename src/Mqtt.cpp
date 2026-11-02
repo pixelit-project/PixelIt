@@ -256,7 +256,9 @@ void PublishHAConfig(uint8_t step)
             root["title"] = "PixelIt firmware";
             // MQTT update accepts both versions in one JSON state message.
             root["value_template"] = F("{{ {'installed_version': value_json.pixelitVersion, 'latest_version': value_json.latestReleaseVersion} | tojson }}");
-            root["release_url"] = "https://github.com/pixelit-project/PixelIt/releases/latest";
+            root["release_url"] = includePrereleases
+                ? "https://github.com/pixelit-project/PixelIt/releases"
+                : "https://github.com/pixelit-project/PixelIt/releases/latest";
         }
     }
     else

@@ -203,6 +203,7 @@ extern bool sendTelemetry;
 extern unsigned long sendTelemetryPrevMillis;
 extern unsigned long forcedScreenIsActiveUntil;
 extern bool checkUpdateScreen;
+extern bool includePrereleases;
 extern unsigned long checkUpdateScreenPrevMillis;
 extern unsigned long checkUpdatePrevMillis;
 extern String lastReleaseVersion;

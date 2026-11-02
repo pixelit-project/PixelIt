@@ -342,7 +342,7 @@ void checkUpdate()
     httpClient.sendHeader("User-Agent", "PixelIt");
     httpClient.setTimeout(1500);
     httpClient.setHttpResponseTimeout(1500);
-    httpClient.get(CHECKUPDATE_SERVER_PATH);
+    httpClient.get(includePrereleases ? CHECKUPDATE_SERVER_PATH "?includePrereleases=true" : CHECKUPDATE_SERVER_PATH);
     int statusCode = httpClient.responseStatusCode();
     // A failed status read must not trigger another wait for headers/body.
     String response;

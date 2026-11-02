@@ -73,6 +73,7 @@ void SaveConfig()
     json["initialVolume"] = initialVolume;
     json["sendTelemetry"] = sendTelemetry;
     json["checkUpdateScreen"] = checkUpdateScreen;
+    json["includePrereleases"] = includePrereleases;
 
 #if defined(ESP8266)
     File configFile = LittleFS.open("/config.json", "w");
@@ -435,6 +436,14 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("sendTelemetry"))
     {
         sendTelemetry = json["sendTelemetry"].as<bool>();
+    }
+
+    if (json["includePrereleases"].is<bool>() && includePrereleases != json["includePrereleases"].as<bool>())
+    {
+        includePrereleases = json["includePrereleases"].as<bool>();
+        firmwareUpdateChecked = false;
+        lastReleaseVersion = "";
+        checkUpdatePrevMillis = 0;
     }
 
     if (json.containsKey("checkUpdateScreen"))

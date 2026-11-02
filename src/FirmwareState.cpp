@@ -240,6 +240,7 @@ bool sendTelemetry = true;
 unsigned long sendTelemetryPrevMillis = 0;
 unsigned long forcedScreenIsActiveUntil = 0;
 bool checkUpdateScreen = true;
+bool includePrereleases = false;
 unsigned long checkUpdateScreenPrevMillis = 0;
 unsigned long checkUpdatePrevMillis = 0;
 String lastReleaseVersion = VERSION;
