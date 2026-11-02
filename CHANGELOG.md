@@ -2,7 +2,7 @@
 
 ### Unreleased
 
--   Compact ESP8266 MQTT screen payloads and complete WebSocket JSON commands during reception, with bounded 6 KB receive storage, preserved MQTT QoS metadata and unchanged wire limits. Keep rendering responsive during WebSocket TCP reads/writes, preserve literal HA text, and expose receive/rejection diagnostics.
+-   (o0shojo0o) Improve ESP8266 MQTT and WebSocket upload reliability and playback smoothness.
 -   (o0shojo0o) Compact ESP8266 HTTP animation uploads to reduce memory usage, preserve playback and improve error handling and diagnostics.
 -   (o0shojo0o) Improved ESP8266 WS2812B LED timing; extended peak-memory validation remains outstanding.
 -   (o0shojo0o) Added an optional beta update channel (disabled by default); requires API and WebUI updates.
