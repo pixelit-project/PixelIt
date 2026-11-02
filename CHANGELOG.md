@@ -2,27 +2,27 @@
 
 ### Unreleased
 
--   (o0shojo0o) Tightened ESP8266 LED interrupt-gap detection for WS2812B matrices and increased frame/retry reset time to 300 µs without increasing the allowed gap inside a frame. Short WS2812B and SK6805-EC15 device timing checks passed. Large upload/preview testing on the small matrix encountered HTTP resets on both beta.5 and the candidate; extended peak-memory validation remains required.
--   (o0shojo0o) Added an optional, persisted beta/prerelease update channel (off by default), with matching WebUI downloads and Home Assistant release links. Requires companion API and WebUI updates.
--   (o0shojo0o) Added a labeled Report button to WebUI Pixel Gallery cards, with preset reasons, optional details and moderator review through PixelIt.API. Other reasons require details; reports do not delete icons immediately. Requires the API moderation endpoints to be deployed first.
--   (o0shojo0o) Validate icon reports against the combined 1000-character limit, prevent duplicate submissions, handle rate limits and preserve open report dialogs while scrolling. Gallery reads and reports use the configured API base URL.
--   (o0shojo0o) Fixed copying gallery icon IDs from device-hosted HTTP WebUIs by adding a clipboard fallback when the browser's secure-context clipboard API is unavailable.
--   (o0shojo0o) Expanded Home Assistant MQTT discovery with automatic brightness, clock fallback controls, uptime, free memory and restart reason diagnostics.
--   (o0shojo0o) Added staged text messages with font size, alignment, scrolling, a synchronized HEX color field and RGB color picker, and a Show text button. Text is vertically centered using the selected font's glyph bounds.
--   (o0shojo0o) Added a read-only Home Assistant firmware update entity with installed/latest version information and a release notes link. Version checks also run when the visual update reminder is disabled.
--   (o0shojo0o) Added debounced button events for press, release, single press, double press and long press while preserving local button actions.
--   (o0shojo0o) Fixed MQTT device-topic availability, humidity discovery IDs, sensor capabilities and temperature units; discovery now removes stale entities and republishes after Home Assistant restarts and configuration changes.
--   (o0shojo0o) Spread discovery messages across animation frames, defer MQTT text/configuration processing until receive buffers are released, and keep small MQTT controls working when the full animation buffer cannot be allocated. Release version-check HTTP buffers and correct the update check interval to eight hours.
--   (o0shojo0o) Added Home Assistant integration documentation, host regression tests and physical-device checks for text controls, discovery and animation timing.
--   (o0shojo0o) Added animation and bitmap size filters to the WebUI Pixel Gallery, combinable with name and ID search across the full gallery. Available sizes are derived automatically from the gallery data.
--   (o0shojo0o) Reduced WebUI Pixel Gallery memory usage during long scrolling sessions by unloading offscreen cards, canvases and parsed animation frames while preserving scroll space and open information dialogs.
--   (o0shojo0o) Fixed WebUI Pixel Gallery search rendering for fewer than 24 results, including empty results, and added regression tests.
--   (o0shojo0o) Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8 across HTTP, MQTT and WebUI.
--   (o0shojo0o) Added full-display animations and a ready-to-send 32×8 example.
--   (o0shojo0o) Reduced memory usage for large uploads and reject malformed or oversized animations safely.
--   (o0shojo0o) Fixed animation loop boundaries, reverse playback and stuttering LED playback on ESP8266.
--   (o0shojo0o) Improved browser liveview delivery and acknowledgements for WebUI animation uploads.
--   (o0shojo0o) Updated the ESP8266 platform and improved WiFi, MQTT buffer management and LED transfer reliability.
+-   (o0shojo0o) Improved ESP8266 WS2812B LED timing; extended peak-memory validation remains outstanding.
+-   (o0shojo0o) Added an optional beta update channel (disabled by default); requires API and WebUI updates.
+-   (o0shojo0o) Added gallery icon reports with reasons and moderator review; requires API moderation endpoints.
+-   (o0shojo0o) Improved icon report validation, duplicate protection, rate-limit handling and API URL support.
+-   (o0shojo0o) Fixed copying gallery icon IDs from device-hosted HTTP WebUIs.
+-   (o0shojo0o) Added Home Assistant brightness and clock controls, plus system diagnostics.
+-   (o0shojo0o) Added text controls for font size, alignment, scrolling and color.
+-   (o0shojo0o) Added a read-only Home Assistant firmware update entity and independent version checks.
+-   (o0shojo0o) Added debounced press, release, single, double and long button events.
+-   (o0shojo0o) Fixed MQTT availability, sensor discovery and stale Home Assistant entities.
+-   (o0shojo0o) Improved MQTT memory handling, spread discovery across frames and fixed the update check interval.
+-   (o0shojo0o) Added Home Assistant documentation and regression tests.
+-   (o0shojo0o) Added gallery filters for animations and bitmap sizes.
+-   (o0shojo0o) Reduced gallery memory usage during long scrolling sessions.
+-   (o0shojo0o) Fixed gallery rendering for small and empty search results.
+-   (o0shojo0o) Increased animation capacity to 28 frames at 8×8, 14 at 16×8 and 7 at 32×8.
+-   (o0shojo0o) Added full-display animations and a 32×8 example.
+-   (o0shojo0o) Reduced upload memory usage and safely reject invalid or oversized animations.
+-   (o0shojo0o) Fixed animation loop boundaries, reverse playback and ESP8266 playback stuttering.
+-   (o0shojo0o) Improved liveview delivery and animation upload acknowledgements.
+-   (o0shojo0o) Updated the ESP8266 platform and improved WiFi, MQTT and LED transfer reliability.
 -   (o0shojo0o) Added playback diagnostics and regression tests.
 
 ### 2.6.0 (2026-10-30)
