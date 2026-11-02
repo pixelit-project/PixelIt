@@ -171,16 +171,16 @@ void setup()
     // Matrix Color Correction
     if (userLEDCorrection != UncorrectedColor)
     {
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(userLEDCorrection);
+        FastLED.addLeds<PixelItLEDController, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(userLEDCorrection);
     }
     else if (userColorTemp != UncorrectedTemperature)
     {
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setTemperature(userColorTemp);
+        FastLED.addLeds<PixelItLEDController, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setTemperature(userColorTemp);
     }
     else
     {
         int *rgbArray = GetUserCutomCorrection();
-        FastLED.addLeds<NEOPIXEL, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
+        FastLED.addLeds<PixelItLEDController, MATRIX_PIN>(leds, MATRIX_WIDTH * MATRIX_HEIGHT).setCorrection(matrix->Color(rgbArray[0], rgbArray[1], rgbArray[2]));
     }
 
     matrix->begin();

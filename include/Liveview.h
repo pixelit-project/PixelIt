@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
+#include "PixelItLED.h"
 #include <FastLED_NeoMatrix.h>
 #include <CRC32.h>
 

@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   Tightened ESP8266 LED interrupt-gap detection for WS2812B matrices and increased frame/retry reset time to 300 µs without increasing the allowed gap inside a frame. Short WS2812B and SK6805-EC15 device timing checks passed. Large upload/preview testing on the small matrix encountered HTTP resets on both beta.5 and the candidate; extended peak-memory validation remains required.
 -   (o0shojo0o) Added an optional, persisted beta/prerelease update channel (off by default), with matching WebUI downloads and Home Assistant release links. Requires companion API and WebUI updates.
 -   (o0shojo0o) Added a labeled Report button to WebUI Pixel Gallery cards, with preset reasons, optional details and moderator review through PixelIt.API. Other reasons require details; reports do not delete icons immediately. Requires the API moderation endpoints to be deployed first.
 -   (o0shojo0o) Validate icon reports against the combined 1000-character limit, prevent duplicate submissions, handle rate limits and preserve open report dialogs while scrolling. Gallery reads and reports use the configured API base URL.

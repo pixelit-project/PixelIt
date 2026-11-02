@@ -39,7 +39,7 @@
 extern uint32_t _frame_cnt;
 extern uint32_t _retry_cnt;
 #endif
-#include <FastLED.h>
+#include "PixelItLED.h"
 #include <FastLED_NeoMatrix.h>
 // Misc
 #include <BH1750.h>
