@@ -44,8 +44,8 @@
 
                     <prism-editor class="editor" v-model="testarea.image" :highlight="highlighter"></prism-editor>
                     <p class="text-caption text--secondary mt-2">
-                        Size detected automatically: 64 values = 8×8 (up to 28 frames),
-                        256 values = 32×8 (up to 7 frames). Separate animation frames with commas.
+                        Size detected automatically: 64 values = 8×8 (up to {{ bitmapFrameLimit(64) }} frames),
+                        256 values = 32×8 (up to {{ bitmapFrameLimit(256) }} frames). Separate animation frames with commas.
                     </p>
                     <br />
                     <div class="text-center">
@@ -110,6 +110,10 @@ export default {
                 },
             });
         },
+        bitmapFrameLimit(size) {
+            const limits = this.$store.state.animationLimits || { frames: 28, pixels: 1792 };
+            return Math.min(limits.frames, Math.floor(limits.pixels / size));
+        },
         sendBitmap() {
             const input = this.testarea.image.trim().replace(/,$/, '');
             let frames;
@@ -125,7 +129,7 @@ export default {
             }
             const size = frames[0].length;
             const width = size === 64 ? 8 : 32;
-            const limit = size === 64 ? 28 : 7;
+            const limit = this.bitmapFrameLimit(size);
             if (frames.length > limit) throw new Error(`Maximum ${limit} frames for ${width}×8.`);
             if (!frames.every(frame => Array.isArray(frame) && frame.length === size &&
                 frame.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 65535))) {

@@ -1,0 +1,26 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+const Vue = require('vue');
+const Vuex = require('vuex');
+const source = fs.readFileSync(path.join(__dirname, '../src/store/index.js'), 'utf8')
+    .replace(/^import .*;$/gm, '').replace('export default', 'this.store =');
+const context = { Vue, Vuex, document: { title: '' }, console, clearInterval() {} };
+vm.runInNewContext(source, context);
+const { store } = context;
+store.commit('SOCKET_ONMESSAGE', { sysinfo: { maxAnimationFrames: 160, maxAnimationPixels: 10240 } });
+assert.equal(store.state.animationLimits.frames, 160);
+assert.equal(store.state.animationLimits.pixels, 10240);
+store.commit('SOCKET_ONCLOSE');
+assert.equal(store.state.animationLimits, null);
+assert.equal(store.state.galleryCapabilities, null);
+store.commit('SOCKET_ONMESSAGE', { sysinfo: { pixelitVersion: '2.6.0' } });
+assert.equal(store.state.animationLimits, null, 'Older firmware must not inherit ESP32 limits');
+store.commit('SOCKET_ONMESSAGE', { sysinfo: { maxAnimationFrames: 28, maxAnimationPixels: 1792 } });
+assert.equal(store.state.animationLimits.frames, 28);
+assert.equal(store.state.animationLimits.pixels, 1792);
+const caps = store.state.galleryCapabilities;
+store.commit('SOCKET_ONMESSAGE', { sysinfo: { maxAnimationFrames: 28, maxAnimationPixels: 1792 } });
+assert.strictEqual(store.state.galleryCapabilities, caps, 'Unchanged telemetry must not reset Gallery scrolling');
+console.log('Device limits: ESP32 advertisement, reconnect reset and ESP8266/older-firmware fallback passed');

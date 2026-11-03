@@ -44,6 +44,8 @@ export default new Vuex.Store({
         sensorData: [],
         buttonData: [],
         sysInfoData: [],
+        animationLimits: null,
+        galleryCapabilities: null,
         configData: {},
         liveviewData: [],
         matrixSize: {},
@@ -465,6 +467,8 @@ export default new Vuex.Store({
         },
         SOCKET_ONCLOSE(state) {
             state.socket.isConnected = false;
+            state.animationLimits = null;
+            state.galleryCapabilities = null;
             clearInterval(pingInterval);
         },
         SOCKET_ONERROR(state, event) {
@@ -572,6 +576,17 @@ function addToTelemetryData(obj, state) {
 }
 
 function addToSysInfoData(obj, state) {
+    const matrix = obj.matrixsize || {};
+    const capabilities = { frames: obj.maxAnimationFrames, pixels: obj.maxAnimationPixels,
+        width: matrix.cols, height: matrix.rows, bitmapPixels: obj.maxBitmapPixels,
+        messageBytes: obj.maxScreenMessageSize };
+    if (!state.galleryCapabilities || Object.keys(capabilities).some(key => state.galleryCapabilities[key] !== capabilities[key])) {
+        state.galleryCapabilities = Object.freeze(capabilities);
+    }
+    if (Number.isInteger(obj.maxAnimationFrames) && obj.maxAnimationFrames > 0 &&
+        Number.isInteger(obj.maxAnimationPixels) && obj.maxAnimationPixels > 0) {
+        state.animationLimits = { frames: obj.maxAnimationFrames, pixels: obj.maxAnimationPixels };
+    }
     for (const key in obj) {
         const oldEntry = state.sysInfoData.find((x) => x.name === getDisplayName(key));
         if (oldEntry) {

@@ -26,6 +26,8 @@ load('src/mixins/configDraft.js', 'draftMixin');
 load('src/mixins/actionFeedback.js', 'actionMixin');
 load('src/components/Log.vue', 'logComponent');
 load('src/components/ButtonBMPSave.vue', 'bitmapSaveComponent');
+context.BmpCanvas = {};
+load('src/components/BmpDialog.vue', 'bitmapDialogComponent');
 const store = Vue.observable({ state: { configData: { hostname: 'original', nested: { pin: 3 } }, socket: { isConnected: true } } });
 function draft() {
     return new Vue({ ...context.draftMixin, beforeCreate() {
@@ -61,14 +63,25 @@ function draft() {
     context.actionMixin.created.call(action);
     await action.send(); assert.equal(calls, 1); assert(notifications.at(-1).message.includes('Invalid JSON'));
     store.state.socket.isConnected = false; await action.send(); assert.equal(calls, 1);
-    const upload = { saving: false, isValid: true, cleanedData: '[0]', userName: '', bitmapName: 'Test', getSizeX: 8, isAnimated: false, dialog: true, $apiServerBaseURL: 'https://example.test', $client: 'test' };
+    const upload = { $store: { state: { bmpsFromAPI: [{ id: 1 }] } }, saving: false, isValid: true, cleanedData: '[0]', userName: '', bitmapName: 'Test', getSizeX: 8, isAnimated: false, dialog: true, $apiServerBaseURL: 'https://example.test', $client: 'test' };
     context.fetch = async () => ({ ok: false, status: 500 });
     await context.bitmapSaveComponent.methods.agreeWraper.call(upload);
     assert(upload.dialog, 'A failed gallery upload must keep the dialog and drawing available');
     assert(!upload.saving); assert.equal(notifications.at(-1).color, 'error');
+    assert.equal(upload.$store.state.bmpsFromAPI.length, 1, 'Failed uploads preserve the Gallery cache');
     context.fetch = async () => ({ ok: true });
     await context.bitmapSaveComponent.methods.agreeWraper.call(upload);
     assert(!upload.dialog); assert.equal(notifications.at(-1).color, 'success');
+    assert.equal(upload.$store.state.bmpsFromAPI.length, 0, 'Successful uploads invalidate the Gallery cache');
+    let copied;
+    context.copyToClipboard = async value => { copied = value; };
+    const bitmapDetails = { bmp: { rgB565Array: '[1,2],[3,4]' } };
+    await context.bitmapDialogComponent.methods.copyData.call(bitmapDetails);
+    assert.equal(copied, bitmapDetails.bmp.rgB565Array, 'Copy preserves the exact Gallery encoding');
+    assert.equal(notifications.at(-1).color, 'success');
+    context.copyToClipboard = async () => { throw new Error('Clipboard unavailable'); };
+    await context.bitmapDialogComponent.methods.copyData.call(bitmapDetails);
+    assert.equal(notifications.at(-1).color, 'error');
     e.$destroy(); log.$destroy();
     console.log('Usability: isolated drafts, leave/reload guards, offline saves, feedback, log filtering and pause passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

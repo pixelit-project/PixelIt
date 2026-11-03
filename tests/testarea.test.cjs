@@ -6,7 +6,7 @@ const source = fs.readFileSync(require('path').join(__dirname, '../src/views/Tes
 const context = { actionFeedback: {}, ButtonCondition: {}, PrismEditor: {}, Liveview: {} };
 vm.runInNewContext(source, context);
 let sent;
-const editor = { testarea: { image: '' }, $socket: { sendObj: payload => { sent = payload; } } };
+const editor = { $store: { state: {} }, bitmapFrameLimit: context.component.methods.bitmapFrameLimit, testarea: { image: '' }, $socket: { sendObj: payload => { sent = payload; } } };
 function send(input) { editor.testarea.image = input; context.component.methods.sendBitmap.call(editor); return sent.setScreen; }
 for (const [size, limit, width] of [[64, 28, 8], [256, 7, 32]]) {
     const frame = Array(size).fill(65535);
@@ -28,4 +28,9 @@ for (const value of [-1, 65536, 1.5, '0', null]) {
 }
 assert.throws(() => send('[]'), /64.*256/);
 assert.throws(() => send('invalid'));
+editor.$store.state.animationLimits = { frames: 160, pixels: 10240 };
+assert.equal(send(JSON.stringify(Array(40).fill(Array(256).fill(65535)))).bitmapAnimation.data.length, 40);
+assert.throws(() => send(JSON.stringify(Array(41).fill(Array(256).fill(65535)))), /Maximum 40/);
+assert.equal(send(JSON.stringify(Array(160).fill(Array(64).fill(65535)))).bitmapAnimation.data.length, 160);
+assert.throws(() => send(JSON.stringify(Array(161).fill(Array(64).fill(65535)))), /Maximum 160/);
 console.log('Test Area: automatic dimensions, static and animated bitmaps, input formats, frame limits and RGB565 validation passed.');

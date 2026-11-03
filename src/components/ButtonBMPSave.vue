@@ -37,7 +37,7 @@ export default {
             dialog: false,
             saving: false,
             isValid: false,
-            bitmapName: ' ',
+            bitmapName: '',
             userName: this.$cookies.get('userNameForUpload') || '',                        
         };        
     },
@@ -102,6 +102,7 @@ export default {
                     }),
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                this.$store.state.bmpsFromAPI = [];
                 this.dialog = false;
                 notify('Bitmap upload accepted by the gallery.', 'success');
             } catch (error) {

@@ -1,8 +1,8 @@
 <template>
     <v-dialog v-model="dialog" :persistent="submitting" max-width="480">
         <template v-slot:activator="{ on, attrs }">
-            <v-btn small outlined color="primary" class="mt-3 mb-2" v-bind="attrs" v-on="on" :disabled="!validIconId || $demoMode" title="Report icon" aria-label="Report icon">
-                <v-icon left small>mdi-flag-outline</v-icon>
+            <v-btn small outlined :color="compact ? undefined : 'primary'" :class="compact ? 'gallery-report-button' : 'mt-3 mb-2'" v-bind="attrs" v-on="on" :disabled="!validIconId || $demoMode" title="Report icon" aria-label="Report icon">
+                <v-icon v-if="!compact" left small>mdi-flag-outline</v-icon>
                 Report
             </v-btn>
         </template>
@@ -56,6 +56,7 @@ const REPORT_REASONS = [
 
 export default {
     props: {
+        compact: { type: Boolean, default: false },
         bmp: { type: Object, required: true },
     },
     data() {

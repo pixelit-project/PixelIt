@@ -1,5 +1,9 @@
 # PixelIt.WebUI
 
+Creator and Test Area use the connected firmware's advertised animation frame and
+pixel budgets. Older firmware falls back to 28 frames / 1,792 pixels; ESP32 builds
+can advertise larger limits. Reconnects clear the previous device limits.
+
 This is the device WebUI for the awesome [PixelIt Project](https://github.com/pixelit-project/PixelIt).
 
 ## How to Develop?
@@ -70,3 +74,28 @@ published prereleases for update hints and firmware downloads. Save the configur
 to apply it; the default is off. Requires firmware with `includePrereleases` support
 and PixelIt.API with the `includePrereleases=true` release query. Older APIs keep
 returning stable releases. No additional release polling is introduced.
+
+## Gallery device compatibility
+
+The Gallery defaults to images and animations that fit the connected device's
+advertised dimensions, frame and pixel budgets. **Also show images incompatible with this device** reveals the remaining entries with a centered status label and disabled Send button.
+Labels distinguish incompatible content from invalid image data; hover for the
+reason or expand the label with a click, tap or keyboard.
+Cards show dimensions and actual frame counts. Offline browsing and previews remain
+available; sending waits for a connected device and fresh system information.
+Older firmware uses the conservative 28-frame / 1,792-pixel fallback.
+
+Compatibility is checked again when sending, including pixel data and message size.
+Frames are never trimmed automatically. Only small metadata is cached while browsing;
+pixel arrays are parsed on send. No additional API requests or device polling are
+introduced. This uses existing API records and firmware system information, so no
+API schema change is required. Include the Gallery behavior in PixelIt.Docs when
+this WebUI is released; its published user documentation currently targets stable releases.
+
+
+Gallery details offer **Copy RGB565 data**, including the HTTP clipboard fallback.
+Successful Creator uploads invalidate the browser Gallery cache; the next Gallery
+visit fetches the current list once. Failed uploads preserve the cache and drawing.
+Deploy the companion API cache-invalidation change to make new uploads visible
+immediately rather than waiting for the API cache to expire. Include these controls
+in the stable Gallery/Creator user guide when releasing the WebUI.

@@ -178,7 +178,7 @@ export default {
         undoStack: canvasProperty('undoStack'),
         redoStack: canvasProperty('redoStack'),
         draftStatus: canvasProperty('draftStatus'),
-        frameLimit() { return this.pixelMode === 0 ? 28 : 7; },
+        frameLimit() { return this.frameLimitFor(this.pixelMode); },
         frameLimitExceeded() { return this.frames.length > this.frameLimit; },
         canvasWidth() { return this.pixelMode === 0 ? 8 : 32; },
         bitmapText: {
@@ -203,12 +203,16 @@ export default {
     },
     methods: {
         pixelColor: rgb565ToHex,
+        frameLimitFor(mode) {
+            const limits = this.$store.state.animationLimits || { frames: 28, pixels: 1792 };
+            return Math.min(limits.frames, Math.floor(limits.pixels / (mode === 0 ? 64 : 256)));
+        },
         importFrames(value, mode) {
             const canvas = this.canvases[mode];
             try {
                 const parsed = JSON.parse(`[${value.trim().replace(/,$/, '')}]`);
                 const unchanged = JSON.stringify(parsed) === JSON.stringify(canvas.frames);
-                if (!validFrames(parsed, mode === 0 ? 64 : 256, !unchanged)) throw new Error('Invalid frames');
+                if (!validFrames(parsed, mode === 0 ? 64 : 256, !unchanged, this.frameLimitFor(mode))) throw new Error('Invalid frames');
                 if (!unchanged) {
                     if (this.pixelMode === mode) this.stopPreview();
                     canvas.undoStack.push({ frames: canvas.frames.map(frame => frame.slice()), selectedFrame: canvas.selectedFrame });
@@ -221,7 +225,7 @@ export default {
                 this.saveDraft(mode);
             } catch (error) {
                 if (this.pixelMode === mode) this.stopPreview();
-                canvas.animationError = `Enter at most ${mode === 0 ? 28 : 7} frames of ${mode === 0 ? 64 : 256} RGB565 values (0–65535), separated by commas.`;
+                canvas.animationError = `Enter at most ${this.frameLimitFor(mode)} frames of ${mode === 0 ? 64 : 256} RGB565 values (0–65535), separated by commas.`;
             }
         },
         snapshot() {
@@ -570,8 +574,8 @@ function canvasProperty(key) {
     };
 }
 
-function validFrames(frames, size = 64, enforceLimit = true) {
-    return Array.isArray(frames) && frames.length > 0 && (!enforceLimit || frames.length <= (size === 64 ? 28 : 7)) && frames.every(frame => validBitmap(frame, size));
+function validFrames(frames, size = 64, enforceLimit = true, limit = size === 64 ? 28 : 7) {
+    return Array.isArray(frames) && frames.length > 0 && (!enforceLimit || frames.length <= limit) && frames.every(frame => validBitmap(frame, size));
 }
 
 function pixelColorFull(value) {

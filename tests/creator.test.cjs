@@ -20,6 +20,17 @@ function create() {
     return editor;
 }
 (async () => {
+    const esp32 = create();
+    esp32.$store.state.animationLimits = { frames: 160, pixels: 10240 };
+    assert.equal(esp32.frameLimit, 160);
+    esp32.changePixelModeTo8x32();
+    assert.equal(esp32.frameLimit, 40);
+    esp32.importFrames(Array(40).fill(JSON.stringify(Array(256).fill(65535))).join(','), 1);
+    assert.equal(esp32.frames.length, 40);
+    assert(!esp32.animationError);
+    esp32.$store.state.animationLimits = { frames: 28, pixels: 1792 };
+    // Vue observes the predeclared state in production; this test store is plain.
+    assert.equal(esp32.frameLimitFor(1), 7);
     const e = create();
     e.colors = '#ff0000ff'; e.paintPixel(0); await Vue.nextTick();
     assert.equal(e.frames[0][0], 63488);
@@ -136,17 +147,17 @@ function create() {
         notify() {}, fetch: async (url, options) => { upload = JSON.parse(options.body); return { ok: true }; },
     });
     const dialog = new Vue({ ...save, propsData: { data: migrated.array8x32String, pixelMode: 1, condition: true },
-        beforeCreate() { this.$cookies = { get: () => '' }; },
+        beforeCreate() { this.$cookies = { get: () => '' }; this.$store = { state: { bmpsFromAPI: [] } }; },
     });
     dialog.isValid = true; dialog.bitmapName = 'Wide animation'; await dialog.agreeWraper();
     assert.equal(upload.sizeX, 32); assert.equal(upload.sizeY, 8); assert(upload.animated);
     assert.equal(JSON.parse('[' + upload.rgb565array + ']')[1].length, 256); assert(!('animationDelay' in upload));
-    const gallery = loadComponent('src/views/Gallery.vue', { BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {}, actionFeedback: {} });
+    const gallery = loadComponent('src/views/Gallery.vue', { ...require('./gallery-helpers.cjs'), BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {}, actionFeedback: {} });
     let playback;
-    const receiver = { $socket: { sendObj: value => { playback = value.setScreen; } } };
-    gallery.methods.sendBitmap.call(receiver, migrated.array8x32String, 32);
+    const receiver = { sockedIsConnected: true, deviceLimits: { frames: 28, pixels: 1792, width: 32, height: 8, bitmapPixels: 256, messageBytes: 12288 }, $socket: { readyState: 1, sendObj: value => { playback = value.setScreen; } } };
+    gallery.methods.sendBitmap.call(receiver, { rgB565Array: migrated.array8x32String, sizeX: 32, sizeY: 8 });
     assert.equal(playback.bitmapAnimation.size.width, 32); assert.equal(playback.bitmapAnimation.data.length, 2);
-    gallery.methods.sendBitmap.call(receiver, JSON.stringify(Array(256).fill(0)), 32);
+    gallery.methods.sendBitmap.call(receiver, { rgB565Array: JSON.stringify(Array(256).fill(0)), sizeX: 32, sizeY: 8 });
     assert(playback.bitmap); assert(!playback.bitmapAnimation);
     for (const [mode, limit, size] of [[0, 28, 64], [1, 7, 256]]) {
         const limited = create();

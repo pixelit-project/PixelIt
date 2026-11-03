@@ -21,7 +21,10 @@
                 Added on: {{ bmp.dateTime.split('T')[0] }}<br />
                 Animated: {{ bmp.animated ? 'Yes' : 'No' }}<br />
                 <br />
-                <v-textarea filled outlined :value="bmp.rgB565Array" readonly rows="8"></v-textarea>
+                <v-textarea filled outlined label="RGB565 data" :value="bmp.rgB565Array" readonly rows="8" hide-details></v-textarea>
+                <v-btn small outlined color="primary" class="mt-2" @click="copyData">
+                    <v-icon left small>mdi-content-copy</v-icon>Copy RGB565 data
+                </v-btn>
             </v-card-text>
             <v-divider></v-divider>
             <v-card-actions>
@@ -34,6 +37,8 @@
 
 <script>
 import BmpCanvas from './BmpCanvas';
+import { copyToClipboard } from '../utils/clipboard';
+import { notify } from '../utils/feedback';
 export default {
     props: {
         bmp: {
@@ -43,6 +48,16 @@ export default {
     },
     components: {
         BmpCanvas,
+    },
+    methods: {
+        async copyData() {
+            try {
+                await copyToClipboard(this.bmp.rgB565Array);
+                notify('RGB565 data copied.', 'success');
+            } catch (error) {
+                notify('Could not copy the data. Select and copy it manually.', 'error');
+            }
+        },
     },
     watch: {
         dialog(value) {
