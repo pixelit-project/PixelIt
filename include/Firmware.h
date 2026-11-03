@@ -11,7 +11,7 @@
 #include <LittleFS.h>
 
 #elif defined(ESP32)
-#include <WebServer.h>
+#include "PixelItESP32WebServer.h"
 #include <HTTPUpdateServer.h>
 #include <WiFi.h>
 #include <FS.h>

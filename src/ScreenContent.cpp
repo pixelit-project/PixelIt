@@ -10,7 +10,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
 {
     if (!PrepareBitmapAnimation(json))
     {
+#if defined(ESP32)
+        Log(F("BitmapAnimation"), F("Rejected: invalid dimensions, pixels or advertised frame/pixel budget"));
+#else
         Log(F("BitmapAnimation"), F("Rejected: invalid dimensions, pixels or frame/pixel budget (28 frames, 1792 pixels total)"));
+#endif
         return;
     }
 

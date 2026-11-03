@@ -84,14 +84,14 @@ int main(int argc, char **argv) {
  client.connectedFlag=false;
  assert(!PublishMqtt("state","connected"));
 
- for(int count : {1,2,9,10,20,28}) {
+ for(int count : {1,2,9,10,20,28,static_cast<int>(MAX_ANIMATION_FRAMES)}) {
   validate(count,64,true);
   for(bool rubber : {false,true}) {
    animationBmpCount=count; animateBMPCounter=0; animateBMPLoopCount=0;
    animateBMPLimitLoops=2; animateBMPReverse=false;
    animateBMPAktivLoop=true; animateBMPRubberbandingAktiv=rubber; shown.clear();
    for(int i=0;i<count;i++) { memset(animationBmpList.get()+i*animationBmpPixels,0,animationBmpPixels*sizeof(uint16_t)); animationBmpList[i*animationBmpPixels]=2; animationBmpList[i*animationBmpPixels+1]=i; }
-   for(int step=0;step<200 && animateBMPAktivLoop;step++) AnimateBMP(false);
+   for(int step=0;step<static_cast<int>(MAX_ANIMATION_FRAMES)*6+10 && animateBMPAktivLoop;step++) AnimateBMP(false);
    assert(!animateBMPAktivLoop);
    std::vector<int> expected;
    for(int loop=0;loop<2;loop++) {
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
  }
 
  // Full matrix animations use the same total pixel storage as 8x8 icons.
- for(int count : {1,2,7,8}) {
+ for(int count : {1,2,7,8,static_cast<int>(MAX_ANIMATION_PIXELS/256),static_cast<int>(MAX_ANIMATION_PIXELS/256+1)}) {
   DynamicJsonBuffer buffer;
   JsonObject &screen=buffer.createObject();
   JsonObject &anim=screen.createNestedObject("bitmapAnimation");
@@ -116,8 +116,8 @@ int main(int argc, char **argv) {
    JsonArray &frame=frames.createNestedArray();
    for(int j=0;j<256;j++) frame.add(i+10);
   }
-  assert(IsValidBitmapAnimation(screen)==(count<=7));
-  if(count>7) continue;
+  assert(IsValidBitmapAnimation(screen)==(count<=static_cast<int>(MAX_ANIMATION_PIXELS/256)));
+  if(count>static_cast<int>(MAX_ANIMATION_PIXELS/256)) continue;
   assert(PrepareBitmapAnimation(screen));
   animationBmpPixels=256; animationBmpCount=count; bmpWidth=32; bmpHeight=8;
   for(int i=0;i<count;i++) for(int j=0;j<256;j++) animationBmpList[i*256+j]=i+10;
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
  assert(DecodeAnimationPixels(fullCsv.c_str(),fullCsv.size(),fullPixels)==256);
  assert(fullPixels[255]==65535);
  fullCsv+=",0"; assert(DecodeAnimationPixels(fullCsv.c_str(),fullCsv.size())==0);
- validate(0,64,false); validate(29,64,false);
+ validate(0,64,false); validate(MAX_ANIMATION_FRAMES+1,64,false);
  validate(1,63,false); validate(1,65,false);
  validate(1,64,false,-1); validate(1,64,false,65536);
 
@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
  DynamicJsonBuffer packedBuffer;
  JsonObject &packed=packedBuffer.parseObject(wire.data());
  assert(packed.success() && IsValidBitmapAnimation(packed));
- assert(packedBuffer.size()<4096);
+ assert(packedBuffer.size()<MAX_ANIMATION_FRAMES*64+2304);
  JsonArray &packedFrames=packed["bitmapAnimation"]["data"].as<JsonArray>();
  assert(packedFrames.size()==MAX_ANIMATION_FRAMES);
  for(JsonVariant frame : packedFrames) {
@@ -203,11 +203,12 @@ with tempfile.TemporaryDirectory(prefix='pixelit-animation-') as tmp:
     cpp = Path(tmp) / 'test.cpp'
     binary = Path(tmp) / 'test'
     cpp.write_text(program)
-    subprocess.run([shutil.which('clang++') or 'c++', '-std=c++11',
-                    '-fsanitize=undefined,bounds', '-g', '-DMATRIX_WIDTH=32', '-DMATRIX_HEIGHT=8',
-                    '-I' + str(root / 'include'), '-I' + str(json_include),
-                    str(cpp), '-o', str(binary)], check=True)
-    subprocess.run([str(binary), str(root / 'test/animation/webui_14_frames.json')], check=True)
+    for flags in ([], ['-DESP32']):
+        subprocess.run([shutil.which('clang++') or 'c++', '-std=c++11',
+                        '-fsanitize=undefined,bounds', '-g', '-DMATRIX_WIDTH=32', '-DMATRIX_HEIGHT=8',
+                        *flags, '-I' + str(root / 'include'), '-I' + str(json_include),
+                        str(cpp), '-o', str(binary)], check=True)
+        subprocess.run([str(binary), str(root / 'test/animation/webui_14_frames.json')], check=True)
 
 # A blocked browser must never block physical LED playback via the preview.
 with tempfile.TemporaryDirectory(prefix='pixelit-preview-') as tmp:

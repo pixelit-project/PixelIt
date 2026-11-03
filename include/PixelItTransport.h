@@ -2,8 +2,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "ScreenJsonCompactor.h"
+#include "ScreenLimits.h"
 
 void ServiceTransportReceive();
+void RecordSocketWriteError(uint8_t client, unsigned status, int error);
 void RecordTransportReceive(bool mqtt, unsigned status, size_t input, size_t output);
 void NotifySocketReceiveError(uint8_t client, unsigned status);
 bool MqttReceiveAccepted();
@@ -40,7 +42,7 @@ private:
     ScreenJsonCompactor<CompactTransportBuffer> compact;
 };
 
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
 class WiFiClient;
 unsigned ReadCompactSocket(WiFiClient &client, uint8_t *output, size_t capacity,
                            size_t length, const uint8_t *mask, size_t &used);

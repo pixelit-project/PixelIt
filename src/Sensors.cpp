@@ -1,5 +1,8 @@
 #include "FirmwareState.h"
 #include "Tools.h"
+#if defined(ESP32)
+#include <esp_wifi.h>
+#endif
 
 String GetSensor()
 {
@@ -208,6 +211,10 @@ String GetMatrixInfo()
     root["resetInfo"] = ESP.getResetInfo();
 #elif defined(ESP32)
     root["chipID"] = uint64ToString(ESP.getEfuseMac());
+    root["maxFreeBlock"] = ESP.getMaxAllocHeap();
+    root["minFreeHeap"] = ESP.getMinFreeHeap();
+    wifi_ps_type_t wifiSleep;
+    root["wifiSleepMode"] = esp_wifi_get_ps(&wifiSleep) == ESP_OK ? static_cast<int>(wifiSleep) : -1;
 #endif
 
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();
@@ -225,6 +232,10 @@ String GetMatrixInfo()
     root["resetReason"] = ResetReason();
     root["animationFrames"] = animationBmpCount;
     root["maxAnimationFrames"] = MAX_ANIMATION_FRAMES;
+#if defined(ESP32)
+    root["maxScreenMessageSize"] = MAX_SCREEN_MESSAGE_SIZE;
+    root["maxMqttPacketSize"] = MAX_MQTT_PACKET_SIZE;
+#endif
     root["maxAnimationPixels"] = MAX_ANIMATION_PIXELS;
     root["maxBitmapPixels"] = MAX_BITMAP_PIXELS;
     root["mqttBufferSize"] = client.getBufferSize();

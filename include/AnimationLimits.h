@@ -5,13 +5,9 @@
 #include <cstring>
 #include "ScreenJsonCompactor.h"
 
-static const size_t MAX_ANIMATION_FRAMES = 28;
-static const size_t MAX_ANIMATION_PIXELS = MAX_ANIMATION_FRAMES * 64;
+#include "ScreenLimits.h"
+
 static const size_t MAX_BITMAP_PIXELS = MATRIX_WIDTH * MATRIX_HEIGHT;
-// 28 x 64 RGB565 values need at most 10,809 JSON bytes, plus metadata/topic.
-static const uint16_t MAX_SCREEN_MESSAGE_SIZE = 12288;
-static const uint16_t MQTT_BUFFER_SIZE = 11264;
-static const uint16_t MQTT_IDLE_BUFFER_SIZE = 256;
 
 // Decode a frame without allocating a JSON node for every pixel.
 inline size_t DecodeAnimationPixels(const char *text, size_t length, uint16_t *pixels = nullptr)

@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
 struct HttpUploadStats
 {
     uint32_t inputBytes = 0, compactBytes = 0, minHeap = 0, minBlock = 0;
@@ -16,6 +16,11 @@ struct TransportReceiveStats
     uint16_t status = 0;
 };
 extern TransportReceiveStats transportReceiveStats[2];
+#endif
+
+#if defined(ESP32)
+struct SocketWriteStats { uint32_t failures = 0; uint8_t client = 0; unsigned status = 0; int error = 0; };
+extern SocketWriteStats socketWriteStats;
 #endif
 
 #include "FirmwareFunctions.h"
@@ -116,7 +121,7 @@ extern const uint8_t CONNECTING_TRAIL_BRIGHTNESS[6];
 extern ESP8266WebServer server;
 extern ESP8266HTTPUpdateServer httpUpdater;
 #elif defined(ESP32)
-extern WebServer server;
+extern PixelItESP32WebServer server;
 extern HTTPUpdateServer httpUpdater;
 #endif
 extern Liveview liveview;

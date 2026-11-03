@@ -341,14 +341,14 @@ buffer_service = mqtt_source[mqtt_source.index('bool PrepareMqttServiceBuffer()'
 program = r'''
 #include <cassert>
 #include <cstdint>
-const uint16_t MQTT_BUFFER_SIZE=11264;
 #if defined(ESP8266)
 const uint16_t EXPECTED_RECEIVE_SIZE=6144;
 #else
-const uint16_t EXPECTED_RECEIVE_SIZE=11264;
+const uint16_t SCREEN_RECEIVE_CAPACITY=32768;
+const uint16_t EXPECTED_RECEIVE_SIZE=32768;
 #endif
 struct Client {
- uint16_t memoryLimit=11264, size=256;
+ uint16_t memoryLimit=32768, size=256;
  bool setBufferSize(uint16_t requested) {
   if(requested>memoryLimit) return false;
   size=requested; return true;
@@ -361,14 +361,14 @@ int main() {
  assert(PrepareMqttServiceBuffer() && client.size==2048);
  client.memoryLimit=1024; client.size=256;
  assert(!PrepareMqttServiceBuffer() && client.size==256);
- client.memoryLimit=11264;
+ client.memoryLimit=32768;
  assert(PrepareMqttServiceBuffer() && client.size==EXPECTED_RECEIVE_SIZE);
 }
 '''
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)
     (path / 'buffer.cpp').write_text(program)
-    for flags in ([], ['-DESP8266']):
+    for flags in (['-DESP32'], ['-DESP8266']):
         subprocess.run(['c++', '-std=c++11', '-Wall', '-Wextra', *flags, str(path / 'buffer.cpp'), '-o', str(path / 'buffer')], check=True)
         subprocess.run([str(path / 'buffer')], check=True)
 print('MQTT control-buffer fallback and recovery tests passed')

@@ -1,8 +1,12 @@
 #include "FirmwareState.h"
 
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
 HttpUploadStats httpUploadStats;
 TransportReceiveStats transportReceiveStats[2];
+#endif
+
+#if defined(ESP32)
+SocketWriteStats socketWriteStats;
 #endif
 
 SetGPIO setGPIOReset[SET_GPIO_SIZE];
@@ -119,7 +123,7 @@ const uint8_t CONNECTING_TRAIL_BRIGHTNESS[] = {255, 180, 110, 60, 25, 10};
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 #elif defined(ESP32)
-WebServer server(80);
+PixelItESP32WebServer server(80);
 HTTPUpdateServer httpUpdater;
 #endif
 Liveview liveview;

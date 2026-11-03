@@ -8,7 +8,7 @@ def once(source, old, new):
     return source.replace(old, new)
 
 
-def patch_mqtt(source):
+def patch_mqtt(source, esp32=False):
     source = '#include "PixelItTransport.h"\n' + source
     source = once(source, '   while(!_client->available()) {',
                   '   while(!_client->available()) {\n     ServiceTransportReceive();')
@@ -52,6 +52,8 @@ def patch_mqtt(source):
         return len;
     }
 '''
+    if esp32:
+        receiver = receiver.replace("> 11264", "> MAX_MQTT_PACKET_SIZE")
     source = once(source, marker, receiver + marker)
     for suffix in ('-2', ''):
         old = 'callback(topic,payload,len-llen-3-tl' + suffix + ');'
@@ -59,7 +61,7 @@ def patch_mqtt(source):
     return source
 
 
-def patch_websocket(source):
+def patch_websocket(source, esp32=False):
     source = '#include "PixelItTransport.h"\n' + source
     marker = '    if(header->payloadLen > 0) {\n        // if text data we need one more'
     receiver = r'''
@@ -79,15 +81,43 @@ def patch_websocket(source):
         return;
     }
 '''
+    if esp32:
+        receiver = receiver.replace('> 6080 ? 6144 : header->payloadLen + 64',
+                                    '> SCREEN_RECEIVE_CAPACITY - 256 ? SCREEN_RECEIVE_CAPACITY : header->payloadLen + 256')
+        receiver = receiver.replace('<= 12288', '<= MAX_SCREEN_MESSAGE_SIZE')
+        source = '#include <Arduino.h>\n#include <lwip/sockets.h>\n' + source
+        source = once(source, 'if(header->payloadLen > WEBSOCKETS_MAX_DATA_SIZE) {',
+                      'if(header->payloadLen > WEBSOCKETS_MAX_DATA_SIZE && !(header->opCode == WSop_text && header->fin)) {')
     source = once(source, marker, receiver + marker)
     # Header reads and outgoing acknowledgements/previews must also keep LED
     # deadlines while TCP is waiting. Never ask write() for more than fits now.
     if source.count('    while(n > 0) {') != 2:
         raise RuntimeError('Review pinned WebSocket read/write loops')
     source = source.replace('    while(n > 0) {', '    while(n > 0) {\n        ServiceTransportReceive();')
-    return once(source, '        len = client->tcp->write((const uint8_t *)out, n);', r'''
+    source = once(source, '        len = client->tcp->write((const uint8_t *)out, n);', r'''
         const int room = client->tcp->availableForWrite();
         size_t chunk = n > 512 ? 512 : n;
         if (room > 0 && chunk > static_cast<size_t>(room)) chunk = room;
         len = room > 0 ? client->tcp->write((const uint8_t *)out, chunk) : 0;
 ''')
+
+    if esp32:
+        source = once(source, 'if((millis() - t) > WEBSOCKETS_TCP_TIMEOUT) {\n            DEBUG_WEBSOCKETS("[write]',
+                      'if((millis() - t) > WEBSOCKETS_TCP_TIMEOUT) {\n            RecordSocketWriteError(client->num, 408, errno);\n            ::shutdown(client->tcp->fd(), SHUT_RDWR);\n            clientDisconnect(client);\n            DEBUG_WEBSOCKETS("[write]')
+        source = once(source, """        const int room = client->tcp->availableForWrite();
+        size_t chunk = n > 512 ? 512 : n;
+        if (room > 0 && chunk > static_cast<size_t>(room)) chunk = room;
+        len = room > 0 ? client->tcp->write((const uint8_t *)out, chunk) : 0;""", """        // ESP32 Arduino 2.0.14 has no usable availableForWrite(). A
+        // nonblocking socket send keeps TCP backpressure out of rendering.
+        const int fd = client->tcp->fd();
+        fd_set writable;
+        FD_ZERO(&writable);
+        FD_SET(fd, &writable);
+        timeval poll = {0, 0};
+        const int ready = ::select(fd + 1, nullptr, &writable, nullptr, &poll);
+        const size_t chunk = n > 1460 ? 1460 : n;
+        const int sent = ready > 0 && FD_ISSET(fd, &writable) ?
+            ::send(fd, out, chunk, MSG_DONTWAIT) : 0;
+        len = sent > 0 ? static_cast<size_t>(sent) : 0;
+        if (sent <= 0) delay(1);""")
+    return source

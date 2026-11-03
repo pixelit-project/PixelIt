@@ -1,10 +1,15 @@
 #include "FirmwareState.h"
 #include "PixelItHttpBody.h"
 
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
 void SampleHttpUploadMemory()
 {
-    const uint32_t heap = ESP.getFreeHeap(), block = ESP.getMaxFreeBlockSize();
+    const uint32_t heap = ESP.getFreeHeap();
+#if defined(ESP32)
+    const uint32_t block = ESP.getMaxAllocHeap();
+#else
+    const uint32_t block = ESP.getMaxFreeBlockSize();
+#endif
     if (!httpUploadStats.minHeap || heap < httpUploadStats.minHeap) httpUploadStats.minHeap = heap;
     if (!httpUploadStats.minBlock || block < httpUploadStats.minBlock) httpUploadStats.minBlock = block;
 }
@@ -38,7 +43,11 @@ int ReadScreenHttpBody(WiFiClient &client, uint32_t length, String &body, unsign
     // metadata. Reserve once in the smaller heap block, not the full wire size.
     // Small ordinary commands keep a small allocation. Encoding can add at
     // most two bytes per (valid, <=28) one-pixel frame; reserve that slack too.
+#if defined(ESP32)
+    const size_t capacity = length > SCREEN_RECEIVE_CAPACITY - 256 ? SCREEN_RECEIVE_CAPACITY : length + 256;
+#else
     const size_t capacity = length > 6080 ? 6144 : length + 64;
+#endif
     if (status == 200 && !body.reserve(capacity)) status = 503;
     SampleHttpUploadMemory();
     BodySink sink(body);
@@ -58,9 +67,18 @@ int ReadScreenHttpBody(WiFiClient &client, uint32_t length, String &body, unsign
         // Bounded CPU work before rendering again. Also drain rejected bodies
         // so a normal client receives the JSON error rather than a TCP reset.
         const unsigned batch = available > 128 ? 128 : available;
+#if defined(ESP32)
+        uint8_t input[128];
+        const unsigned wanted = length - received < batch ? length - received : batch;
+        const int count = wanted ? client.read(input, wanted) : 0;
+        for (int i = 0; i < count; ++i)
+        {
+            const int c = input[i];
+#else
         for (unsigned i = 0; i < batch && received < length; ++i)
         {
             const int c = client.read();
+#endif
             if (c < 0) break;
             ++received;
             progress = millis();
@@ -85,7 +103,11 @@ const char *ScreenHttpError(int status)
 {
     switch (status)
     {
+#if defined(ESP32)
+    case 413: return "{\"response\":\"Screen payload exceeds device wire limit\"}";
+#else
     case 413: return "{\"response\":\"Screen payload exceeds 12288 bytes\"}";
+#endif
     case 503: return "{\"response\":\"Insufficient memory for screen payload\"}";
     case 408: return "{\"response\":\"Screen upload timed out\"}";
     case 406: return "{\"response\":\"Invalid animation data\"}";

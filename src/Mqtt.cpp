@@ -367,10 +367,10 @@ void ServiceMqttConfig()
 bool PrepareMqttServiceBuffer()
 {
     // Compact incoming JSON in place; outgoing packet limits remain unchanged.
-    // Fall back for small controls/keepalive if even the 6 KB block is unavailable.
+    // Fall back for small controls/keepalive when receive storage is unavailable.
 #if defined(ESP8266)
     return client.setBufferSize(6144) || client.setBufferSize(2048);
 #else
-    return client.setBufferSize(MQTT_BUFFER_SIZE) || client.setBufferSize(2048);
+    return client.setBufferSize(SCREEN_RECEIVE_CAPACITY) || client.setBufferSize(2048);
 #endif
 }

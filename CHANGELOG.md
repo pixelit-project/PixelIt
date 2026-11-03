@@ -2,6 +2,12 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Added gallery data copying, clearer report controls and refresh after uploads.
+-   (o0shojo0o) Removed the prefilled space from the bitmap save dialog.
+-   (o0shojo0o) Aligned gallery previews and adapted card actions to narrow layouts.
+-   (o0shojo0o) Filter gallery content by device limits and explain oversized animations.
+-   (o0shojo0o) Skip battery polling on ESP32 boards without a battery input.
+-   (o0shojo0o) Raised ESP32 capacity to 160 frames at 8×8 or 40 at 32×8, with 160 MHz and WiFi modem sleep disabled.
 -   (o0shojo0o) Compact ESP8266 MQTT and WebSocket animation uploads to reduce memory usage, preserve playback and improve error handling and diagnostics.
 -   (o0shojo0o) Compact ESP8266 HTTP animation uploads to reduce memory usage, preserve playback and improve error handling and diagnostics.
 -   (o0shojo0o) Improved ESP8266 WS2812B LED timing; extended peak-memory validation remains outstanding.

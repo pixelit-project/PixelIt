@@ -19,7 +19,12 @@ pio run -e ESP8266_generic -e ESP8266_d1_mini -e ESP8266_nodemcuv2 -e ESP32_gene
 
 ESP8266 builds use espressif8266 4.2.1 / Arduino core 3.1.2 at 160 MHz,
 with WiFi modem sleep disabled and additional FastLED transfer retries.
-ESP32 builds use espressif32 6.5.0 for Arduino 2.0.14 compatibility.
+ESP32 builds use espressif32 6.5.0 for Arduino 2.0.14 compatibility and run
+at 160 MHz to retain rendering headroom during larger screen commands. Both
+platforms disable WiFi modem sleep to avoid DTIM/wakeup delays during playback.
+ESP32 boards without a battery input also skip the unused GPIO0/ADC2 battery
+poll; real battery inputs, including Ulanzi GPIO34, retain their existing sampling.
+ESP32 power consumption and Ulanzi battery runtime need separate measurement.
 
 ESP8266 LED output uses `include/PixelItLED.h` with the pinned FastLED 3.7.0
 driver, unchanged NEOPIXEL bit timing and GRB order. It waits 300 µs between
@@ -88,7 +93,8 @@ declarations to headers to avoid duplicate storage and implementations.
 
 ## Animation memory and scheduling
 
-Limits are defined in [AnimationLimits.h](../include/AnimationLimits.h).
+Limits are defined in [ScreenLimits.h](../include/ScreenLimits.h) and validated
+by [AnimationLimits.h](../include/AnimationLimits.h).
 Increasing them requires checking both total free heap and the largest
 contiguous free block on the target device.
 
@@ -497,3 +503,175 @@ firmware reaches stable; PixelIt.Docs currently requires a stable-release baseli
 and excludes unsolicited documentation of unreleased features. Node-RED payloads
 and topics are unchanged. Device timing and ESP8266 peak-heap validation are still
 required for release verification.
+
+## ESP32 animation profile
+
+`include/ScreenLimits.h` keeps platform-specific animation and transport budgets
+in one place; `AnimationLimits.h` validates dimensions, frames and RGB565 values.
+ESP8266 retains 28 frames / 1,792 pixels, 12,288 HTTP/WebSocket wire bytes,
+11,264 MQTT packet bytes and the existing 6,144-byte compact receive allocation.
+Its generated MQTT/WebSocket transformations are byte-identical to the previous
+implementation with default arguments. No ESP8266 CPU or buffer limit increased.
+
+ESP32 supports 160 frames / 10,240 pixels (160 at 8×8, 80 at 16×8, 40 at 32×8),
+with 65,535-byte HTTP bodies/WebSocket commands and complete MQTT packets. The
+RGB565 animation allocation is 20 KiB. Compact receive storage starts at at most
+32 KiB; MQTT retains that buffer rather than resizing it between services. HTTP
+can grow its checked String for larger metadata within the wire budget; MQTT
+and WebSocket reject when compact content exceeds their receive capacity.
+Limits are bounded profiles, not a promise of acceptance under arbitrary memory
+pressure. PSRAM is not required or assumed.
+
+ESP32 build-only guarded middleware patches the pinned WebServer `Parsing.cpp`
+and PubSubClient/WebSockets translation units. HTTP screen bodies are compacted
+during receipt and moved into server storage; a small server subclass exposes the
+owned body for zero-copy JSON parsing. Multipart OTA and URL-encoded forms retain
+the upstream parser. ESP8266's existing template/core patch is retained.
+HTTP/WebSocket reads use at most 128 stack bytes before servicing rendering.
+ESP32 accepted WebSocket sockets are marked nonblocking. Writes poll socket
+writability without waiting, send chunks of at most 1,460 bytes, and retain the pinned library's five-second no-progress timeout. Rendering is serviced between write attempts, with a 1 ms task delay
+when TCP has no room. Timed-out sockets are shut down before library cleanup,
+so an incomplete message cannot be followed by another header or a waiting close
+handshake. The existing ESP32 whole-message preview path is retained; no additional
+pixel or preview buffers, per-viewer offsets or queues are introduced. ESP8266's
+fragmented preview and TCP-room checks remain unchanged.
+
+ESP32 animation info includes `webSocketSend` with the last write timeout
+(`failures`, `client`, `status`, `error`) to distinguish intentionally rejected
+slow viewers from receive failures. MQTT outgoing packets retain their previous
+11,264-byte limit, independently of the larger receive wire budget.
+
+ESP32 matrix info adds `maxFreeBlock`, `minFreeHeap`, `wifiSleepMode` (zero for
+disabled modem sleep), `maxScreenMessageSize` and
+`maxMqttPacketSize`, and exposes the existing HTTP/transport receive diagnostics.
+`minFreeHeap` is the allocator low-water mark since boot; receive stage samples
+are not allocator-level minima or a complete trace across animation replacement.
+`animationFailedLedFrames` is not instrumented on ESP32; zero does not establish
+physical LED transfer success. The unchanged 150 ms test interval does not define
+a guaranteed minimum playback interval for arbitrary content or load.
+
+The companion WebUI Creator/Test Area now read advertised frame/pixel budgets,
+with 28/1,792 fallback for older firmware and reset on disconnect. Source changes
+live in PixelIt.WebUI and must be deployed with its normal build pipeline; the
+embedded header is not manually edited. Node-RED and PixelIt.API retain their
+existing JSON formats/topics; their local sources were inspected. PixelIt.Docs
+needs the platform-specific limits, CPU setting, error behavior and diagnostics
+at stable release. Its stable-baseline instructions exclude unsolicited prerelease
+changes, so that external documentation remains unchanged for this development run.
+
+Additional host and explicitly designated-device checks:
+
+```sh
+python3 test/esp32/run.py
+python3 test/esp32/device_limits.py http://192.168.0.86 --result /tmp/pixelit-esp32-limits.json
+python3 test/esp32/device_mqtt.py http://192.168.0.86 --result /tmp/pixelit-esp32-mqtt.json
+```
+
+The first device script changes display content and leaves a full-matrix animation.
+The MQTT script also temporarily configures an isolated local broker and restores
+its changed MQTT keys in `finally`, verifying them after restart. It only sends
+to the designated device topic; it never publishes a shared screen topic. Both
+scripts require clock fallback already disabled. MQTT tests need the device to
+reach the test host on the temporary TCP port. Neither script establishes physical
+waveforms, long-term stability, Ulanzi power consumption or all-board RAM safety.
+
+## Recorded ESP32 validation — 2026-11-03
+
+The user-designated 32×8 `ESP32_generic` at `192.168.0.86` initially ran
+2.7.0-beta.7 at 80 MHz with 28 frames / 1,792 pixels. The final local test build
+(`0.0.0-beta`) runs at 160 MHz, reports driver `wifiSleepMode: 0` and supports
+160 / 80 / 40 frames at 8×8 / 16×8 / 32×8. No ESP8266 device was flashed.
+
+All six board builds passed, as did animation/preview, HTTP, transport,
+Home Assistant, LED-policy, update and the new ESP32 receiver/writer/battery host
+tests. The ESP8266 generated MQTT/WebSocket transformations and preview header
+were compared byte-for-byte with the starting revision and are unchanged.
+WebUI tests/build passed; browser inspection confirmed device-advertised limits.
+Import validation and reconnect fallback have additional Vue/store regressions.
+
+Final designated-device results (150 ms animation delay):
+
+| Check | Final result |
+| --- | ---: |
+| Maximum capacities accepted over HTTP | 160×8×8, 80×16×8, 40×32×8 |
+| Alternating large HTTP / WebSocket uploads | 20 (10 each) |
+| Pixel-exact full-matrix frames checked | 40 |
+| Complete previews during HTTP/WebSocket run | 525 |
+| Maximum reported interval across upload/timing samples | 166 ms |
+| Maximum interval in continuous timing phase | 161 ms |
+| Rendered frames in timing phase (at least 60 s) | 426 |
+| SDK internal-heap low-water mark during that run | 112,096 B |
+| Minimum sampled HTTP-stage largest internal block | 59,380 B |
+| Large MQTT QoS0 / QoS1 commands | 15 / 15 |
+| Concurrent HTTP uploads during MQTT test | 20 |
+| Complete previews during MQTT test | 136 |
+| Maximum reported MQTT/error-probe interval | 171 ms |
+| SDK internal-heap low-water mark during MQTT run | 109,512 B |
+| Minimum sampled HTTP-stage largest internal block with MQTT active | 47,092 B |
+
+The generated 40-frame full-display payload occupied 61,627 wire bytes and 30,987
+compact bytes. HTTP bodies and WebSocket envelopes padded to exactly 65,535 bytes
+were accepted; 65,536-byte messages were rejected. MQTT packets padded to exactly
+65,535 bytes, including topic/header/QoS overhead, passed for both QoS levels.
+Malformed pixels, oversized packets and a compact metadata string exceeding
+receive storage produced 406 / 413 / 503 receive diagnostics. A slowly drained
+rejected request advanced the existing animation instead of resetting counters.
+The MQTT run completed 37 deliveries including boundaries/errors and a final valid
+animation; PUBACK was checked separately from receive diagnostics and pixel output.
+
+The HTTP/WebSocket timing phase deliberately left a command viewer unread. Its
+write timed out after the existing approximately five-second deadline (one expected
+`webSocketSend` failure); rendering continued and the actively reading preview
+client stayed connected, with no observed pixel or protocol errors. The five-second
+task duration is not a five-second animation stall. Application services can still
+wait behind a blocked write until that deadline. Statistics reset on successful
+animation replacement; these samples are not a continuous hardware-level trace
+across every replacement or a physical LED waveform/failed-transfer measurement.
+
+Earlier experimental candidates did not pass: some timed out or disconnected
+viewers, and timing outliers exceeded the final gate. The final profile combines
+CPU, WiFi, transport and unused-ADC corrections; these runs do not isolate the
+causal contribution of each correction. An initial final-code MQTT load attempt
+with two independent HTTP test clients timed out. The successful rerun serialized
+HTTP uploads/diagnostic requests through the firmware's single HTTP handler and
+fully drained responses, while MQTT and WebSocket activity remained concurrent.
+It does not establish robustness under unrestricted parallel HTTP connections.
+
+MQTT settings were temporarily pointed at an isolated local broker; only the
+specified device topic was used. They were restored and verified after each run.
+Saving configuration had also persisted the generated hostname where the original
+file contained an empty hostname; the original empty value was restored explicitly.
+A full final configuration comparison found only the expected stored firmware
+version difference. Clock fallback remained disabled, and the device was left on
+the final build with a valid 40-frame animation. Configuration/OTA restarts were
+intentional; no unexpected restart was observed in the successful runs.
+
+These are short tests on the generic ESP32, not a universal hardware maximum or a
+release guarantee for every board/workload. Remaining checks include long-duration
+stress/connection churn, unrestricted multiple HTTP clients, simultaneous large
+commands on all transports, allocation-time tracing of 8-bit/DMA-capable pools,
+physical LED signal capture, Ulanzi battery/power measurements and device tests of
+the other ESP32 variants. ESP8266 received builds/host regressions in this task;
+its prior physical-device results remain historical rather than a new run.
+
+
+### Gallery compatibility in the companion WebUI
+
+The companion PixelIt.WebUI Gallery uses the advertised screen dimensions, bitmap
+budget, animation frame/pixel budgets and message limit. It defaults to compatible
+entries, offers an option to show oversized entries with disabled Send and an
+explicit reason, and displays dimensions and real frame counts. Offline browsing
+and previews remain available. Disconnect clears capabilities; sending waits for
+fresh system information and revalidates the payload. Legacy firmware falls back
+to 28 frames / 1,792 pixels. No board-name assumptions or automatic frame trimming
+are used. The API's existing frame strings supply metadata without a schema change;
+only scalar metadata is cached and full pixel parsing occurs on send.
+
+WebUI host tests, targeted lint and the production build passed. Browser checks
+with isolated mock ESP8266/ESP32 profiles covered filtering, oversized reasons,
+disabled sends, offline browsing and reconnecting to smaller limits. These checks
+sent no commands to a physical display. Firmware is unchanged by this Gallery
+work; no new physical ESP8266 heap or playback-timing measurements were performed.
+The release integration must publish the companion WebUI and update the Gallery
+user guide in PixelIt.Docs when the behavior reaches a stable release. The embedded
+Webinterface header remains generated build output and was not edited manually.

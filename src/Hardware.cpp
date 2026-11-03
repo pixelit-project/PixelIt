@@ -3,6 +3,11 @@
 
 void getBatteryVoltage()
 {
+#if defined(ESP32)
+    // Zero means no battery input. GPIO0 belongs to ADC2, shared with WiFi.
+    // Keep real battery pins (including Ulanzi's GPIO_NUM_34) unchanged.
+    if (VBAT_PIN <= 0) return;
+#endif
     uint16_t value = 0;
     uint8_t numReadings = 5;
 

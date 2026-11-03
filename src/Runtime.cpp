@@ -252,6 +252,9 @@ void setup()
 #if defined(ESP8266)
     // Avoid modem-sleep wakeup delays in network yields during playback.
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#elif defined(ESP32)
+    if (!WiFi.setSleep(false))
+        Log(F("Setup"), F("Failed to disable WiFi modem sleep"));
 #endif
 
     Log(F("Setup"), F("Wifi connected...yeey :)"));
@@ -301,7 +304,7 @@ void setup()
 #if defined(ESP8266)
         const uint16_t initialMqttBufferSize = MQTT_IDLE_BUFFER_SIZE;
 #else
-        const uint16_t initialMqttBufferSize = MQTT_BUFFER_SIZE;
+        const uint16_t initialMqttBufferSize = SCREEN_RECEIVE_CAPACITY;
 #endif
         if (!client.setBufferSize(initialMqttBufferSize))
         {
@@ -396,7 +399,7 @@ void RecordAnimationWork(const char *task, unsigned long started)
 
 void loop()
 {
-    // MQTT retains only its small idle buffer while HTTP/WebSocket run.
+    // ESP8266 retains only its small MQTT idle buffer while HTTP/WebSocket run.
     {
         const unsigned long started = millis();
         server.handleClient();

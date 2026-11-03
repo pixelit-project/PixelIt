@@ -92,25 +92,23 @@ void HandleScreen()
     // The server owns a mutable request String; reuse its buffer to avoid a
     // second full copy of the animation in the ESP8266's limited heap.
     String &args = const_cast<String &>(server.arg("plain"));
+#else
+    String &args = server.screenBody();
+#endif
     struct ReleaseRequestBody
     {
         String &body;
-        // Assigning an empty String retains capacity on this ESP8266 core.
-        // A null C string invalidates it and actually releases the POST buffer.
+        // A null C string releases retained receive capacity on both cores.
         ~ReleaseRequestBody() { body = static_cast<const char *>(nullptr); }
     } releaseBody{args};
     char *payload = args.begin();
-#else
-    String args = server.arg("plain");
-    char *payload = args.begin();
-#endif
     if (!PackAnimationData(payload, args.length()))
     {
         server.send(406, F("application/json"), F("{\"response\":\"Invalid animation data\"}"));
         return;
     }
     JsonObject &json = jsonBuffer.parseObject(payload);
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
     SampleHttpUploadMemory();
 #endif
     server.sendHeader(F("Connection"), F("close"));
@@ -119,7 +117,7 @@ void HandleScreen()
     const bool valid = json.success() && IsValidBitmapAnimation(json);
     if (valid && !PrepareBitmapAnimation(json))
     {
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
         httpUploadStats.status = 503;
 #endif
         server.send(503, F("application/json"), F("{\"response\":\"Insufficient memory for animation storage\"}"));
@@ -129,7 +127,7 @@ void HandleScreen()
     {
         Log(F("HandleScreen"), "Incoming JSON length: " + String(json.measureLength()));
         CreateFrames(json);
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
         SampleHttpUploadMemory();
 #endif
         // Release the large input before acknowledging the command, so the
@@ -140,7 +138,7 @@ void HandleScreen()
     else
     {
         const int status = jsonBuffer.allocationFailed ? 503 : 406;
-#if defined(ESP8266)
+#if defined(ESP8266) || defined(ESP32)
         httpUploadStats.status = status;
 #endif
         server.send(status, F("application/json"), jsonBuffer.allocationFailed ?
@@ -215,9 +213,18 @@ void HandleGetAnimationInfo()
     root["animationFailedLedFrames"] = animationFailedLedFrames;
     root["slowestTask"] = animationSlowestTask;
     root["slowestTaskMillis"] = animationSlowestTaskMillis;
+#if defined(ESP32)
+    JsonObject &send = root.createNestedObject("webSocketSend");
+    send["failures"] = socketWriteStats.failures;
+    send["client"] = socketWriteStats.client;
+    send["status"] = socketWriteStats.status;
+    send["error"] = socketWriteStats.error;
+#endif
 #if defined(ESP8266)
     root["ledFramesSent"] = _frame_cnt;
     root["ledFrameRetries"] = _retry_cnt;
+#endif
+#if defined(ESP8266) || defined(ESP32)
     root["httpUploadInputBytes"] = httpUploadStats.inputBytes;
     root["httpUploadCompactBytes"] = httpUploadStats.compactBytes;
     root["httpUploadMinHeap"] = httpUploadStats.minHeap;
@@ -500,7 +507,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
                 JsonObject &screen = json["setScreen"].as<JsonObject>();
                 if (!screen.success() || !PrepareBitmapAnimation(screen))
                 {
+#if defined(ESP32)
+                    webSocket.sendTXT(num, "{\"response\":\"Invalid animation or insufficient memory; see matrixinfo limits\"}");
+#else
                     webSocket.sendTXT(num, "{\"response\":\"Invalid animation: maximum 28 frames, 256 pixels per frame, 1792 pixels total\"}");
+#endif
                     return;
                 }
                 CreateFrames(screen, forcedDuration);

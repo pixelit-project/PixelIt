@@ -11,13 +11,14 @@ For released versions, check the [changelog](../CHANGELOG.md).
 exactly `width × height` RGB565 values in the range 0–65535, ordered row by row
 from left to right, starting at the top.
 
-All builds and transports share a budget of 1,792 pixels and a maximum of 28 frames:
+ESP8266 keeps its 1,792-pixel / 28-frame budget. ESP32 has a separate
+10,240-pixel / 160-frame budget, without requiring PSRAM:
 
-| Frame size (width × height) | Maximum frames |
-| --- | ---: |
-| 8×8 (default) | 28 |
-| 16×8 | 14 |
-| 32×8 (full display) | 7 |
+| Frame size (width × height) | ESP8266 | ESP32 |
+| --- | ---: | ---: |
+| 8×8 (default) | 28 | 160 |
+| 16×8 | 14 | 80 |
+| 32×8 (full display) | 7 | 40 |
 
 Empty, malformed and oversized animations are rejected before playback.
 
@@ -52,8 +53,9 @@ Successful WebSocket `setScreen` commands acknowledge processing with
 
 ## Transport limits
 
-- MQTT: the complete packet, including topic, JSON and protocol overhead, must fit in 11,264 bytes.
-- HTTP and WebSocket screen messages: maximum 12,288 bytes.
+- ESP8266: MQTT packets, including topic/overhead, must fit in 11,264 bytes; HTTP bodies and WebSocket commands in 12,288 bytes.
+- ESP32: MQTT packets, including topic/overhead, must fit in 65,535 bytes; HTTP bodies and WebSocket commands also have a 65,535-byte limit.
+- Large metadata or memory pressure can exhaust bounded receive storage before the wire limit. Upload success still depends on available memory.
 - Prefer compact JSON and send large uploads sequentially. Concurrent large transfers and multiple live viewers can exhaust ESP8266 memory.
 
 ## Playback diagnostics
@@ -68,4 +70,5 @@ Successful WebSocket `setScreen` commands acknowledge processing with
 Frame statistics reset when a new animation is loaded; LED transfer counters
 cover the device's uptime. A browser preview samples the display and can skip
 images when the browser or network is slow. Use the firmware counters to check
-actual LED delivery.
+actual LED delivery on ESP8266. ESP32 has no failed-transfer instrumentation;
+its zero `animationFailedLedFrames` value does not prove physical delivery.
