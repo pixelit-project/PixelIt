@@ -100,7 +100,12 @@ unsigned long millis(){return tick;}
 void ServiceTransportReceive(){++tick;}
 void delay(unsigned long n){tick+=n;}
 struct Tcp{bool connected(){return true;}int fd(){return 4;}};
-struct WSclient_t{Tcp *tcp;uint8_t num=0;explicit WSclient_t(Tcp *t):tcp(t){}};
+enum { WSC_HEADER, WSC_CONNECTED };
+size_t queued=0;
+bool outputEnabled=true;
+bool SocketOutputEnabled(uint8_t){return outputEnabled;}
+size_t QueueSocketWrite(uint8_t,int,const uint8_t*,size_t n){queued+=n;return n;}
+struct WSclient_t{Tcp *tcp;uint8_t num=0;int status=WSC_HEADER;explicit WSclient_t(Tcp *t):tcp(t){}};
 void RecordSocketWriteError(uint8_t,unsigned,int){}
 class WebSockets{public:int disconnected=0;size_t write(WSclient_t*,uint8_t*,size_t);void clientDisconnect(WSclient_t *c){++disconnected;c->tcp=nullptr;}};
 int send(int,const void *p,size_t n,int){size_t count=std::min(n,static_cast<size_t>(budget));budget-=count;wire.append(static_cast<const char*>(p),count);return count?count:-1;}
@@ -114,11 +119,19 @@ int main(){
  WSclient_t blocked{&tcp};wire.clear();tick=0;budget=10000;writable=0;
  assert(ws.write(&blocked,reinterpret_cast<uint8_t*>(&data[0]),data.size())==0);
  assert(wire.empty()&&blocked.tcp==nullptr&&tick<=5005);
+ WSclient_t established{&tcp};established.status=WSC_CONNECTED;tick=0;
+ assert(ws.write(&established,reinterpret_cast<uint8_t*>(&data[0]),data.size())==data.size());
+ assert(queued==data.size()&&tick==0&&established.tcp==&tcp);
+ // The library marks sockets CONNECTED before writing HTTP 101. Queueing
+ // starts only in the application callback after handshake and initial ping.
+ outputEnabled=false;wire.clear();tick=0;budget=10000;writable=1;
+ assert(ws.write(&established,reinterpret_cast<uint8_t*>(&data[0]),data.size())==data.size());
+ assert(wire==data&&queued==data.size());
 }
 ''')
  subprocess.run([shutil.which('clang++') or 'c++','-std=c++11',str(p/'writer.cpp'),'-o',str(p/'writer')],check=True)
  subprocess.run([str(p/'writer')],check=True)
-print('ESP32 generated status writer disconnects stalled/partially written messages within its service budget')
+print('ESP32 established output enqueues without waiting; handshake writer retains its timeout and rendering service')
 
 # Battery-less ESP32 must not touch ADC2/GPIO0; Ulanzi and ESP8266 keep sampling.
 hardware=(root/'src/Hardware.cpp').read_text()

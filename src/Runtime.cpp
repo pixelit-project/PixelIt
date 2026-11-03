@@ -407,7 +407,14 @@ void loop()
     }
     {
         const unsigned long started = millis();
+#if defined(ESP32)
+        FlushSocketOutput();
+#endif
         webSocket.loop();
+#if defined(ESP32)
+        webSocket.flushSkippedPreviews();
+        FlushSocketOutput();
+#endif
         RecordAnimationWork("WebSocket", started);
     }
 

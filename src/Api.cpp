@@ -443,6 +443,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     case WStype_DISCONNECTED:
     {
         webSocket.resetPreview(num);
+#if defined(ESP32)
+        ResetSocketOutput(num);
+#endif
         Log("WebSocketEvent", "[" + String(num) + "] Disconnected!");
         websocketConnection[num] = "";
         break;
@@ -450,6 +453,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     case WStype_CONNECTED:
     {
         webSocket.resetPreview(num);
+#if defined(ESP32)
+        ResetSocketOutput(num, true);
+#endif
         // Remember for what the connection was established
         websocketConnection[num] = String((char *)payload);
 
@@ -460,10 +466,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         Log(F("WebSocketEvent"), "[" + String(num) + "] Connected from " + ip.toString() + " url: " + websocketConnection[num]);
 
         // send message to client
-        SendMatrixInfo();
-        SendLDR(true);
-        SendSensor(true);
-        SendConfig();
+        // Initial state belongs to the new viewer, not every existing viewer
+        // or MQTT subscriber. Avoid repeated bursts during reconnect churn.
+        SendWebSocketJson(num, "{\"sysinfo\":" + GetMatrixInfo() + "}");
+        SendWebSocketJson(num, "{\"sensor\":" + GetLuxSensor() + "}");
+        SendWebSocketJson(num, "{\"sensor\":" + GetSensor() + "}");
+        SendWebSocketJson(num, "{\"config\":" + GetConfig() + "}");
         SendWebSocketJson(num, "{\"buttons\":" + GetButtons() + "}");
         SendWebSocketJson(num, "{\"telemetry\":" + GetTelemetry() + "}");
         break;

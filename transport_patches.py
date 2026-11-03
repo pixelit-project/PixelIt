@@ -102,6 +102,8 @@ def patch_websocket(source, esp32=False):
 ''')
 
     if esp32:
+        source = once(source, '    unsigned long t = millis();\n    size_t len      = 0;\n    size_t total    = 0;',
+                      '    if (client->tcp && client->status == WSC_CONNECTED && SocketOutputEnabled(client->num))\n        return QueueSocketWrite(client->num, client->tcp->fd(), out, n);\n    unsigned long t = millis();\n    size_t len      = 0;\n    size_t total    = 0;')
         source = once(source, 'if((millis() - t) > WEBSOCKETS_TCP_TIMEOUT) {\n            DEBUG_WEBSOCKETS("[write]',
                       'if((millis() - t) > WEBSOCKETS_TCP_TIMEOUT) {\n            RecordSocketWriteError(client->num, 408, errno);\n            ::shutdown(client->tcp->fd(), SHUT_RDWR);\n            clientDisconnect(client);\n            DEBUG_WEBSOCKETS("[write]')
         source = once(source, """        const int room = client->tcp->availableForWrite();

@@ -5,6 +5,13 @@
 #include "ScreenLimits.h"
 
 void ServiceTransportReceive();
+#if defined(ESP32)
+size_t QueueSocketWrite(uint8_t client, int fd, const uint8_t *data, size_t length);
+void ResetSocketOutput(uint8_t client, bool enabled = false);
+bool SocketOutputEnabled(uint8_t client);
+void FlushSocketOutput();
+bool SocketPreviewReady(uint8_t client);
+#endif
 void RecordSocketWriteError(uint8_t client, unsigned status, int error);
 void RecordTransportReceive(bool mqtt, unsigned status, size_t input, size_t output);
 void NotifySocketReceiveError(uint8_t client, unsigned status);

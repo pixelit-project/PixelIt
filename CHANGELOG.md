@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Keep ESP32 WebUI connections responsive with slow viewers and repeated reconnects.
 -   (o0shojo0o) Added gallery data copying, clearer report controls and refresh after uploads.
 -   (o0shojo0o) Removed the prefilled space from the bitmap save dialog.
 -   (o0shojo0o) Aligned gallery previews and adapted card actions to narrow layouts.

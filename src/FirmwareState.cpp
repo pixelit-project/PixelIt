@@ -7,6 +7,7 @@ TransportReceiveStats transportReceiveStats[2];
 
 #if defined(ESP32)
 SocketWriteStats socketWriteStats;
+SocketOutputQueue socketOutput[5];
 #endif
 
 SetGPIO setGPIOReset[SET_GPIO_SIZE];

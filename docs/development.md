@@ -528,13 +528,37 @@ during receipt and moved into server storage; a small server subclass exposes th
 owned body for zero-copy JSON parsing. Multipart OTA and URL-encoded forms retain
 the upstream parser. ESP8266's existing template/core patch is retained.
 HTTP/WebSocket reads use at most 128 stack bytes before servicing rendering.
-ESP32 accepted WebSocket sockets are marked nonblocking. Writes poll socket
-writability without waiting, send chunks of at most 1,460 bytes, and retain the pinned library's five-second no-progress timeout. Rendering is serviced between write attempts, with a 1 ms task delay
-when TCP has no room. Timed-out sockets are shut down before library cleanup,
-so an incomplete message cannot be followed by another header or a waiting close
-handshake. The existing ESP32 whole-message preview path is retained; no additional
-pixel or preview buffers, per-viewer offsets or queues are introduced. ESP8266's
-fragmented preview and TCP-room checks remain unchanged.
+ESP32 accepted WebSocket sockets are marked nonblocking. Established sockets now
+copy output bytes into a bounded 4 KiB ring per connected viewer, allocated lazily
+and retained until disconnect (at most 20 KiB for the pinned five-client limit).
+The main loop drains each ring with at most two nonblocking 1,460-byte sends per
+iteration, servicing rendering between viewers. Enqueue-time bursts can make up to
+three additional nonblocking send attempts on that viewer before rejecting an
+otherwise oversized burst; no allocation growth or wait loop is introduced.
+Frame headers, payloads and control
+frames share the same ordered ring; temporary JSON strings are never retained by
+reference. Handshakes retain the synchronous, rendering-aware writer. The queue is
+enabled only after the initial handshake/ping and reset on connection lifecycle.
+
+Replaceable previews are enqueued only when that viewer's ring is empty. A
+per-viewer skipped flag (five bytes total) resends the latest shared Liveview sample
+when the ring drains, including an unchanged final image and newly connected
+viewers. There are no per-viewer pixel buffers. A viewer
+which makes no send progress for five seconds is shut down without waiting in the
+main loop; queue exhaustion/allocation failure closes only that viewer and records
+status 503. Normal partial writes and EAGAIN retain their offset for a later loop.
+There are no new pixel buffers and no growing or unbounded output allocations.
+This adds up to 20 KiB to ESP32 peak use when all five viewers are active, alongside
+the animation, compact input and MQTT buffers; verify peak heap and largest block
+under representative repeated workloads. ESP8266 has no output rings and retains
+its fragmented preview, TCP-room checks, wire limits and allocation budgets.
+
+A new viewer receives its initial state only on its own socket. Reconnecting no
+longer rebroadcasts configuration/system/sensor state to every viewer or forces
+redundant MQTT updates. Existing message names, payloads and endpoints are unchanged;
+no companion client update is required. PixelIt.WebUI already supports reconnects.
+The external stable user documentation needs no new user-facing controls for this
+transport correction.
 
 ESP32 animation info includes `webSocketSend` with the last write timeout
 (`failures`, `client`, `status`, `error`) to distinguish intentionally rejected
@@ -675,3 +699,58 @@ work; no new physical ESP8266 heap or playback-timing measurements were performe
 The release integration must publish the companion WebUI and update the Gallery
 user guide in PixelIt.Docs when the behavior reaches a stable release. The embedded
 Webinterface header remains generated build output and was not edited manually.
+
+
+### WebUI disconnection investigation
+
+Read-only inspection of the ESP32 at 192.168.0.86 (2.7.0-beta.8, 160 MHz,
+modem sleep disabled) found five WebSocket write timeouts. An actively reading
+observer was reset after 54 seconds; the timeout counter rose to eight, while
+uptime continued without a reboot. A second 90-second observer completed while
+other connections timed out (counter ten). Free heap remained approximately
+165–171 KiB with a 90,100-byte largest block; this was not an allocation-exhaustion
+observation. These are baseline observations, not measurements of the correction.
+The previous writer serviced rendering but could still hold other networking work
+behind each five-second no-progress deadline.
+
+Host regression `python3 test/esp32/socket_output.py` exercises actual output
+scheduler code with partial writes, ring wrap, a blocked viewer beside a reading
+viewer, overflow rejection and reconnect cleanup. `test/esp32/run.py` also checks
+that established sockets enqueue without waiting and handshakes keep their bounded
+writer. Device results for the correction must be recorded separately below.
+
+
+The first queued-output candidate kept two reading viewers connected for 154 seconds
+(355 and 347 complete preview messages) beside a deliberately unread viewer and
+repeated connection churn. A later four-viewer check exposed initial-state burst
+exhaustion; the bounded enqueue-time drain corrects that case without enlarging the
+ring. Four simultaneous reading test viewers plus the existing WebUI then completed
+30 native Ping/Pong exchanges each without disconnect or malformed JSON. Their
+maximum round-trip times were 2.204–2.227 seconds; this establishes connection
+survival, not uniformly low interaction latency. Heap samples were 136,264–140,608
+bytes, minimum-since-boot 113,196 bytes and sampled largest block at least 81,908
+bytes. Existing MQTT traffic still accounts for approximately one-second task
+outliers and frame-gap diagnostics around 0.5 seconds in this workload.
+
+The user confirmed that the WebUI was stable again while operating it. The final
+candidate also includes the five-byte per-viewer latest-preview retry flags, covered
+by `python3 test/esp32/preview_output.py` for static-image catch-up and reconnects.
+All six boards build; animation/preview, HTTP, MQTT transport, Home Assistant and
+the ESP32 output/receiver host regressions pass. The generated ESP8266 WebSocket
+translation unit remains byte-identical to the previous implementation. No new
+ESP8266 physical timing/heap tests were performed. Long-duration stress, maximum
+animation/upload workloads with all viewers, and physical LED waveform timing
+remain outstanding; these short tests do not establish universal jitter or RAM
+safety. The device was intentionally restarted for candidate OTA installs, with
+no configuration changes other than the normal stored build-version update.
+
+
+Final-code backpressure verification used a socket with a 1 KiB receive buffer
+configured before connecting, then intentionally stopped reading. That client alone
+was shut down with the expected status 408/EAGAIN. The parallel reading viewer
+completed all 30 native Ping/Pong exchanges, no JSON/connection error, maximum
+round-trip 0.902 seconds. The user's existing WebUI remained usable. Final read-only
+checks found only the stored firmware-version configuration change; the temporary
+configuration backup was removed. Uptime 69 seconds versus 70 seconds since the
+last OTA response, with reset reason Software reset, identified the observed reboot
+as the intentional final OTA restart rather than an additional unexpected reset.

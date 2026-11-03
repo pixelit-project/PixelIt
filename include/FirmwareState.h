@@ -19,6 +19,8 @@ extern TransportReceiveStats transportReceiveStats[2];
 #endif
 
 #if defined(ESP32)
+#include "PixelItSocketQueue.h"
+extern SocketOutputQueue socketOutput[5];
 struct SocketWriteStats { uint32_t failures = 0; uint8_t client = 0; unsigned status = 0; int error = 0; };
 extern SocketWriteStats socketWriteStats;
 #endif

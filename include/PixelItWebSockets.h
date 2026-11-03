@@ -3,6 +3,7 @@
 
 #include <WebSocketsServer.h>
 #include <cstring>
+#include "PixelItTransport.h"
 
 class PixelItWebSockets : public WebSocketsServer
 {
@@ -19,7 +20,12 @@ public:
     void resetPreview(uint8_t num)
     {
         if (num < WEBSOCKETS_SERVER_CLIENT_MAX)
+        {
             _previewOffset[num] = 0;
+#if defined(ESP32)
+            _previewSkipped[num] = _clients[num].status == WSC_CONNECTED;
+#endif
+        }
     }
 
     bool sendTXT(uint8_t num, const char *data, size_t length = 0)
@@ -75,11 +81,33 @@ public:
         offset += chunk;
         return last;
 #else
+        if (!SocketPreviewReady(num))
+        {
+            _previewSkipped[num] = true;
+            return true;
+        }
+        _previewSkipped[num] = false;
         return sendTXT(num, data, length);
 #endif
     }
 
+#if defined(ESP32)
+    void flushSkippedPreviews()
+    {
+        // The global Liveview buffer always holds the latest sample. Copy it
+        // into a recovered viewer's empty output ring, including a static final
+        // image whose checksum no longer changes. No per-viewer pixel copy.
+        if (!_previewData || !_previewLength) return;
+        for (uint8_t num = 0; num < WEBSOCKETS_SERVER_CLIENT_MAX; ++num)
+            if (_previewSkipped[num] && SocketPreviewReady(num) && clientIsConnected(num))
+                sendPreview(num, _previewData, _previewLength);
+    }
+#endif
+
 private:
+#if defined(ESP32)
+    bool _previewSkipped[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
+#endif
     size_t _previewOffset[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
     const char *_previewData = nullptr;
     size_t _previewLength = 0;
