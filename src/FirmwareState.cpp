@@ -271,3 +271,6 @@ String haTextAlignment = "Centered";
 String haTextScroll = "Auto";
 
 bool firmwareUpdateChecked = false;
+
+SensorPublishSettings mqttSensorPublish;
+SensorPublishState mqttSensorState, mqttLuxState;

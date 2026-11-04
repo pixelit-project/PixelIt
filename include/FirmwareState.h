@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stdint.h>
+#include "SensorPublishPolicy.h"
+extern SensorPublishSettings mqttSensorPublish;
+extern SensorPublishState mqttSensorState, mqttLuxState;
 
 #if defined(ESP8266) || defined(ESP32)
 struct HttpUploadStats

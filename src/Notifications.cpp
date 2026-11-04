@@ -42,14 +42,19 @@ void SendLDR(bool force)
     {
         luxSensor = GetLuxSensor();
     }
-    // Prüfen ob über MQTT versendet werden muss
-    if (mqttAktiv == true && client.connected() && oldGetLuxSensor != luxSensor)
+    SensorSample sample;
+    sample.values[0] = currentLux;
+    sample.states[0] = isfinite(currentLux) ? 1 : 2;
+    const float thresholds[5] = {mqttSensorPublish.lux, 0, 0, 0, 0};
+    if (mqttAktiv && client.connected() &&
+        mqttLuxState.due(sample, thresholds, mqttSensorPublish, millis(), force))
     {
-        PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+        bool sent = PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
         if (mqttUseDeviceTopic)
         {
-            PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
+            sent = PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true) && sent;
         }
+        if (sent) mqttLuxState.commit(sample, millis());
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0 && oldGetLuxSensor != luxSensor)
@@ -86,22 +91,27 @@ void SendSensor(bool force)
     }
 
     String Sensor;
+    SensorSample sample;
 
     // Prüfen ob die Abfrage des LuxSensor überhaupt erforderlich ist
     if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
     {
-        Sensor = GetSensor();
+        Sensor = GetSensor(&sample);
     }
     // Prüfen ob über MQTT versendet werden muss
-    if (mqttAktiv == true && client.connected() && oldGetSensor != Sensor)
+    const float thresholds[5] = {mqttSensorPublish.temperature, mqttSensorPublish.humidity,
+        mqttSensorPublish.pressure, mqttSensorPublish.gas, mqttSensorPublish.battery};
+    if (mqttAktiv && client.connected() &&
+        mqttSensorState.due(sample, thresholds, mqttSensorPublish, millis(), force))
     {
-        PublishMqtt((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
-        PublishMqtt((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true);
+        bool sent = PublishMqtt((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legacy
+        sent = PublishMqtt((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true) && sent;
         if (mqttUseDeviceTopic)
         {
-            PublishMqtt((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legancy
-            PublishMqtt((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true);
+            sent = PublishMqtt((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true) && sent;
+            sent = PublishMqtt((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true) && sent;
         }
+        if (sent) mqttSensorState.commit(sample, millis());
     }
     // Prüfen ob über Websocket versendet werden muss
     if (webSocket.connectedClients() > 0 && oldGetSensor != Sensor)

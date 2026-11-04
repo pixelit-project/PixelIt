@@ -43,7 +43,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
 void CreateFrames(JsonObject &json);
 void CreateFrames(JsonObject &json, int forceDuration);
 String GetConfig();
-String GetSensor();
+struct SensorSample;
+String GetSensor(SensorSample *sample = nullptr);
 String GetLuxSensor();
 String GetBrightness();
 String GetMatrixInfo();

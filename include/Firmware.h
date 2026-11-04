@@ -74,7 +74,7 @@ extern uint32_t _retry_cnt;
 #define SEND_LIVEVIEW_INTERVAL 250                  // 0.5 Seconds, 0 to disable
 #define SEND_LUX_INTERVAL 1000 * 10                 // 10 Seconds
 #define SEND_MATRIXINFO_INTERVAL 1000 * 10          // 10 Seconds
-#define SEND_SENSOR_INTERVAL 1000 * 3               // 10 Seconds
+#define SEND_SENSOR_INTERVAL 1000 * 3               // 3 Seconds
 #define UPDATE_BATTERY_LEVEL_INTERVAL 1000 * 30     // 30 Seconds
 
 // Version config - will be replaced by build piple with Git-Tag!

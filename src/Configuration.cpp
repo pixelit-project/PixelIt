@@ -1,5 +1,6 @@
 #include "FirmwareState.h"
 #include "Tools.h"
+#include "SensorPublishJson.h"
 
 void SaveConfig()
 {
@@ -49,6 +50,11 @@ void SaveConfig()
     json["mqttPort"] = mqttPort;
     json["mqttUseDeviceTopic"] = mqttUseDeviceTopic;
     json["mqttHAdiscoverable"] = mqttHAdiscoverable;
+    if (!WriteSensorPublishSettings(json, mqttSensorPublish))
+    {
+        Log(F("SaveConfig"), F("Insufficient memory for sensor publishing settings"));
+        return; // Preserve the existing file rather than persisting a partial policy.
+    }
     json["luxOffset"] = luxOffset;
     json["temperatureOffset"] = temperatureOffset;
     json["humidityOffset"] = humidityOffset;
@@ -343,6 +349,16 @@ void SetConfigVariables(JsonObject &json)
         mqttHAdiscoverable = json["mqttHAdiscoverable"].as<bool>();
     }
 
+    if (json.containsKey("mqttSensorPublish"))
+    {
+        if (ReadSensorPublishSettings(json["mqttSensorPublish"], mqttSensorPublish))
+        {
+            mqttSensorState = SensorPublishState();
+            mqttLuxState = SensorPublishState();
+        }
+        else Log(F("SetConfig"), F("Invalid mqttSensorPublish settings; preserved previous values"));
+    }
+
     if (json.containsKey("luxOffset"))
     {
         luxOffset = json["luxOffset"].as<float>();
@@ -478,6 +494,14 @@ String GetConfig()
         if (!root.success())
         {
             Log(F("GetConfig"), F("Invalid config or insufficient memory"));
+            return "{}";
+        }
+
+        // Advertise defaults for configurations saved before this feature existed.
+        if (!root.containsKey("mqttSensorPublish") &&
+            !WriteSensorPublishSettings(root, mqttSensorPublish))
+        {
+            Log(F("GetConfig"), F("Insufficient memory for sensor publishing settings"));
             return "{}";
         }
 

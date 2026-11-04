@@ -4,7 +4,7 @@
 #include <esp_wifi.h>
 #endif
 
-String GetSensor()
+String GetSensor(SensorSample *sample)
 {
     DynamicJsonBuffer jsonBuffer;
     JsonObject &root = jsonBuffer.createObject();
@@ -141,6 +141,22 @@ String GetSensor()
     else
     {
         root["battery"] = "Not installed";
+    }
+    if (sample)
+    {
+        const char *keys[] = {"temperature", "humidity", "pressure", "gas", "battery"};
+        for (unsigned i = 0; i < 5; ++i)
+        {
+            const JsonVariant value = root[keys[i]];
+            if (value.is<float>() && isfinite(value.as<float>()))
+            {
+                sample->values[i] = value.as<float>();
+                sample->states[i] = 1;
+            }
+            else
+                sample->states[i] = value.is<const char *>() &&
+                    strcmp(value.as<const char *>(), "Not installed") == 0 ? 0 : 2;
+        }
     }
     root["hostname"] = hostname;
 

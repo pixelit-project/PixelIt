@@ -57,6 +57,8 @@ If a companion repository cannot be inspected, report that limitation.
   test details, but preserve important dependencies and limitations. When asked
   to shorten entries, shorten their wording without reducing their number unless
   consolidation is explicitly requested.
+- Do not insert blank lines between individual changelog/release-note entries.
+  Keep consecutive entries in a compact list.
 
 ## Validation
 

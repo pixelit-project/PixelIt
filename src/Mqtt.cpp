@@ -20,6 +20,8 @@ boolean MQTTreconnect()
     {
         Log(F("MQTTreconnect"), F("MQTT connected!"));
         // Subscribe to topics ...
+        mqttSensorState = SensorPublishState();
+        mqttLuxState = SensorPublishState();
         client.subscribe((mqttMasterTopic + "setScreen").c_str());
         client.subscribe((mqttMasterTopic + "setText").c_str());
         client.subscribe((mqttMasterTopic + "setTextOptions").c_str());

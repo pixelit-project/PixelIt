@@ -754,3 +754,73 @@ checks found only the stored firmware-version configuration change; the temporar
 configuration backup was removed. Uptime 69 seconds versus 70 seconds since the
 last OTA response, with reset reason Software reset, identified the observed reboot
 as the intentional final OTA restart rather than an additional unexpected reset.
+
+## MQTT sensor publishing policy (unreleased)
+
+`mqttSensorPublish` is an optional configuration object shared by HTTP/MQTT/
+WebSocket configuration writes and the persisted config. Defaults preserve
+change-based publication. Existing configs receive default values in the config
+response, without requiring a write first. Missing fields in partial updates
+preserve their previous values. Keys and defaults:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `periodic` | `false` | Check for qualifying changes periodically instead of each sample |
+| `interval` | `60` | Periodic check interval in whole seconds, 3–86400 |
+| `minInterval` | `0` | Minimum time between event-mode publications, 0–86400 seconds |
+| `maxInterval` | `0` | Publish even unchanged values after this many seconds; 0 disables, maximum 86400 |
+| `temperature` | `0` | Absolute change in the configured temperature unit (°C or °F) |
+| `humidity` | `0` | Absolute change in percentage points |
+| `pressure` | `0` | Absolute change in hPa |
+| `gas` | `0` | Absolute change in kΩ |
+| `battery` | `0` | Absolute change in percentage points |
+| `lux` | `0` | Absolute change in lx |
+
+Thresholds accept finite JSON numbers from 0 to 1000000. A threshold of 0 accepts
+any actual change, but does not send unchanged values. The comparison is inclusive,
+with float-representation tolerance, against the last successful automatic MQTT
+publication, so small changes accumulate. A change in availability/read-error state
+also qualifies. Any qualifying field publishes the complete existing `sensor`/
+legacy `dhtsensor` payload; lux is evaluated separately. If a required publication
+fails, its baseline is preserved and retried on a later sample. Master/device topics,
+retained messages and sensor payload keys remain unchanged. New broker connections
+reset the two baselines for initial delivery. HA discovery seeds and explicit forced
+publications bypass the normal filter; discovery seeds are independent of the
+automatic publication baseline. Buttons, availability and direct API queries are
+unaffected. Automatic brightness and WebSocket updates retain their sampling cadence.
+
+A nonzero maximum must be at least the active periodic interval or event minimum.
+Invalid types, ranges or interval combinations preserve the entire previous policy
+object; other existing config fields still follow their normal handling. Validation
+is logged, not a new configuration error protocol. Intervals are evaluated at the
+existing sampling cadence (sensor 3 seconds, lux at its existing cadence), with
+wrap-safe millis arithmetic. There are no added timers, sensor reads or JSON parses
+in the loop. Two fixed snapshots and the settings occupy 120 bytes on the supported
+32-bit targets; snapshots are captured while the existing sensor JSON is assembled.
+The persisted/returned JSON gains one bounded object (10 members). Configuration
+serialization/parsing needs additional transient heap; no message/buffer limits or
+pinned dependencies are raised. Physical ESP8266 minimum heap/largest-block and
+frame-jitter validation under concurrent load remain outstanding for this change.
+
+Host verification: `python3 test/sensors/run.py` exercises the actual policy, JSON
+settings and notification functions, including accumulated changes, periodic gates,
+forced/max sends, failed publishes, invalid settings, millis rollover and independent
+WebSocket/lux delivery. Also run all six builds plus HA and animation host suites.
+
+Companion inspection: PixelIt.WebUI Options gains bounded numeric inputs and shows an update hint instead of editable controls
+on firmware without the object; its demo fixture includes defaults. Publish
+the matching bundle and regenerate `include/Webinterface.h` through `.github/webui.py`
+before firmware delivery. The workflow's legacy `pixelit-project/WebUI` path redirects
+to PixelIt.WebUI (previously verified 2026-11-02); integration is unchanged. Node-RED
+passes configuration objects through and requires no format/topic changes.
+PixelIt.API serves bitmap/release/telemetry services and needs no change. External
+PixelIt.Docs must document the policy, units, defaults and examples when the firmware
+reaches stable; its stable-release baseline excludes unsolicited unreleased features.
+
+Verification for this change on 2026-11-04: all six board builds and sensor-policy,
+Home Assistant and animation/preview host tests passed. WebUI numeric-validation,
+draft/usability and update tests, targeted ESLint and the production build passed
+(the build retains webpack bundle-size warnings). Demo browser checks covered mode
+switching, decimal thresholds, invalid intervals/negative thresholds and clearing
+errors after correction. No device firmware/configuration was changed; physical
+MQTT/sensor, reconnect, frame-timing and peak-memory checks remain outstanding.
