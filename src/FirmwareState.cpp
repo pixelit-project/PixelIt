@@ -153,6 +153,7 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
+bool wifiScreenAktiv = true;
 bool bootBatteryScreen = VBAT_PIN > 0 ? true : false;
 bool bootSound = false;
 String optionsVersion = "";

@@ -40,6 +40,7 @@ void SaveConfig()
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
     json["bootScreenAktiv"] = bootScreenAktiv;
+    json["wifiScreenAktiv"] = wifiScreenAktiv;
     json["bootBatteryScreen"] = bootBatteryScreen;
     json["bootSound"] = bootSound;
     json["mqttAktiv"] = mqttAktiv;
@@ -294,6 +295,11 @@ void SetConfigVariables(JsonObject &json)
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
     }
 
+    if (json["wifiScreenAktiv"].is<bool>())
+    {
+        wifiScreenAktiv = json["wifiScreenAktiv"].as<bool>();
+    }
+
     if (json.containsKey("bootBatteryScreen"))
     {
         bootBatteryScreen = json["bootBatteryScreen"].as<bool>();
@@ -502,6 +508,12 @@ String GetConfig()
             !WriteSensorPublishSettings(root, mqttSensorPublish))
         {
             Log(F("GetConfig"), F("Insufficient memory for sensor publishing settings"));
+            return "{}";
+        }
+
+        if (!root.set("wifiScreenAktiv", wifiScreenAktiv))
+        {
+            Log(F("GetConfig"), F("Insufficient memory for WiFi screen setting"));
             return "{}";
         }
 

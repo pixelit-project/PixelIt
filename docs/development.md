@@ -1070,3 +1070,53 @@ restarts, uptimes 38/17 seconds respectively, MQTT connected and unchanged setti
 Temporary configuration comparison files were removed. These deployment checks
 do not establish physical waveform timing, long-duration stability or ESP8266
 peak heap/largest-block safety under concurrent workloads.
+
+
+## Optional entire WiFi screen (unreleased)
+
+`wifiScreenAktiv` is an optional boolean configuration setting, independent of
+`bootScreenAktiv`, defaulting to `true`. Set it to `false` to suppress the entire
+startup WiFi connection display (text and moving trail) as well as the matrix
+HOTSPOT notice. The connection/configuration portal still works and keeps its
+existing logs. Disabled startup clears the prior boot image once without fading
+or attaching the animation ticker. Defensive tick/hotspot guards draw nothing
+while disabled. It affects the next startup, not regular matrix content.
+
+The setting follows existing HTTP/MQTT/WebSocket config writes, persisted config,
+and config reads. Missing keys preserve the current value; legacy saved files
+use the enabled default. Only JSON booleans are accepted; null, numbers, strings
+and objects preserve the previous choice. Config reads advertise the validated
+current boolean even if the file predates it, with a checked JSON allocation.
+One boolean plus one small JSON member is added, without new timers, pixel
+buffers, message limits or periodic parsing. Repeated config serialization still
+needs physical ESP8266 peak-heap/largest-block validation; builds do not prove
+RAM safety. Ordinary playback paths and connection timing remain unchanged.
+
+Companion PixelIt.WebUI adds **Show WiFi screen during startup** beside Bootscreen
+active. On old firmware without the boolean it shows an update hint instead of an
+editable control; no missing field is silently interpreted as off. Demo data has
+the enabled default. WebUI code changes live in that repository, not the generated
+firmware header. Node-RED's configuration forwarding preserves the boolean and
+requires no client changes; PixelIt.API is not involved in device settings.
+External PixelIt.Docs needs the option, enabled default, startup scope and hotspot
+behavior in its WebUI/firmware guide at stable release.
+
+The WebUI production build references externally hosted hashed assets. Its matching
+bundle must be published by the normal WebUI release pipeline before regenerating
+`include/Webinterface.h` with `.github/webui.py`; pointing installed devices at
+unpublished hashes would break the WebUI. A clean release bundle (without the local development device IP) and its embedded
+index have been generated with `.github/webui.py`. Those final binaries must not
+be installed until the new asset hashes are published. Existing devices have not
+been updated for this option yet. No public deployment was performed for this
+development change.
+
+Validation commands: `python3 test/config/wifi_screen.py`,
+`python3 test/startup/run.py`, `python3 test/animation/run.py` and all six builds.
+The config test exercises actual setter/save fragments with old/missing keys,
+false round trips and invalid input; startup tests exercise the disabled tick and
+hotspot branches, enabled trail and actual-font alignment. WebUI targeted lint,
+production build and usability, sensor-publish and update tests also pass. Demo
+browser inspection verified the new switch toggles independently of Bootscreen
+active, marks its isolated draft dirty, and returns to enabled after discarding.
+No browser test sent a device config write. Physical disabled-startup observations,
+ESP8266 timing and peak-memory checks remain outstanding.

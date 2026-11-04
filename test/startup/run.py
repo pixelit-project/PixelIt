@@ -11,8 +11,7 @@ font = font[:font.index('const GFXfont PixelItFont')]+font[font.index('const GFX
 visuals = (root / 'src/UpdateVisuals.cpp').read_text()
 visuals = '\n'.join(line for line in visuals.splitlines() if not line.startswith('#include'))
 hardware = (root / 'src/Hardware.cpp').read_text()
-connecting = hardware[hardware.index('namespace\n{'):hardware.index('void EnteredHotspotCallback')]
-connecting += hardware[hardware.index('void ShowConnectingScreen()'):]
+connecting = hardware[hardware.index('namespace\n{'):]
 effects = (root / 'src/Effects.cpp').read_text()
 boot = effects[effects.index('namespace\n{\nvoid ApplyBootLogoColors()'):effects.index('void ShowBatteryScreen()')]
 program = r'''
@@ -65,11 +64,15 @@ struct Matrix {
     }
 } display;
 Matrix *matrix=&display;
+bool wifiScreenAktiv=true;
+struct WiFiManager {};
+#define F(x) x
+void Log(const char*,const char*) {}
 int16_t connectingBarX=0,connectingBarDir=1;
 const uint8_t CONNECTING_TRAIL_LEN=6;
 const uint8_t CONNECTING_TRAIL_BRIGHTNESS[]={255,180,110,60,25,10};
 int tickerMs=0; void (*tickerFn)()=nullptr;
-struct Ticker { void attach_ms(int ms,void(*fn)()){tickerMs=ms;tickerFn=fn;} } connectingAnimTicker;
+struct Ticker { void detach(){tickerMs=0;tickerFn=nullptr;} void attach_ms(int ms,void(*fn)()){tickerMs=ms;tickerFn=fn;} } connectingAnimTicker;
 unsigned delayTotal=0;
 void delay(unsigned ms){delayTotal+=ms;}
 void FadeIn(){matrix->show();}
@@ -90,6 +93,15 @@ int main() {
     assert(LogoGradientColor(0,23)==matrix->Color(128,0,255));
     assert(LogoGradientColor(22,23)==matrix->Color(255,65,190));
     assert(LogoGradientColor(22,23,0)==0);
+    wifiScreenAktiv=false;
+    ShowConnectingScreen();
+    assert(tickerMs==0 && tickerFn==nullptr);
+    const int hiddenShows=display.shows,hiddenPrints=display.prints;
+    ConnectingAnimationTick();
+    EnteredHotspotCallback(nullptr);
+    assert(display.shows==hiddenShows && display.prints==hiddenPrints);
+    for(auto &pixel:leds) assert(pixel.r==0 && pixel.g==0 && pixel.b==0);
+    wifiScreenAktiv=true;
     for(bool mapping:{false,true}) {
         reversed=mapping; matrix->clear(); delayTotal=0; display.bootCheck=true;
         ShowBootAnimation(); assert(delayTotal==2300);display.bootCheck=false;

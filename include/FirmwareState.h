@@ -149,6 +149,7 @@ extern String deviceID;
 extern String matrixTempCorrection;
 extern bool sleepMode;
 extern bool bootScreenAktiv;
+extern bool wifiScreenAktiv;
 extern bool bootBatteryScreen;
 extern bool bootSound;
 extern String optionsVersion;

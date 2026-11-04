@@ -81,6 +81,7 @@ void DrawConnectingText()
 
 void ConnectingAnimationTick()
 {
+    if (!wifiScreenAktiv) return;
     // Bar moves every tick
     connectingBarX += connectingBarDir;
     if (connectingBarX >= MATRIX_WIDTH - 1)
@@ -113,6 +114,7 @@ void EnteredHotspotCallback(WiFiManager *manager)
 {
     connectingAnimTicker.detach();
     Log(F("Hotspot"), "Waiting for WiFi configuration");
+    if (!wifiScreenAktiv) return;
     matrix->clear();
     DrawTextHelper("HOTSPOT", false, false, false, false, false, 255, 255, 255, 3, 1);
     FadeIn();
@@ -120,6 +122,13 @@ void EnteredHotspotCallback(WiFiManager *manager)
 
 void ShowConnectingScreen()
 {
+    if (!wifiScreenAktiv)
+    {
+        connectingAnimTicker.detach();
+        matrix->clear();
+        matrix->show();
+        return;
+    }
     // Bar starts at left edge, moving right
     connectingBarX = 0;
     connectingBarDir = 1;
