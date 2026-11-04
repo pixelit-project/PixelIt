@@ -1,7 +1,7 @@
 <template>    
     <v-dialog v-model="dialog" persistent max-width="450">        
         <template v-slot:activator="{ on, attrs }">
-            <v-btn :color="color" dark v-bind="attrs" v-on="on" :disabled="!condition">
+            <v-btn :color="color" dark v-bind="attrs" v-on="on" :disabled="!condition || $demoMode" :title="$demoMode ? 'Saving icons is disabled in demo mode.' : undefined">
                 <v-icon left>{{ icon }}</v-icon>
                 {{ text }}
             </v-btn>
@@ -17,7 +17,7 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="green darken-1" text @click="agreeWraper" :loading="saving" :disabled="(saving || !isValid)">
+                    <v-btn color="green darken-1" text @click="agreeWraper" :loading="saving" :disabled="saving || !isValid || $demoMode">
                         Save into Database              
                     </v-btn>
                     <v-btn color="red darken-1" text :disabled="saving" @click="disagreeWraper">
@@ -86,7 +86,7 @@ export default {
             this.dialog = false;
         },
         async agreeWraper() {
-            if (this.saving || !this.isValid) return;
+            if (this.$demoMode || this.saving || !this.isValid) return;
             this.saving = true;
             try {
                 const response = await fetch(`${this.$apiServerBaseURL}/SaveBitmap`, {

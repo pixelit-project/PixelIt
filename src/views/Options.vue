@@ -1,7 +1,7 @@
 <template>
     <v-container class="options app-page">
         <div class="page-actions config-actions">
-            <ButtonCondition color="success" :condition="configReady && hasUnsavedChanges && isValid && sockedIsConnected && !$demoMode" text="Save config" :onclick="save" icon="mdi-content-save" />
+            <ButtonCondition color="success" :condition="configReady && hasUnsavedChanges && isValid && !sensorPublishValidationError && sockedIsConnected && !$demoMode" text="Save config" :onclick="save" icon="mdi-content-save" />
             <span class="text-caption" role="status">{{ !configReady ? 'Loading configuration…' : hasUnsavedChanges ? 'Unsaved changes' : 'No unsaved changes' }}</span>
             <v-btn v-if="hasUnsavedChanges" small text @click="resetDraft()">Discard changes</v-btn>
             <span class="action-spacer" />
@@ -28,10 +28,11 @@
                         <v-text-field v-model="config.scrollTextDefaultDelay" type="number" label="Scrolltext delay" hint="larger number is slower" suffix="milliseconds" :rules="[rules.required, rules.min0]"></v-text-field>
                         <v-text-field v-model="config.hostname" label="Hostname"></v-text-field>
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
-                        <v-switch v-model="config.bootScreenAktiv" label="Bootscreen active" hide-details dense></v-switch>
+                        <v-switch v-model="config.bootScreenAktiv" label="Boot-Screen active" hide-details dense></v-switch>
+                        <v-switch v-model="config.wifiScreenAktiv" label="WiFi-Screen active" hide-details dense></v-switch>
                         <v-switch v-model="config.bootBatteryScreen" label="Show battery status on boot" hide-details dense v-if="showBatteryBtn"></v-switch>
                         <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>
-                        <v-switch v-model="config.includePrereleases" label="Include beta releases in update searches" hint="Also includes other prereleases. These versions may be unstable." persistent-hint dense></v-switch>
+                        <v-switch v-model="config.includePrereleases" label="Include beta releases in update searches" hide-details dense></v-switch>
                         <v-switch v-model="config.checkUpdateScreen" label="Display on matrix when new firmware is available" hide-details dense></v-switch>
                     </v-card>
                     <v-card class="ui-panel" elevation="2">
@@ -64,6 +65,15 @@
                             </v-col>
                         </v-row>
                     </v-card>
+                    <v-card class="ui-panel" elevation="2">
+                        <v-card-title>
+                            <h2>Sound</h2>
+                        </v-card-title>
+
+                        <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
+                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin"></v-select>
+                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin"></v-select>
+                    </v-card>
                 </v-col>
                 <v-col cols="12" lg="4">
                     <v-card class="ui-panel" elevation="2">
@@ -89,30 +99,6 @@
                         <v-switch v-model="config.clockAutoFallbackActive" label="Clock auto fallback" dense></v-switch>
                         <v-select :items="autoFallbackAnimation" v-model="config.clockAutoFallbackAnimation" label="Fallback Animation" :disabled="!config.clockAutoFallbackActive"></v-select>
                         <v-text-field v-model="config.clockAutoFallbackTime" type="number" label="Fallback time" hint="the unit is seconds (s)" suffix="seconds" :disabled="!config.clockAutoFallbackActive" :rules="config.clockSwitchAktiv ? [rules.required, rules.min0] : []"></v-text-field>
-                    </v-card>
-                </v-col>
-                <v-col cols="12" lg="4">
-                    <v-card class="ui-panel" elevation="2">
-                        <v-card-title>
-                            <h2>MQTT</h2>
-                        </v-card-title>
-                        <v-switch v-model="config.mqttAktiv" label="MQTT active" dense></v-switch>
-                        <v-text-field v-model="config.mqttServer" label="Server" hint="domain or ip address" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
-                        <v-text-field v-model="config.mqttPort" label="Port" type="number" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required, rules.portRange] : []"></v-text-field>
-                        <v-text-field v-model="config.mqttUser" label="User" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
-                        <v-text-field v-model="config.mqttPassword" label="Password" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
-                        <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
-                        <v-switch v-model="config.mqttUseDeviceTopic" :label="deviceTopicLabel" :disabled="!config.mqttAktiv" dense></v-switch>
-                        <v-switch v-model="config.mqttHAdiscoverable" label="Making the device discoverable by HomeAssistant" :disabled="!config.mqttAktiv" dense></v-switch>
-                    </v-card>
-                    <v-card class="ui-panel" elevation="2">
-                        <v-card-title>
-                            <h2>Sound</h2>
-                        </v-card-title>
-
-                        <v-text-field v-model="config.initialVolume" type="number" label="Start volume" hint="Between 1 and 30" :rules="[rules.required, rules.volumeRange]"></v-text-field>
-                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpRXpin" type="number" label="DFPlayer RX pin"></v-select>
-                        <v-select :items="config.isESP8266 ? pinsESP8266 : pinsESP32" v-model="config.dfpTXpin" type="number" label="DFPlayer TX pin"></v-select>
                     </v-card>
                     <v-card class="ui-panel" elevation="2">
                         <v-card-title>
@@ -146,6 +132,32 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
+                <v-col cols="12" lg="4">
+                    <v-card class="ui-panel" elevation="2">
+                        <v-card-title>
+                            <h2>MQTT</h2>
+                        </v-card-title>
+                        <v-switch v-model="config.mqttAktiv" label="MQTT active" dense></v-switch>
+                        <v-text-field v-model="config.mqttServer" label="Server" hint="domain or ip address" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
+                        <v-text-field v-model="config.mqttPort" label="Port" type="number" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required, rules.portRange] : []"></v-text-field>
+                        <v-text-field v-model="config.mqttUser" label="User" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
+                        <v-text-field v-model="config.mqttPassword" label="Password" hint="optional" :disabled="!config.mqttAktiv"></v-text-field>
+                        <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
+                        <v-switch v-model="config.mqttUseDeviceTopic" :label="deviceTopicLabel" :disabled="!config.mqttAktiv" dense></v-switch>
+                        <v-switch v-model="config.mqttHAdiscoverable" label="Making the device discoverable by HomeAssistant" :disabled="!config.mqttAktiv" dense></v-switch>
+                        <h3 class="mt-4">Sensor publishing</h3>
+                        <v-alert v-if="!config.mqttSensorPublish" type="info" dense text role="status">The connected firmware does not support sensor intervals and change thresholds yet. Install firmware with sensor publishing support to configure them here.</v-alert>
+                        <template v-else>
+                            <v-switch v-model="config.mqttSensorPublish.periodic" label="Check MQTT changes periodically" :disabled="!config.mqttAktiv" hint="Off: check each sensor sample. WebUI and automatic brightness remain responsive." persistent-hint dense></v-switch>
+                            <v-text-field v-if="config.mqttSensorPublish.periodic" v-model.number="config.mqttSensorPublish.interval" type="number" label="Check interval" suffix="s" min="3" max="86400" step="1" :disabled="!config.mqttAktiv"></v-text-field>
+                            <v-text-field v-else v-model.number="config.mqttSensorPublish.minInterval" type="number" label="Minimum send interval" suffix="s" min="0" max="86400" step="1" hint="0: no additional rate limit" :disabled="!config.mqttAktiv"></v-text-field>
+                            <v-text-field v-model.number="config.mqttSensorPublish.maxInterval" type="number" label="Maximum silent interval" suffix="s" min="0" max="86400" step="1" hint="0: disabled. Otherwise also send unchanged readings by this interval." persistent-hint :disabled="!config.mqttAktiv"></v-text-field>
+                            <v-card-text class="px-0">Change since last sent value. 0 = any change.</v-card-text>
+                            <v-text-field v-for="field in sensorThresholds" :key="field.key" v-model.number="config.mqttSensorPublish[field.key]" type="number" :label="field.label + ' change threshold'" :suffix="field.unit" min="0" max="1000000" step="any" :disabled="!config.mqttAktiv"></v-text-field>
+                            <v-alert v-if="sensorPublishValidationError" type="error" dense text role="alert">{{ sensorPublishValidationError }}</v-alert>
+                        </template>
+                    </v-card>
+                </v-col>
             </v-row>
         </v-form>
     </v-container>
@@ -155,6 +167,7 @@
 import ColorPickerTextfield from '../components/ColorPickerTextfield';
 import ButtonCondition from '../components/ButtonCondition';
 import configDraft from '../mixins/configDraft';
+import { sensorPublishError } from '../utils/sensorPublish';
 import actionFeedback from '../mixins/actionFeedback';
 import ButtonConfirm from '../components/ButtonConfirm';
 import { PrismEditor } from 'vue-prism-editor';
@@ -178,6 +191,19 @@ export default {
         PrismEditor,
     },
     computed: {
+        sensorPublishValidationError() {
+            return this.config.mqttSensorPublish ? sensorPublishError(this.config.mqttSensorPublish) : '';
+        },
+        sensorThresholds() {
+            return [
+                { key: 'temperature', label: 'Temperature', unit: Number(this.config.temperatureUnit) === 1 ? '°F' : '°C' },
+                { key: 'humidity', label: 'Humidity', unit: '%' },
+                { key: 'pressure', label: 'Pressure', unit: 'hPa' },
+                { key: 'gas', label: 'Gas resistance', unit: 'kΩ' },
+                { key: 'battery', label: 'Battery', unit: '%' },
+                { key: 'lux', label: 'Illuminance', unit: 'lx' },
+            ];
+        },
         rules() {
             return this.$store.state.rules;
         },
@@ -228,7 +254,10 @@ export default {
         },
     },
     methods: {
-        save() { this.saveDraftConfig(); },
+        save() {
+            if (this.config.mqttSensorPublish && sensorPublishError(this.config.mqttSensorPublish)) return;
+            this.saveDraftConfig();
+        },
         wifiReset() {
             this.$socket.sendObj({ wifiReset: true });
         },

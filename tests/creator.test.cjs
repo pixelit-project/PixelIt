@@ -152,6 +152,12 @@ function create() {
     dialog.isValid = true; dialog.bitmapName = 'Wide animation'; await dialog.agreeWraper();
     assert.equal(upload.sizeX, 32); assert.equal(upload.sizeY, 8); assert(upload.animated);
     assert.equal(JSON.parse('[' + upload.rgb565array + ']')[1].length, 256); assert(!('animationDelay' in upload));
+    upload = undefined;
+    dialog.$demoMode = true;
+    dialog.dialog = true;
+    await dialog.agreeWraper();
+    assert.equal(upload, undefined, 'Demo mode must not upload icons even when the save method is called directly');
+    assert.equal(dialog.saving, false);
     const gallery = loadComponent('src/views/Gallery.vue', { ...require('./gallery-helpers.cjs'), BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {}, actionFeedback: {} });
     let playback;
     const receiver = { sockedIsConnected: true, deviceLimits: { frames: 28, pixels: 1792, width: 32, height: 8, bitmapPixels: 256, messageBytes: 12288 }, $socket: { readyState: 1, sendObj: value => { playback = value.setScreen; } } };
