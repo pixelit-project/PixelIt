@@ -155,3 +155,36 @@ if env.PioPlatform().name == "espressif32":
     env.AddBuildMiddleware(esp32_source, "*WebSockets.cpp")
 
     env.AddBuildMiddleware(esp32_source, "*WebSocketsServer.cpp")
+
+
+# Instrument local copies of the pinned OTA handlers; preserve their routes,
+# authentication, flash/filesystem handling and responses.
+from pathlib import Path
+import shutil
+framework_name = ("framework-arduinoespressif8266" if env.PioPlatform().name == "espressif8266"
+                  else "framework-arduinoespressif32")
+updater_name = "ESP8266HTTPUpdateServer" if env.PioPlatform().name == "espressif8266" else "HTTPUpdateServer"
+updater_source = Path(env.PioPlatform().get_package_dir(framework_name)) / "libraries" / updater_name / "src"
+updater_target = Path(env.subst("$BUILD_DIR")) / "pixelit_updater"
+shutil.copytree(updater_source, updater_target, dirs_exist_ok=True)
+implementation = updater_target / (updater_name + ("-impl.h" if updater_name.startswith("ESP8266") else ".h"))
+contents = implementation.read_text()
+anchor = "      esp_yield();" if updater_name.startswith("ESP8266") else "                delay(0);"
+if contents.count(anchor) != 1:
+    raise RuntimeError("Review OTA display hook for this framework version")
+length = "upload.contentLength" if updater_name.startswith("ESP8266") else '_server->header("Content-Length").toInt()'
+hook = """      if (_authenticated) {
+        FirmwareUpdateUpload(upload.status, upload.totalSize +
+            (upload.status == UPLOAD_FILE_WRITE ? upload.currentSize : 0),
+            %s, Update.hasError() || _updaterError.length());
+      }
+""" % length
+contents = '#include "FirmwareUpdateDisplay.h"\n' + contents.replace(anchor, hook + anchor)
+restart = "ESP.restart();"
+if contents.count(restart) != 1:
+    raise RuntimeError("Review OTA reboot display hook for this framework version")
+contents = contents.replace(restart, "FirmwareUpdateReboot();\n        " + restart)
+implementation.write_text(contents)
+# Explicit include avoids depending on framework library search order.
+(updater_target / "PixelItHTTPUpdateServer.h").write_text('#include "' + updater_name + '.h"\n')
+env.Prepend(CPPPATH=[str(updater_target.resolve())])

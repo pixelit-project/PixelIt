@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Firmware.h"
+#include "UpdateVisuals.h"
+#include "UpdateScreen.h"
 
 void FadeOut(int delay = 10, int minBrightness = 0);
 void FadeIn(int delay = 10, int minBrightness = 0);
@@ -80,6 +82,8 @@ int DayOfWeekFirstMonday(int OrigDayofWeek);
 void initDFPlayer();
 void setup();
 void displayUpdateScreen();
+void SetAvailableFirmwareVersion(const char *version);
+void ServiceUpdateNotification();
 void checkUpdate();
 void RecordAnimationWork(const char *task, unsigned long started);
 void loop();

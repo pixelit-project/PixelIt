@@ -135,30 +135,53 @@ uint ColorWheel(byte wheelPos, int pos)
     }
 }
 
+namespace
+{
+void ApplyBootLogoColors()
+{
+    const int left = (MATRIX_WIDTH / 2) - 12;
+    for (int y = 0; y < MATRIX_HEIGHT; ++y)
+        for (int x = 0; x < MATRIX_WIDTH; ++x)
+        {
+            const CRGB &pixel = leds[matrix->XY(x, y)];
+            if (pixel.r || pixel.g || pixel.b)
+                matrix->drawPixel(x, y, x >= (MATRIX_WIDTH / 2) + 6
+                    ? matrix->Color(255, 255, 255)
+                    : LogoGradientColor(x < left ? 0 : x - left, 23));
+        }
+}
+}
+
 void ShowBootAnimation()
 {
     DrawTextHelper("P", false, false, false, false, false, 255, 51, 255, (MATRIX_WIDTH / 2) - 12, 1);
+    ApplyBootLogoColors();
     matrix->show();
 
     delay(200);
     DrawTextHelper("I", false, false, false, false, false, 0, 255, 42, (MATRIX_WIDTH / 2) - 8, 1);
+    ApplyBootLogoColors();
     matrix->show();
 
     delay(200);
     DrawTextHelper("X", false, false, false, false, false, 255, 25, 25, (MATRIX_WIDTH / 2) - 6, 1);
+    ApplyBootLogoColors();
     matrix->show();
 
     delay(200);
     DrawTextHelper("E", false, false, false, false, false, 25, 255, 255, (MATRIX_WIDTH / 2) - 2, 1);
+    ApplyBootLogoColors();
     matrix->show();
 
     delay(200);
     DrawTextHelper("L", false, false, false, false, false, 255, 221, 51, (MATRIX_WIDTH / 2) + 2, 1);
+    ApplyBootLogoColors();
     matrix->show();
 
     delay(500);
     DrawTextHelper("I", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 6, 1);
     DrawTextHelper("T", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 8, 1);
+    ApplyBootLogoColors();
     matrix->show();
     delay(1000);
 }

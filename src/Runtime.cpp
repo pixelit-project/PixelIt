@@ -1,6 +1,5 @@
 #include "FirmwareState.h"
 #include "Tools.h"
-#include "UpdateScreen.h"
 
 void setup()
 {
@@ -268,6 +267,10 @@ void setup()
     udp.begin(2390);
     // Log(F("Setup"), "Local port: " + String(udp.localPort()));
 
+#if defined(ESP32)
+    const char *updateHeaders[] = {"Content-Length"};
+    server.collectHeaders(updateHeaders, 1);
+#endif
     httpUpdater.setup(&server);
 
     server.on(F("/api/screen"), HTTP_POST, HandleScreen);
@@ -326,15 +329,42 @@ void displayUpdateScreen()
     DynamicJsonBuffer jsonBuffer;
     JsonObject &root = jsonBuffer.createObject();
 
-    BuildUpdateScreenJSON(root);
-
-    if (root.success())
+    if (BuildUpdateScreenJSON(root))
     {
         CreateFrames(root, CHECKUPDATESCREEN_DURATION);
     }
     else
     {
         Log(F("UpdateScreen"), F("Failed to Build UpdateScreen JSON"));
+    }
+}
+
+void SetAvailableFirmwareVersion(const char *version)
+{
+    const bool changed = !firmwareUpdateChecked || lastReleaseVersion != version;
+    lastReleaseVersion = version;
+    firmwareUpdateChecked = true;
+    if (compareVersions(lastReleaseVersion.c_str(), VERSION) <= 0)
+        firmwareUpdateNotificationPending = false;
+    else if (changed)
+        firmwareUpdateNotificationPending = true;
+}
+
+void ServiceUpdateNotification()
+{
+    if (!checkUpdateScreen || sleepMode || !firmwareUpdateChecked)
+        return;
+    if (compareVersions(lastReleaseVersion.c_str(), VERSION) <= 0)
+    {
+        firmwareUpdateNotificationPending = false;
+        return;
+    }
+    if (firmwareUpdateNotificationPending ||
+        millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
+    {
+        firmwareUpdateNotificationPending = false;
+        checkUpdateScreenPrevMillis = millis();
+        displayUpdateScreen();
     }
 }
 
@@ -365,8 +395,7 @@ void checkUpdate()
         JsonObject &root = jsonBuffer.parseObject(response);
         if (root.success() && root["version"].is<const char *>() && root["version"].as<String>().length() > 0)
         {
-            lastReleaseVersion = root["version"].as<String>();
-            firmwareUpdateChecked = true;
+            SetAvailableFirmwareVersion(root["version"].as<const char *>());
 
             int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
 
@@ -454,20 +483,8 @@ void loop()
             checkUpdate();
         }
 
-        // Display new FW Version
-        if (checkUpdateScreen && millis() - checkUpdateScreenPrevMillis >= CHECKUPDATESCREEN_INTERVAL)
-        {
-            checkUpdateScreenPrevMillis = millis();
-
-            int result = compareVersions(lastReleaseVersion.c_str(), VERSION);
-            if (result > 0)
-            {
-                if (!sleepMode)
-                {
-                    displayUpdateScreen();
-                }
-            }
-        }
+        // Notify immediately after discovery, then repeat after 30 minutes.
+        ServiceUpdateNotification();
     }
 
     // Send Telemetry data first time after 30.3 seconds
@@ -668,6 +685,8 @@ void loop()
 // Also called during chunked HTTP body reception; no HTTP/MQTT reentrancy.
 void ServiceDisplayFrames()
 {
+    if (firmwareUpdateDisplayActive)
+        return;
     if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
     {
         animateBMPPrevMillis = millis();

@@ -283,7 +283,8 @@ with tempfile.TemporaryDirectory() as temp:
 print('Text staging, validation and rendering-command tests passed')
 
 runtime = (root / 'src/Runtime.cpp').read_text()
-update_check = runtime[runtime.index('void checkUpdate()'):runtime.index('\nvoid RecordAnimationWork')]
+update_check = (runtime[runtime.index('void SetAvailableFirmwareVersion('):runtime.index('void ServiceUpdateNotification(')] +
+                runtime[runtime.index('void checkUpdate()'):runtime.index('\nvoid RecordAnimationWork')])
 update_check = update_check.replace('String(statusCode)', 'std::to_string(statusCode)')
 update_check = re.sub(r'\bString\b', 'std::string', update_check)
 program = r'''
@@ -297,7 +298,7 @@ program = r'''
 #define CHECKUPDATE_SERVER_PATH "/api/lastversion"
 int wifiClientHTTP=0, httpStatus=200, notifications=0, closed=0;
 std::string response=R"({"version":"2.8.0"})", lastReleaseVersion=VERSION;
-bool firmwareUpdateChecked=false, includePrereleases=false;
+bool firmwareUpdateChecked=false, firmwareUpdateNotificationPending=false, includePrereleases=false;
 std::string requestedPath;
 struct HttpClient {
  HttpClient(int,const char*,int) {}

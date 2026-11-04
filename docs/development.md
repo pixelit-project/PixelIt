@@ -839,3 +839,234 @@ draft/usability and update tests, targeted ESLint and the production build passe
 switching, decimal thresholds, invalid intervals/negative thresholds and clearing
 errors after correction. No device firmware/configuration was changed; physical
 MQTT/sensor, reconnect, frame-timing and peak-memory checks remain outstanding.
+
+
+## Matrix progress during HTTP updates (unreleased)
+
+The existing `/update` multipart handler displays a white percentage, a fixed
+upward arrow with moving violet/pink logo colors, and a straight two-pixel-high
+violet progress bar with a pink light impulse. The bar spans x=11 through x=30
+on the 32×8 matrix, leaving an inset at the right edge. Its light moves only
+within the filled portion, so it remains visible before 100%. The arrow fades
+in during the first 800 ms without delaying upload processing. ESP8266, ESP32 and Ulanzi use the
+same design. Filesystem uploads also show progress. It temporarily replaces normal
+content and uses brightness 16 if the display was off. The installed firmware must
+already contain this feature: the first upload installing it still uses the old
+handler. USB flashing cannot show progress through this firmware.
+
+During transfer, the percentage uses received file bytes divided by the multipart
+request length, which includes headers/boundaries and other form fields. It is an
+approximation, capped at 99%; 100% appears only after `Update.end(true)` succeeds,
+before the restart. After sending the successful HTTP response and closing the
+upload client, the success hook animates 100% for 1.6 seconds and displays a
+centered static `REBOOT` in a violet/pink logo gradient for two seconds, without
+an icon or bar. Only then does the existing updater restart the device. This
+completion phase adds 3.6 seconds of yielding holds plus LED transfer time, with no
+application-handler reentrancy; normal playback is already suspended for OTA.
+Failure/abort does not enter the success/reboot display phase. Unknown request
+lengths remain at 0% until completion.
+An authenticated upload failure or abort shows red `ERR`; normal rendering can
+resume once the handler returns, so the error is not a persistent status screen.
+The HTTP response remains the source of detailed update errors.
+
+`extra_script.py` instruments build-local copies of the pinned HTTPUpdateServer
+headers with guarded upload/reboot hooks, leaving installed frameworks,
+authentication and responses intact. Framework upgrades must review this hook as well as the existing
+HTTP/transport patches. ESP32 collects one additional small request header
+(`Content-Length`); ESP8266 uses its existing upload length field. The renderer
+uses the existing matrix buffer, shared 24-byte flash-resident arrow masks/palette
+and small fixed state, without JSON or extra pixel allocations. It leaves normal
+font/cursor settings untouched. LED transfers occur at most every 100 ms for changed
+percentages or color/light phases, except start, completion and the first failure.
+The arrow color phase advances every 200 ms, the bar light every 100 ms, while
+upload callbacks run. There is no separate ticker during flash writes or stalled
+reception. Background rendering service skips animation and scrolling frames while
+an upload owns the display. Normal playback scheduling is otherwise unchanged;
+OTA remains the existing synchronous flash-writing operation.
+
+The notification is protected against ordinary incoming screen content for
+15 seconds so the scrolling text can be read.
+
+After a successful version check discovers a newer release, the enabled matrix
+notification appears in the same loop iteration instead of waiting for the first
+30-minute reminder. Further reminders are timed from the actual display; repeated
+checks of the same version do not trigger another immediate notification. A newly
+discovered release queues a notification while sleeping or while matrix update
+notifications are disabled, and displays when enabled/awake. An equal/older release
+clears the pending notification. Checks still begin after 30.5 seconds, repeat
+every eight hours and defer during animation/scrolling. One fixed pending flag is
+added, without new background requests, buffers or changes to playback scheduling.
+
+The firmware-available notification uses the identical fixed arrow and eight color
+phases at 200 ms beside the existing white `New FW available` scrolling text.
+Text begins at x=8 to avoid overlapping the eight-pixel-wide arrow. Construction
+now lives in `src/UpdateScreen.cpp` with checked JSON additions, using existing
+internal compact pixel strings rather than a JSON node for each pixel. One bounded
+194-byte stack buffer is reused and copied into the JSON buffer for each frame.
+Eight compact frame strings replace seven nested arrays containing 448 pixel
+nodes, reducing transient JSON storage. The committed 8×8 animation uses 1,024
+pixel bytes rather than 896 (+128 bytes), within the existing platform limits.
+No animation/message limits or dependencies were increased. Construction failure
+skips `CreateFrames`, preserving the current content. Physical ESP8266 peak heap,
+largest block and repeated-notification checks remain necessary.
+
+Validation: `python3 test/update/display.py` covers the actual callback's progress,
+rate limit, bar animation, finalization, logo-gradient REBOOT layout and bounded
+success-only completion timing, failures, abort, unknown length, visibility
+at zero brightness and 32-bit byte-count overflow.
+`python3 test/update/notification.py` checks the shared silhouette and logo palette
+at every phase, exact compact-pixel decoding, and full/partial JSON allocation
+failure. `python3 test/update/scheduling.py` covers immediate discovery, repeated
+checks, reminder boundaries, disabled/sleeping displays, current/older releases and
+millis rollover. Run all six builds plus the existing update and animation/preview
+tests.
+Physical OTA checks on ESP8266, ESP32 and Ulanzi, failed/aborted uploads, concurrent
+frame timing and ESP8266 peak heap/largest block still require designated-device
+validation. The 192.168.0.86 design previews only replaced display content; no
+firmware or configuration was changed. Builds and host tests do not establish
+device timing or RAM safety. On 2026-11-04, all six firmware builds and the
+progress, notification, release-comparison and animation/preview host tests passed
+for the final accepted design.
+
+Companion inspection: PixelIt.WebUI's Update view already sends the same multipart
+`firmware`/`filesystem` uploads to `/update` and needs no client change. No payloads,
+settings, topics or endpoint contracts changed. External PixelIt.Docs
+`src/webinterface.md` should explain the on-device progress, notification design,
+approximate percentage, errors and first-install limitation when this reaches
+stable; its current stable baseline is unchanged.
+
+
+### Designated-device OTA install — 2026-11-04
+
+At the user's request, the final design build (`0.0.0-beta`, `ESP32_generic`)
+was installed over HTTP OTA on 192.168.0.86, previously 2.7.0-beta.9. The updater
+returned HTTP 200 and `Update Success! Rebooting...`. Read-only checks confirmed
+the new build, software reset and advancing uptime (10 to 22 seconds). Existing
+configuration fields were preserved except the normal stored version; the new
+`mqttSensorPublish` object appeared with compatibility-preserving defaults.
+The temporary configuration comparison files were removed afterwards.
+
+This installation ran the previous firmware's updater, so it does not validate
+the new progress renderer during an actual OTA transfer. The accepted progress
+and notification designs were previewed as screen content before installation.
+Failed/aborted OTA, new-renderer timing and ESP8266 peak-memory checks remain
+outstanding; this install does not replace those validation requirements.
+
+
+### Immediate update notification correction — 2026-11-04
+
+The notification now queues immediately after discovering a newer release and
+repeats 30 minutes after display. The existing five-second protection against
+ordinary incoming screen content remains unchanged. All six builds plus update
+scheduling, release-comparison, progress, notification, animation/preview and
+Home Assistant host tests passed.
+
+The correction was installed on the previously designated ESP32_generic at
+192.168.0.86. This OTA client's connection was reset before an HTTP success
+response, so no successful response was recorded. Subsequent read-only checks
+found the device reachable with a software restart and completed version check;
+the user confirmed that the notification appeared immediately. The configuration
+comparison found no changes and its temporary backup was removed. Both builds
+use `0.0.0-beta`; that version string alone cannot distinguish them. The user's
+behavioral observation supports the scheduling correction, without establishing
+all-board timing or ESP8266 peak-memory safety. No ESP8266 device was flashed.
+
+
+### Fifteen-second notification protection — 2026-11-04
+
+At the user's request, `CHECKUPDATESCREEN_DURATION` was increased from five to
+15 seconds. No buffers, allocation limits or background work changed. All six
+builds and update scheduling/version plus animation/preview host tests passed.
+The new ESP32_generic build was installed on 192.168.0.86 with an HTTP 200
+`Update Success! Rebooting...` response. Read-only checks confirmed a software
+restart and unchanged settings. At uptime 38 seconds, the version check was
+complete and the device still reported `New FW available` with eight animation
+frames, consistent with the longer protection beyond the previous five seconds.
+This was not a full physical timing/heap test or a measured 15-second duration
+trace. The temporary settings comparison file was removed.
+
+
+### Accepted flash-screen polish — 2026-11-04
+
+The accepted design keeps the fixed logo-color arrow, insets the straight bar,
+and moves a restrained pink light only through its filled portion at all progress
+levels. Successful completion retains the animation at 100%, then replaces the
+whole screen with centered static logo-gradient `REBOOT`, without icon or bar.
+The yielding success-only holds total 3.6 seconds plus rendering time and occur
+after sending the response/closing the client, immediately before restart. No
+pixel buffer or JSON allocation was added to the OTA display path.
+
+All six final builds and progress/completion, shared-arrow notification,
+notification scheduling, release-comparison, animation/preview and Home Assistant
+host tests passed. Completion tests check the 3.6-second hold budget, REBOOT
+placement/gradient and exclusion of success holds on failures. The final
+ESP32_generic build was installed on 192.168.0.86 with HTTP 200 and the updater's
+success/reboot response. Read-only checks found software reset, uptime 29 seconds
+and unchanged settings; the temporary comparison file was removed. This transfer
+ran the previous build's updater: the new completion path still needs a subsequent
+physical OTA validation. ESP8266 timing, peak heap/largest block and failure/abort
+device validation remain outstanding. No ESP8266 was flashed.
+
+
+## Boot and WiFi visual alignment (unreleased)
+
+Boot lettering uses the same violet-to-pink gradient as `REBOOT` for `PIXEL`,
+with the final `IT` in white, retaining
+the existing letter sequence, font, positions and 2.3-second delay budget.
+`LogoGradientColor` in `src/UpdateVisuals.cpp` supplies the identical RGB565
+colors to both screens. Boot stages recolor only lit pixels through the existing
+logical-to-physical `matrix->XY` mapping; no extra pixel storage is used.
+
+The WiFi screen keeps its white label and existing one-pixel bouncing trail,
+60 ms ticker, trail lengths and brightness falloff. Its trail uses the logo
+violet/pink gradient instead of blue, including the initial frame. PixelItFont
+stores eight-column glyphs with blank padding, so nominal GFX bounds are not
+visible-ink bounds. The startup renderer now measures the actual illuminated
+`WiFi` pixels once in the existing matrix buffer, centers them horizontally and
+vertically above the reserved trail row, and reuses that placement for each tick.
+The cached coordinates/flag add five bytes before target alignment; no new heap
+allocations, timers or frame buffers are added. This occurs during connection
+setup, before normal playback; runtime rendering/ticker cadence is unchanged.
+
+`python3 test/startup/run.py` renders the actual startup functions with the real
+PixelItFont bitmap on a host matrix, checking boot gradient/delays, centered
+visible ink, cached placement, both trail directions, initial trail color and
+serpentine matrix mapping. Run all six board builds, update display/notification
+and animation/preview host tests. Physical boot/WiFi appearance and ticker timing
+still require device observation; host tests do not establish ESP8266 peak-memory
+or playback timing safety. No endpoint, setting or payload contract changes are
+required. External PixelIt.Docs startup screenshots/descriptions should reflect
+the logo palette and WiFi layout when this reaches stable; companion client code
+requires no changes.
+
+
+### Startup palette and WiFi install — 2026-11-04
+
+All six builds plus real-font startup/centering, update display/completion,
+shared-arrow notification and animation/preview host tests passed. The initial
+ESP32_generic OTA attempt to 192.168.0.86 ended with curl `Broken pipe` and no
+success response; subsequent status showed advancing uptime without a restart.
+A second upload limited to 64 KiB/s returned HTTP 200 and the updater's success/
+reboot response. Afterwards the device reported software reset and uptime 21
+seconds, with unchanged settings. The temporary comparison file was removed.
+Boot display was already enabled and battery startup display disabled; neither
+setting was changed. These checks confirm deployment and host-rendered placement,
+not an independent physical observation of startup colors/centering. ESP8266
+physical timing/heap and startup tests remain outstanding; no ESP8266 was flashed.
+
+
+### White IT boot variant — 2026-11-04
+
+The user accepted the real-font screen preview with `PIXEL` in the logo gradient
+and the final `IT` in white. Boot recoloring now preserves white pixels from the
+I/T columns; REBOOT and the centered WiFi screen retain their accepted colors.
+All six builds and startup palette/centering, OTA display/completion and
+animation/preview host tests passed.
+
+The matching final builds were installed sequentially on the user-designated
+192.168.0.40 (ESP8266_d1_mini) and 192.168.0.86 (ESP32_generic), both with HTTP 200
+and the updater's success/reboot response. Read-only checks confirmed software
+restarts, uptimes 38/17 seconds respectively, MQTT connected and unchanged settings.
+Temporary configuration comparison files were removed. These deployment checks
+do not establish physical waveform timing, long-duration stability or ESP8266
+peak heap/largest-block safety under concurrent workloads.

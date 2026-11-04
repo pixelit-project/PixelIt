@@ -6,13 +6,14 @@
 
 #if defined(ESP8266)
 #include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
+#include "PixelItHTTPUpdateServer.h"
 #include <ESP8266WiFi.h>
 #include <LittleFS.h>
 
 #elif defined(ESP32)
 #include "PixelItESP32WebServer.h"
-#include <HTTPUpdateServer.h>
+#include <SPIFFS.h> // Dependency of the locally instrumented HTTP updater.
+#include "PixelItHTTPUpdateServer.h"
 #include <WiFi.h>
 #include <FS.h>
 #endif
@@ -68,7 +69,7 @@ extern uint32_t _retry_cnt;
 // Internal Config
 #define CHECKUPDATE_INTERVAL 1000UL * 60 * 60 * 8  // 8 Hours
 #define CHECKUPDATESCREEN_INTERVAL 1000 * 60 * 30   // 30 Minutes
-#define CHECKUPDATESCREEN_DURATION 1000 * 5         // 5 Seconds
+#define CHECKUPDATESCREEN_DURATION 1000 * 15        // 15 Seconds
 #define CONTROL_BRIGHTNESS_INTERVAL 1000            // 1000 Milliseconds
 #define SEND_TELEMETRY_INTERVAL 1000 * 60 * 60 * 12 // 12 Hours
 #define SEND_LIVEVIEW_INTERVAL 250                  // 0.5 Seconds, 0 to disable

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+extern bool firmwareUpdateDisplayActive;
 #include "SensorPublishPolicy.h"
 extern SensorPublishSettings mqttSensorPublish;
 extern SensorPublishState mqttSensorState, mqttLuxState;
@@ -243,3 +244,4 @@ extern String haDisplayText;
 extern String haTextMessage, haTextColor, haTextFont, haTextAlignment, haTextScroll;
 
 extern bool firmwareUpdateChecked;
+extern bool firmwareUpdateNotificationPending;

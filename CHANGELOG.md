@@ -2,6 +2,9 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Use logo colors with white IT at startup, a matching WiFi trail and centered WiFi text.
+-   (o0shojo0o) Show new firmware notifications immediately for 15 seconds, then every 30 minutes.
+-   (o0shojo0o) Show animated firmware progress, a logo-color reboot screen and matching update notifications.
 -   (o0shojo0o) Added configurable MQTT sensor intervals and change thresholds.
 -   (o0shojo0o) Keep ESP32 WebUI connections responsive with slow viewers and repeated reconnects.
 -   (o0shojo0o) Added gallery data copying, clearer report controls and refresh after uploads.

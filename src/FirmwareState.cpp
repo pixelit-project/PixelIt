@@ -1,4 +1,5 @@
 #include "FirmwareState.h"
+bool firmwareUpdateDisplayActive = false;
 
 #if defined(ESP8266) || defined(ESP32)
 HttpUploadStats httpUploadStats;
@@ -271,6 +272,7 @@ String haTextAlignment = "Centered";
 String haTextScroll = "Auto";
 
 bool firmwareUpdateChecked = false;
+bool firmwareUpdateNotificationPending = false;
 
 SensorPublishSettings mqttSensorPublish;
 SensorPublishState mqttSensorState, mqttLuxState;

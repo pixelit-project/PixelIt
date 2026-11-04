@@ -36,6 +36,49 @@ void SetCurrentMatrixBrightness(int newBrightness)
     matrix->setBrightness(currentMatrixBrightness);
 }
 
+namespace
+{
+int16_t connectingTextX = 0, connectingTextY = 6;
+bool connectingTextPlaced = false;
+
+void DrawConnectingText()
+{
+    matrix->setFont(&PixelItFont);
+    matrix->setTextWrap(false);
+    matrix->setTextColor(matrix->Color(255, 255, 255));
+    matrix->clear();
+    if (!connectingTextPlaced)
+    {
+        // PixelItFont glyph widths include blank columns. Measure actual ink
+        // once using the existing matrix buffer, above the reserved bar row.
+        matrix->setCursor(0, 6);
+        matrix->print("WiFi");
+        int16_t left = MATRIX_WIDTH, right = -1, top = MATRIX_HEIGHT, bottom = -1;
+        for (int y = 0; y < MATRIX_HEIGHT - 1; ++y)
+            for (int x = 0; x < MATRIX_WIDTH; ++x)
+            {
+                const CRGB &pixel = leds[matrix->XY(x, y)];
+                if (pixel.r || pixel.g || pixel.b)
+                {
+                    if (x < left) left = x;
+                    if (x > right) right = x;
+                    if (y < top) top = y;
+                    if (y > bottom) bottom = y;
+                }
+            }
+        if (right >= left && bottom >= top)
+        {
+            connectingTextX = (MATRIX_WIDTH - (right - left + 1)) / 2 - left;
+            connectingTextY = 6 + (MATRIX_HEIGHT - 1 - (bottom - top + 1)) / 2 - top;
+        }
+        connectingTextPlaced = true;
+        matrix->clear();
+    }
+    matrix->setCursor(connectingTextX, connectingTextY);
+    matrix->print("WiFi");
+}
+}
+
 void ConnectingAnimationTick()
 {
     // Bar moves every tick
@@ -51,19 +94,7 @@ void ConnectingAnimationTick()
         connectingBarDir = 1;
     }
 
-    // Redraw static centered "WiFi" text (cleared each frame)
-    matrix->setFont(&PixelItFont);
-    matrix->setTextWrap(false);
-
-    int16_t bx, by;
-    uint16_t bw, bh;
-    matrix->getTextBounds("WiFi", 0, 0, &bx, &by, &bw, &bh);
-    int16_t textX = (MATRIX_WIDTH - (int16_t)(bw - 4)) / 2;
-
-    matrix->clear();
-    matrix->setTextColor(matrix->Color(255, 255, 255));
-    matrix->setCursor(textX, 6);
-    matrix->print("WiFi");
+    DrawConnectingText();
 
     // Draw bouncing bar with fading trail on bottom row
     for (uint8_t i = 0; i < CONNECTING_TRAIL_LEN; i++)
@@ -71,7 +102,7 @@ void ConnectingAnimationTick()
         int16_t x = connectingBarX - connectingBarDir * (int8_t)i;
         if (x >= 0 && x < MATRIX_WIDTH)
         {
-            matrix->drawPixel(x, MATRIX_HEIGHT - 1, matrix->Color(0, 0, CONNECTING_TRAIL_BRIGHTNESS[i]));
+            matrix->drawPixel(x, MATRIX_HEIGHT - 1, LogoGradientColor(i, CONNECTING_TRAIL_LEN, CONNECTING_TRAIL_BRIGHTNESS[i]));
         }
     }
 
@@ -93,19 +124,9 @@ void ShowConnectingScreen()
     connectingBarX = 0;
     connectingBarDir = 1;
 
-    // Draw initial frame: centered "WiFi" text + bar head at left
-    matrix->setFont(&PixelItFont);
-    matrix->setTextWrap(false);
-    int16_t bx, by;
-    uint16_t bw, bh;
-    matrix->getTextBounds("WiFi", 0, 0, &bx, &by, &bw, &bh);
-    int16_t textX = (MATRIX_WIDTH - (int16_t)(bw - 4)) / 2;
-
-    matrix->clear();
-    matrix->setTextColor(matrix->Color(255, 255, 255));
-    matrix->setCursor(textX, 6);
-    matrix->print("WiFi");
-    matrix->drawPixel(0, MATRIX_HEIGHT - 1, matrix->Color(0, 0, CONNECTING_TRAIL_BRIGHTNESS[0]));
+    DrawConnectingText();
+    matrix->drawPixel(0, MATRIX_HEIGHT - 1,
+                      LogoGradientColor(0, CONNECTING_TRAIL_LEN, CONNECTING_TRAIL_BRIGHTNESS[0]));
     FadeIn();
 
     connectingAnimTicker.attach_ms(60, ConnectingAnimationTick);
