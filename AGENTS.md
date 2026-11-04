@@ -59,6 +59,9 @@ If a companion repository cannot be inspected, report that limitation.
   consolidation is explicitly requested.
 - Do not insert blank lines between individual changelog/release-note entries.
   Keep consecutive entries in a compact list.
+- Before publishing a stable release, update external PixelIt.Docs with explanations
+  of user-visible logs, including components, fields, units, examples, normal/error
+  cases and troubleshooting. Verify byte-count meanings against that release's code.
 
 ## Validation
 

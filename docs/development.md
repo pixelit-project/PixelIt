@@ -1,5 +1,20 @@
 # Firmware development
 
+## Release documentation follow-up: logs
+
+Before the next stable release, add a user-facing log reference to external
+PixelIt.Docs. Explain MQTT/HTTP/WebSocket messages, component names, topic/command
+fields, byte counts, receive status codes, normal versus error cases and useful
+troubleshooting steps, with examples verified against the stable release tag.
+
+For the current MQTT `Incoming JSON` log, `Bytes: A/B` prints the payload length
+supplied to the application callback and `json.measureLength()` (the serialized
+length of the parsed JSON object). These are not a direct wire/compacted-size
+pair: transport compaction can already precede the callback, application packing
+occurs before parsing, and JSON serialization can remove whitespace. Equal values
+alone do not prove that no compaction occurred. Use receive diagnostics such as
+`mqttReceive.inputBytes`/`compactBytes` when explaining transport compaction.
+
 [Back to the README](../README.md) · [Animation usage](animations.md) · [Home Assistant](home-assistant.md)
 
 ## Building
