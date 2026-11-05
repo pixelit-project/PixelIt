@@ -1073,6 +1073,16 @@ do not establish physical waveform timing, long-duration stability or ESP8266
 peak heap/largest-block safety under concurrent workloads.
 
 
+## Boot animation selection (unreleased)
+
+In the matching WebUI, Options → Defaults → **Boot animation** selects
+**Gradient letters** (`logo`, the default) or **Multicolor letters** (`classic`,
+the original per-letter colors). The firmware persists `bootScreenStyle` and applies it at
+startup when `bootScreenAktiv` is enabled. The WebUI hides the selector if the
+firmware does not advertise a supported value. Existing clients can continue
+to omit the setting. At stable release, document the selector in
+PixelIt.Docs's `src/webinterface.md` and the config field in `src/api.md`.
+
 ## Optional entire WiFi screen (unreleased)
 
 `wifiScreenAktiv` is an optional boolean configuration setting, independent of
