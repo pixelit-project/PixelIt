@@ -29,6 +29,15 @@
                         <v-text-field v-model="config.hostname" label="Hostname"></v-text-field>
                         <v-text-field v-model="config.note" label="Note"></v-text-field>
                         <v-switch v-model="config.bootScreenAktiv" label="Boot-Screen active" hide-details dense></v-switch>
+                        <v-select
+                            v-if="config.bootScreenStyle === 'logo' || config.bootScreenStyle === 'classic'"
+                            v-model="config.bootScreenStyle"
+                            :items="[{ text: 'Gradient letters', value: 'logo' }, { text: 'Multicolor letters', value: 'classic' }]"
+                            :disabled="!config.bootScreenAktiv"
+                            label="Boot animation"
+                            hide-details
+                            dense
+                        ></v-select>
                         <v-switch v-model="config.wifiScreenAktiv" label="WiFi-Screen active" hide-details dense></v-switch>
                         <v-switch v-model="config.bootBatteryScreen" label="Show battery status on boot" hide-details dense v-if="showBatteryBtn"></v-switch>
                         <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>

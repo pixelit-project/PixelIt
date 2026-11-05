@@ -130,6 +130,14 @@ bundle must be published and embedded by the firmware pipeline before delivery.
 ESP8266 timing and peak-memory validation on hardware remains required.
 
 
+## Boot animation
+
+Under Options → Defaults → **Boot animation**, select **Gradient letters**
+(the default) or **Multicolor letters** (the original per-letter colors).
+Enable **Boot-Screen active** to use the selected animation. Save the
+configuration to apply the selection on restart. The selector appears on
+firmware that reports a supported `bootScreenStyle` value.
+
 ## Startup WiFi screen
 
 Options → Defaults → **Show WiFi screen during startup** controls the entire
@@ -139,3 +147,22 @@ apply it at the next startup. Requires firmware advertising the boolean
 `wifiScreenAktiv`; older firmware shows an update hint instead of an editable
 control. Deploy the matching production bundle before regenerating the firmware's
 embedded index, so its hashed asset URLs exist on the WebUI host.
+
+
+## Preview visibility
+
+On firmware advertising `sysinfo.previewControl: true`, hidden pages pause their
+own preview using `{ "preview": { "enabled": false } }`; visible pages resume with
+`true` and receive the latest image. Controls, status and the physical display
+remain active. Duplicate same-device sockets within one page share the newest
+capable socket for previews; another device is independent. Older firmware keeps its existing behavior without receiving new
+commands. An event-driven inline controller installs before the socket plugin;
+there is no extra timer, pixel buffer or dependency. Reload existing tabs after
+installing the matching firmware/index to activate visibility handling.
+
+The standard production index inlines `public/preview-visibility.js`. For an
+isolated device build retaining already-published app hashes, use
+`node scripts/preview-compatible-index.cjs OLD_INDEX NEW_INDEX`, then generate the
+firmware header through its `.github/webui.py`. This compatibility index changes
+only the inline controller and preserves existing published script/style URLs;
+it does not publish or substitute unreleased application assets.
