@@ -15,10 +15,15 @@ program=r'''
 #define SHUT_RDWR 2
 SocketOutputQueue socketOutput[5];
 void ResetSocketOutput(uint8_t,bool enabled=false);
-unsigned long tick=0;unsigned failures=0,services=0;int closed=-1;
+unsigned long tick=0;unsigned failures=0,services=0,retired=0;int closed=-1;
+struct { void disconnect(uint8_t num) {
+ assert(socketOutput[num].enabled && socketOutput[num].failed);
+ ++retired;ResetSocketOutput(num);
+} } webSocket;
 std::string wire[5];bool blocked[5]={};size_t maxWrite=37;
 unsigned long millis(){return tick;}
 void ServiceTransportReceive(){++services;}
+void ServiceSocketTransportProbe(){for(auto &q:socketOutput)q.transportReady=!q.size()&&!q.failed;}
 void RecordSocketWriteError(uint8_t,unsigned,int){++failures;}
 int shutdown(int fd,int){closed=fd;return 0;}
 int send(int fd,const void *data,size_t length,int){
@@ -28,7 +33,13 @@ int send(int fd,const void *data,size_t length,int){
 '''+source+r'''
 int main(){
  std::string first(3000,'a'),second(2000,'b');
+ socketOutput[0].transportReady=true;socketOutput[0].previewEnabled=false;
+ assert(!SocketPreviewReady(0));socketOutput[0].previewEnabled=true;
+ assert(SocketPreviewReady(0));
+ socketOutput[0].initialStep=1;assert(!SocketPreviewReady(0));
  assert(QueueSocketWrite(0,0,reinterpret_cast<const uint8_t*>(first.data()),first.size())==first.size());
+ assert(socketOutput[0].initialStep==1);
+ socketOutput[0].initialStep=0;
  for(int i=0;i<60;++i){++tick;FlushSocketOutput();}
  assert(QueueSocketWrite(0,0,reinterpret_cast<const uint8_t*>(second.data()),second.size())==second.size());
  for(int i=0;i<150;++i){++tick;FlushSocketOutput();}
@@ -52,6 +63,16 @@ int main(){
  assert(QueueSocketWrite(2,2,reinterpret_cast<const uint8_t*>(first.data()),first.size())==first.size());
  assert(QueueSocketWrite(2,2,reinterpret_cast<const uint8_t*>(second.data()),1)==0);
  assert(closed==2&&failures==2&&socketOutput[2].size()==0);
+ // sendFrame may immediately write its payload after a header enqueue failed.
+ // The failed client must still select queued output, never the 5-second writer.
+ assert(SocketOutputEnabled(2)&&socketOutput[2].failed&&!SocketPreviewReady(2));
+ assert(QueueSocketWrite(2,2,reinterpret_cast<const uint8_t*>(second.data()),1)==0);
+ assert(socketOutput[2].size()==0&&failures==2);
+ FlushSocketOutput();assert(retired==2&&!SocketOutputEnabled(2)&&!socketOutput[2].failed);
+ // Only a fresh connection enables writes again, even if its fd is reused.
+ ResetSocketOutput(2,true);blocked[2]=false;
+ assert(QueueSocketWrite(2,2,reinterpret_cast<const uint8_t*>(second.data()),1)==1);
+ FlushSocketOutput();assert(socketOutput[2].size()==0);
  ResetSocketOutput(1);assert(socketOutput[1].fd==-1);
  assert(QueueSocketWrite(5,4,reinterpret_cast<const uint8_t*>(second.data()),1)==0);
  assert(!SocketOutputEnabled(1));ResetSocketOutput(1,true);assert(SocketOutputEnabled(1));

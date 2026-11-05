@@ -81,13 +81,16 @@ public:
         offset += chunk;
         return last;
 #else
-        if (!SocketPreviewReady(num))
+        if (num >= WEBSOCKETS_SERVER_CLIENT_MAX) return false;
+        _previewSkipped[num] = true;
+        if (!SocketPreviewReady(num) || !previewTurn(num)) return true;
+        const bool sent = sendTXT(num, data, length);
+        if (sent)
         {
-            _previewSkipped[num] = true;
-            return true;
+            _previewSkipped[num] = false;
+            _nextPreviewClient = (num + 1) % WEBSOCKETS_SERVER_CLIENT_MAX;
         }
-        _previewSkipped[num] = false;
-        return sendTXT(num, data, length);
+        return sent;
 #endif
     }
 
@@ -106,6 +109,19 @@ public:
 
 private:
 #if defined(ESP32)
+    bool previewTurn(uint8_t num)
+    {
+        // Only ready/ACK-drained viewers can take a turn. There is no fixed
+        // FPS ceiling; unsent samples are replaceable and never build a backlog.
+        for (uint8_t offset = 0; offset < WEBSOCKETS_SERVER_CLIENT_MAX; ++offset)
+        {
+            const uint8_t next = (_nextPreviewClient + offset) % WEBSOCKETS_SERVER_CLIENT_MAX;
+            if (_previewSkipped[next] && SocketPreviewReady(next) && clientIsConnected(next))
+                return next == num;
+        }
+        return false;
+    }
+    uint8_t _nextPreviewClient = 0;
     bool _previewSkipped[WEBSOCKETS_SERVER_CLIENT_MAX] = {};
 #endif
     size_t _previewOffset[WEBSOCKETS_SERVER_CLIENT_MAX] = {};

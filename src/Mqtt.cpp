@@ -1,6 +1,40 @@
 #include "FirmwareState.h"
 #include "Tools.h"
 
+#if defined(ESP32)
+#include <errno.h>
+#include <lwip/sockets.h>
+
+size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
+{
+    constexpr unsigned long writeBudgetMillis = 40;
+    const int socket = fd();
+    if (socket < 0 || size == 0) return 0;
+
+    const unsigned long started = millis();
+    size_t written = 0;
+    do
+    {
+        const int sent = ::send(socket, buffer + written, size - written, MSG_DONTWAIT);
+        if (sent > 0)
+        {
+            written += static_cast<size_t>(sent);
+            if (written == size) return written;
+        }
+        else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)
+        {
+            break;
+        }
+        ServiceDisplayFrames();
+        delay(1);
+    } while (millis() - started < writeBudgetMillis);
+
+    // A later packet cannot follow an incomplete MQTT packet on this stream.
+    stop();
+    return written;
+}
+#endif
+
 boolean MQTTreconnect()
 {
 

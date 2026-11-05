@@ -164,7 +164,8 @@ unreleased behavior is recorded here rather than changing that 2.6.0 baseline.
 
 Blocking firmware checks and telemetry requests wait until animations and
 scrolling text stop. Browser previews sample animations at up to 20 updates
-per second. On ESP8266, previews use WebSocket fragments queued over multiple
+per second. ESP32 delivery waits for TCP acknowledgements before admitting another image
+for a viewer; LED animation cadence is independent. On ESP8266, previews use WebSocket fragments queued over multiple
 loop iterations; the existing image buffer is preserved until delivery finishes.
 Other JSON messages finish an active preview message first to preserve WebSocket
 message ordering. Connection events reset per-client preview state.
@@ -1120,3 +1121,482 @@ browser inspection verified the new switch toggles independently of Bootscreen
 active, marks its isolated draft dirty, and returns to enabled after discarding.
 No browser test sent a device config write. Physical disabled-startup observations,
 ESP8266 timing and peak-memory checks remain outstanding.
+
+
+## Retained ESP32 network diagnostics (unreleased)
+
+`GET /api/animationinfo` adds an optional `network` object on ESP32. Existing
+fields and MQTT/WebSocket payloads are unchanged. Counters reset on reboot,
+not when a new animation starts. Read it after an outage alongside matrix-info
+uptime, RSSI, BSSID and MQTT connection state. This is diagnostic instrumentation,
+not a correction of the reported disconnects.
+
+- `wifiStatus` is the Arduino WiFi status at the diagnostic request.
+- `wifiDisconnects` counts station-disconnected events; `wifiGotIP` counts IP
+  acquisition events, including initial startup. A got-IP event alone is not
+  proof that HTTP/MQTT is reachable.
+- `wifiLastReason` is the numeric disconnect reason from the pinned ESP32 SDK
+  (zero before any disconnect); interpret it against that SDK's `wifi_err_reason_t`,
+  not HTTP status codes. `wifiLastDisconnectMillis` and `wifiLastGotIPMillis`
+  are the last respective event times in milliseconds since boot.
+- `mqttSlowLoops` and `mqttSlowConnects` count `client.loop()` and the complete
+  `MQTTreconnect()` wrapper respectively when duration is at least 250 ms.
+  Connect timing includes subscription/initial publications/discovery inside the
+  wrapper; loop timing excludes subsequent `ServiceHADiscovery()` work.
+- `mqttMaxLoopMillis` and `mqttMaxConnectMillis` retain maximum durations.
+  `mqttLastSlowMillis` is the completion time of the latest slow call;
+  `mqttLastSlowDuration` is its elapsed milliseconds, `mqttLastSlowWasConnect`
+  identifies the wrapper, and `mqttLastSlowState` is PubSubClient's state after
+  returning. State zero can accompany a slow successful call. These fields start
+  at zero/false; check slow counters before interpreting them. All millisecond
+  values wrap at 32 bits. WiFi and MQTT observations need not have the same cause.
+
+For example, an increased `wifiDisconnects` with a new reason/timestamp followed
+by `wifiGotIP` supports a WiFi link interruption. Unchanged WiFi counters with
+increased slow MQTT counters points to application-side waiting for further
+investigation, without excluding TCP or access-point trouble. Historical
+WebSocket send timeouts alone cannot identify which peer or network caused it.
+No new events during an outage also does not prove the network is healthy.
+
+WiFi event-task callbacks only update fixed storage inside a short critical
+section. They never allocate, log or call network/rendering code. MQTT timings
+use the same bounded state; JSON allocation happens only on explicit requests.
+No buffers, limits, dependencies, reconnect policy or playback waits changed.
+ESP8266 retains its existing diagnostic response and adds no diagnostic storage.
+New ESP32 state is one small fixed struct plus a critical-section lock; physical
+frame-jitter and concurrent network validation remain required after deployment.
+
+Companion inspection: local PixelIt.WebUI, node-red-contrib-pixelit, PixelIt.API
+and PixelIt.Docs sources have no consumers of `animationinfo`, `webSocketSend`
+or `slowestTask` requiring adjustment. No client change is needed for the additive
+object. External PixelIt.Docs should document these fields, units, reason-code
+interpretation and examples at stable release; its stable baseline is unchanged.
+Run `python3 test/esp32/network_diagnostics.py`, the animation/preview and ESP32
+socket-output host suites, and all six builds. The new test exercises actual WiFi
+callbacks, retained event history, timing thresholds, separation of connect/loop
+measurements and 32-bit timer rollover. It does not simulate radio disconnections.
+
+Validation on 2026-11-04: all six firmware variants built successfully; retained
+network diagnostics, animation/preview, ESP32 socket-output/static-preview and
+Home Assistant host tests passed. No diagnostic firmware was installed and no
+settings or display content were changed during this implementation. Physical
+WiFi interruption/recovery, frame jitter and concurrent peak-memory validation
+remain outstanding. Existing unrelated startup-style work in the working tree
+was preserved.
+
+
+### Designated ESP32 diagnostic install — 2026-11-04
+
+At the user's request, a diagnostic-only staging build (`0.0.0-beta`,
+`ESP32_generic`) was installed on 192.168.0.86, previously 2.7.0-beta.10.
+The current repository WebUI index references unpublished assets (HTTP 404), so
+this staging build used the device's existing index, generated through
+`.github/webui.py`; all four referenced JS/CSS assets returned HTTP 200.
+Pre-existing uncommitted `bootScreenStyle` changes were excluded in the staging
+copy; the working tree was preserved. The separate ESP32 build passed.
+
+The first OTA attempt at 64 KiB/s ended in a connection reset without a success
+response; repeated status checks still showed the old version, advancing uptime
+and no diagnostic fields. A second attempt at 32 KiB/s returned HTTP 200 and
+`Update Success! Rebooting...`. Read-only checks then confirmed software reset,
+uptime nine seconds, MQTT connected and the new `network` fields. The configuration
+comparison found only the normal stored `version` change. The deployment binary
+SHA-256 is `6eeeb414a2738f5d5095175a01ba3d9d04e7209f2b296e3db17346fa13907f6e`;
+its binary, manifest and non-sensitive verification result are retained under
+`.pio/build/ESP32_generic/firmware_network_diagnostics_deployment*` and
+`network_diagnostics_deployment_verification.json`. Temporary settings backups
+and the staging directory were removed after verification.
+
+A short read-only post-install check received 86 complete WebSocket JSON messages,
+including 78 previews, without parse/connection errors. Four HTTP samples at uptime
+33–40 seconds took 40–63 ms and all reported MQTT connected. The device-served
+WebUI index was byte-identical to its pre-install index. At the final diagnostic
+sample there were no recorded WiFi disconnects, slow MQTT calls or WebSocket send
+failures; the maximum animation interval was 211 ms at 200 ms configured, with
+zero failed LED frames. These are short deployment observations, not evidence
+that the intermittent outage is corrected or a physical jitter/peak-memory
+validation. No test screen payload or configuration write was sent. The new
+counters are ready to inspect after a recurrence and reset on any reboot.
+
+
+## ESP32 failure cleanup after a stalled WebSocket (unreleased)
+
+The 2026-11-05 observer (00:00–00:03 Europe/Berlin) captured a disturbance after
+16 WebSocket animation commands: combined matrix/animation HTTP reads reached
+8,008 ms, output timeout counts rose from one to five, and the recorded WebSocket
+task maximum was 1,781 ms with a 1,964 ms animation interval at 200 ms configured.
+The observer itself received 1,295 JSON messages without a reconnect; other client
+slots disconnected/reconnected. No WiFi-disconnect event or restart was recorded;
+MQTT was connected at every sample, with one 377 ms loop call. Sampled free heap
+fell as low as 59,900 bytes and later recovered above 150 KB. These samples do not
+identify allocation-time minima or establish the original cause of backpressure.
+
+Code inspection found that timeout/overflow cleanup reset the queue's `enabled`
+flag while the WebSocket library could still consider its client connected. A
+subsequent send (including sendFrame's payload after its header failed) could then
+enter the synchronous handshake writer with a five-second retry deadline. That
+writer services display frames but excludes other application network handlers.
+The host regression reproduces the invalid lifecycle on the previous source;
+causality for every device outage remains to be established.
+
+Failed queues now retain nonblocking routing and a fixed failed flag until the
+outer flush loop explicitly disconnects the native WebSocket client. Further
+writes fail immediately without reallocating/reopening the queue. Retirement runs
+outside sendFrame and its enqueue-time flush to avoid reentrant close callbacks.
+Reconnect callbacks reset the failed state, including reused file descriptors.
+Failed viewers are excluded from preview readiness. The existing handshake writer,
+five-second no-progress policy, ring sizes and dependency versions are unchanged.
+One bool per ESP32 viewer is added; no ESP8266 storage/path change is introduced.
+
+The socket-output host suite covers timeout retirement, overflow followed by another
+payload write, rejection until cleanup and same-fd reconnects. The actual patched
+writer test verifies that failed queued writes return without entering the timed
+writer. Also run ESP32 preview/receiver, animation, Home Assistant and all six
+builds. No payload, endpoint, settings or companion client changes are required.
+The existing companion-source inspection applies; external PixelIt.Docs should
+include this failure/recovery behavior in the stable-release troubleshooting guide.
+Physical stalled-client isolation and HTTP/MQTT responsiveness must be checked;
+ESP8266 physical timing/peak-memory coverage remains unchanged.
+
+
+### Failure-cleanup deployment and remaining latency — 2026-11-05
+
+All six final board builds and animation/preview, ESP32 receiver/writer,
+socket-output, static-preview and Home Assistant host tests passed. Running the
+new lifecycle regression against the previous SocketOutput.cpp failed as expected.
+The isolated ESP32_generic deployment retained the published device WebUI and
+excluded unrelated startup-style edits, as in the preceding diagnostic deployment.
+The 32 KiB/s OTA returned HTTP 200 with `Update Success! Rebooting...`; subsequent
+read-only checks confirmed software reset, uptime ten seconds, MQTT connected,
+byte-identical WebUI index and no configuration changes. The binary/manifest are
+`.pio/build/ESP32_generic/firmware_socket_failure_fix_deployment.*`.
+
+A first 30-second deliberately unread viewer test triggered an expected timeout;
+HTTP pairs took at most 189 ms and MQTT stayed connected. Its reading observer
+incorrectly used a six-second idle timeout and exited during the initially static
+screen, before the update-notification animation began; it does not validate
+reading-viewer survival. That result is retained as the idle-reader attempt.
+
+With the observer timeout corrected, a second 35-second run received 132 complete
+WebSocket messages without reader errors while the deliberately unread viewer was
+rejected (503/ENOBUFS; send failure count four to five). MQTT was connected at all
+samples, and there was no reboot or WiFi-disconnect event. However, combined HTTP
+reads reached 5,555 ms; the recorded HTTP main-loop maximum reached 1,505 ms and
+the animation maximum interval 1,518 ms at 200 ms configured. A 916 ms MQTT-loop
+outlier was also present. Thus the cleanup regression is corrected, but the
+reported overall latency is not resolved. Further investigation must distinguish
+HTTP send/parse waits, remaining handshake waits, TCP/WiFi congestion and reconnect
+bursts, rather than treating this short client-survival test as a timing pass.
+No test screen or configuration payload was sent. Settings backups and staging
+sources were removed after verification. Non-sensitive results remain in
+`.pio/socket_failure_fix_device_validation.json` and `.pio/network-watch.jsonl`;
+the scheduled monitor continues. ESP8266 physical timing/heap coverage is unchanged.
+
+
+## Staggered ESP32 WebSocket initial state (unreleased)
+
+The failure-cleanup fix alone did not resolve the user's nearly unusable WebUI.
+After the observer test ended, HTTP-pair samples still took 11,117 / 7,041 / 2,289 ms
+(the per-read socket timeout is not a total-request deadline). Heap recovered but
+latency remained. Reconnect/startup output also recorded 503/ENOBUFS, motivating
+removal of the synchronous six-message startup burst rather than increasing RAM.
+This is a candidate congestion/reconnect correction; device results follow separately.
+
+ESP32 now marks a newly connected viewer as awaiting initial state. The main loop
+builds and queues at most one initial message total per iteration, only when that
+viewer's previous output is empty and the viewer remains connected/non-failed.
+The six unchanged messages retain order: sysinfo, lux sensor, environment sensor,
+config, buttons, telemetry. Until completion, previews are skipped and ordinary
+snapshot broadcasts are deferred (their initial counterparts supply current state).
+Explicit command replies and logs retain their existing behavior. Disconnect
+cancels the pending sequence; same-fd reconnection starts fresh. The final preview
+catch-up still supplies static images once initialization finishes.
+
+One uint8 step per ESP32 viewer is added to the existing queue objects, without
+new queues, retained JSON or buffer/limit/dependency changes. An empty queue's first
+fd assignment preserves its pending step. ESP8266 retains its immediate startup
+messages and storage. Single initial messages larger than the existing ring can
+still be rejected; this change does not increase supported configuration sizes.
+Building one snapshot can still incur existing sensor/JSON work; real timing and
+peak-memory checks remain necessary.
+
+`python3 test/esp32/initial_state.py` exercises the actual scheduler for six-message
+ordering, one-message work limits, busy/failed/offline viewers, retry and disconnect
+cleanup. The queue regression checks preview gating and preserving the initial step
+on first fd assignment. Run animation/preview, ESP32 transport/output, Home Assistant
+host tests and all six builds. Existing companion clients accept the same independent
+JSON messages; PixelIt.WebUI source inspection found no combined-message requirement.
+No client changes are needed. External PixelIt.Docs should explain incremental UI
+initialization/reconnect troubleshooting for the stable release.
+
+
+### Staggered-initialization deployment — 2026-11-05
+
+Before deployment the user also observed stalled physical animation. One read-only
+snapshot recorded a 3,846 ms frame interval and 3,750 ms WebSocket task maximum,
+17 send failures, no WiFi-disconnect event, MQTT connected and 70,236 bytes free
+heap. Process inspection confirmed no remaining observer/load-test processes.
+Those observations belong to the preceding cleanup-only build, not this candidate.
+
+All six final builds and staged-initial-state, socket-output, preview catch-up,
+ESP32 transport/writer, animation/preview and Home Assistant host tests passed.
+An isolated staging build again retained the device's published WebUI and excluded
+uncommitted startup-style changes. OTA at 32 KiB/s returned HTTP 200 with success/
+reboot response. Post-install read-only checks confirmed software reset, uptime
+19 seconds, unchanged config and a byte-identical WebUI index. Binary/manifest:
+`.pio/build/ESP32_generic/firmware_socket_initial_state_deployment.*`.
+
+One normal reader received all six initial messages in 131 ms and was then closed;
+no new stalled-client or animation-injection test was performed. Initial HTTP-pair
+samples took 71–87 ms, but no animation was active yet, so those are not playback
+measurements. With the normal firmware notification active at uptime 44 and 59
+seconds, rendered-frame counts advanced from 63 to 138 at 200 ms configured,
+maximum interval 201 then 205 ms, no failed LED frames, zero WebSocket send
+failures and no WiFi disconnects/slow MQTT calls. HTTP pairs took 103/118 ms,
+MQTT stayed connected and sampled free heap was 151,152/144,464 bytes.
+These short low-load deployment samples are encouraging, not a reproduction of
+repeated user commands/reconnect bursts or proof of a complete fix. Long-duration
+multi-viewer/UI-command timing, peak memory and the user's physical observation
+remain outstanding. The existing automatic monitor continues without an active
+streaming observer or deliberate stalled client. Settings backups/staging sources
+were removed after verification; non-sensitive results are retained in
+`.pio/socket_initial_state_deployment_verification.json`.
+
+
+### Follow-up heartbeat: IP-level loss — 2026-11-05, approximately 00:20 CET
+
+At uptime 121 seconds on the staggered-init candidate, two new WebSocket send
+timeouts were present. Matrix/animation HTTP reads took 2,247/2,481 ms, while the
+maximum frame interval remained 205 ms at 200 ms configured and the slowest
+recorded application task was only 42 ms. MQTT was connected; no WiFi-disconnect
+event or reboot was recorded. Heap was 73,616 bytes with a 47,092-byte largest
+block and a 58,936-byte boot low-water mark. One normal reader then completed the
+handshake in 978 ms and all six initial messages in 1,229 ms, without parse errors.
+
+A four-packet ICMP probe to the ESP32 received only one reply (784.656 ms; three
+missing within the short test window). Immediate four-packet controls received
+all replies: gateway 192.168.0.1 averaged 0.372 ms, designated ESP8266 192.168.0.40
+averaged 4.940 ms. These brief, sequential comparisons show degraded IP-level
+reachability to the ESP32 in addition to HTTP/WebSocket symptoms. They do not
+establish RF interference, AP behavior, ESP32 driver/congestion or another root
+cause, nor equal AP association for the control device. Good RSSI and absence of
+a disconnect event do not exclude IP packet loss. The overall issue remains open;
+application frame timing was healthy during this particular delayed-network sample.
+No settings, content or firmware were changed during these heartbeat checks.
+
+
+## Shared ESP32 preview budget (superseded diagnostic candidate)
+
+A temporary isolated ESP32 A/B build paused only preview transmission at uptime
+60–120 seconds, retaining rendering, commands and two existing browser clients.
+The device settings and published WebUI were preserved. The test changed no saved
+configuration or display content; the ordinary update notification was animating.
+Host checks verified pause boundaries and latest/static-image catch-up on resume.
+This diagnostic build must not be shipped: its timed pause is absent from source.
+
+Before the pause, uptime 40/50-second samples had 10.408/3.585 ms ping and HTTP reads
+28–58 ms. During the pause, heap stabilized around 157 KB; most HTTP reads were
+31–309 ms, with one 1,704 ms response at the boundary and one ping without a reply
+in the short probe window. At resume (uptime 120), ping was 889.970 ms, HTTP reads
+2,041/1,486 ms and free heap 108,176 bytes, about 49 KB below the preceding paused
+sample, with the same two clients. Uptime 130/140/150 pings were 893/573/488 ms;
+HTTP remained 611–1,618 ms and heap 100–121 KB. Maximum frame interval remained
+217 ms, with zero WebSocket send failures. These observations associate preview
+traffic with network queuing; they do not establish the RF/AP/driver-level cause.
+
+The host browser's two WebSocket TCP connections had zero receive/send queues at
+inspection. A normal reading HTTP probe measured 342 ms connect, 600 ms first byte
+and no host TCP retransmitted packets in that sample. Packet capture was unavailable
+without administrator authentication, so no wire-level capture was obtained.
+Non-sensitive A/B samples are in `.pio/preview_ab_measurements.json`.
+
+ESP32 now admits at most one complete preview every 250 ms across all viewers,
+about 6.2 KB/s of JSON payload total for the unchanged 32×8 preview, plus transport
+headers and other messages. Ready viewers share turns in round-robin order;
+blocked/disconnected/initializing viewers do not consume turns. Unsent samples
+are replaced by the latest shared buffer, including static-final-image catch-up.
+One viewer sees up to four preview updates/s; two share approximately two each,
+five approximately 0.8 each. This deliberately reduces preview sampling rather
+than device animation cadence. Commands, status, logs and initial-state messages
+retain priority and bypass the preview pacing. LED frame scheduling is unchanged.
+
+The budget uses one fixed timestamp, cursor and sent flag in the existing server
+object, without new per-frame allocations or buffers. ESP8266 code, message/animation
+limits, dependency versions and MQTT policy are unchanged. Millis rollover, aggregate
+rate, five-viewer fairness, latest-image delivery, busy/disconnected clients and
+uncapped command replies are covered in `test/esp32/preview_output.py`. Run all six
+builds, animation/preview, ESP32 transport/queue/initial-state and HA host suites.
+No companion payload/client change is required; existing companion inspections
+apply. External PixelIt.Docs should describe shared sampling and LED independence
+in the preview/troubleshooting guide at stable release. Physical multi-viewer
+latency and long-duration peak-memory/timing still require validation.
+
+
+### Preview-budget deployment and device comparison — 2026-11-05
+
+All six board builds and aggregate-preview/fairness/rollover, initial-state,
+queue, ESP32 transport/writer, animation/preview and HA host tests passed.
+The final isolated budget build removed both temporary A/B markers/pause code,
+retained the published device WebUI, excluded unrelated startup-style work and
+was installed at 32 KiB/s with HTTP 200. Read-only verification confirmed a new
+uptime, absence of the temporary pause field, byte-identical WebUI and unchanged
+settings both immediately after installation and after the longer check. The
+binary/manifest is `.pio/build/ESP32_generic/firmware_preview_budget_deployment.*`.
+Private settings backups and staging sources were removed after verification.
+
+Eighteen sparse samples at uptime 40–210 seconds covered one to four established
+local TCP viewers, including one normal reading observer for 150.1 seconds. Its
+handshake took 388 ms; it received 190 complete messages including 167 previews,
+without parse/connection errors, and then closed. No stalled-client test, display
+payload or config write was made. Across the samples HTTP response times were
+31–224 ms (median 41.5 ms); ping median was 5.348 ms, maximum 320.504 ms during an
+additional connection. Later multi-viewer samples were mostly single-digit-ms
+ping and sub-100-ms HTTP. MQTT stayed connected with no sampled restart, WiFi
+disconnect or WebSocket send failure. Maximum frame interval was 227 ms at 200 ms
+configured. Minimum sampled free heap was 128,924 bytes and largest block 55,284
+bytes. These are sparse samples, not allocator-level minima or physical waveform
+measurements. Results are in `.pio/preview_budget_device_validation.json`,
+`preview_budget_normal_viewer.json` and `preview_budget_summary.json`.
+The longer run supports the candidate under these ordinary viewer conditions;
+full command/upload workloads, extended runtime, RF/AP causality, physical jitter
+and ESP8266 peak-memory/timing coverage remain outstanding. The automatic monitor
+continues without an active additional observer.
+
+### Relationship to the branded update displays
+
+The user asked whether the new flash animation could explain why ESP8266 works
+while ESP32 stalls. Source comparison against `d9dc8fb^` shows the upload progress/
+reboot renderer is entered only by upload callbacks and the pre-restart hook.
+Its active flag initializes false at boot; it is not a normal-loop animation task.
+The same commit also changed the firmware-available notification from 400 to
+200 ms per bitmap frame and schedules it immediately after discovery. With
+Liveview's half-frame sampling, that changes potential preview sampling from
+five to ten images/s per viewer while the notification/scroll is moving. Before
+that commit the notification first appeared at the 30-minute reminder, rather
+than immediately after the version check. Development version `0.0.0-beta` sees
+the published beta as newer, making the notification relevant after each install.
+
+Thus the visual-update change can indirectly expose network pressure through
+the new notification, even though the actual flash-progress renderer is inactive.
+This is a code-supported traffic mechanism, not an isolated old/new-notification
+A/B causality test. ESP8266 preview fragments wait for available TCP space and
+hold the shared pending sample; ESP32 uses per-viewer queues and previously
+skipped full viewers while admitting full-rate streams to ready viewers. Raw
+CPU capability does not establish equivalent network scheduling/backpressure.
+The shared ESP32 pacing addresses the measured traffic sensitivity while keeping
+the accepted LED design and animation rate intact; it is not proof of the
+underlying radio/AP/driver limitation being resolved.
+
+
+## ACK-driven ESP32 preview backpressure (unreleased)
+
+The user rejected the shared four-preview/s candidate because divided preview
+sampling visibly stuttered. That cap is removed; the previous budget measurements
+are historical results, not validation of this replacement.
+
+A viewer can now receive another preview only after its preceding TCP output is
+ACK-drained, with no unsent TCP data and room for one complete preview. Readiness
+is sampled asynchronously on the lwIP core at most every 20 ms through one reusable
+callback message. The main loop never waits for the callback. Busy viewers retain
+only the latest shared sample; ready viewers take round-robin turns without a
+fixed FPS ceiling. Command/status writes bypass preview admission and invalidate
+cached readiness, as do bytes flushed to native TCP, disconnects and fd reuse.
+The 20 ms probe cadence is not the LED or preview sampling interval.
+
+The pinned ESP32 SDK's per-slot socket mutex is taken with zero wait around the
+conn/PCB read, on the lwIP core, preventing close/free races without blocking the
+core. The inspected lwIP source for ESP-IDF 4.4.6 is commit
+`4f24c9baf9101634b7c690802f424b197b3bb685`; its slot mutex is allocated once and
+never freed. The debug socket accessor's declaration needs C linkage. These are
+private pinned-SDK interfaces: framework upgrades must review socket lifetime,
+field layout, callback reuse and locking, not merely pass the current compile
+checks. Build guards require the pinned socket-lock/full-duplex configuration.
+No socket/PCB pointers survive the callback.
+
+A fixed snapshot/result struct, connection/write epochs and ready flags are added
+only on ESP32. The callback message is allocated once and reused; allocation
+failure retries at most once per second, including millis zero/rollover. Queue
+submission is nonblocking, with only one outstanding probe. Failures keep previews
+pending while ordinary status/command services continue. No per-frame allocation,
+pixel buffer, payload-limit increase or dependency upgrade is introduced. ESP8266
+retains its existing fragment/available-space path. Wire JSON and the published
+WebUI remain compatible; companion code needs no changes. External PixelIt.Docs
+should describe sampled previews/backpressure and LED independence at stable
+release, superseding the temporary shared-FPS-cap description.
+
+`test/esp32/transport_probe.py` executes actual probe logic with delayed callbacks,
+core-only PCB-read assertions, unacked/unsent data, busy zero-wait locks, insufficient
+send space, stale write/fd results, allocation/submission failures and timer rollover.
+`preview_output.py` checks absence of a fixed FPS cap for ready viewers, isolated
+stalled clients, latest/static catch-up and uncapped replies. Run queue/initial-state,
+ESP32 transport, animation/preview, HA tests and all six builds. Physical frame,
+network, memory and actual received-preview cadence remain required before judging
+this candidate; host tests alone do not demonstrate smooth visual playback.
+
+
+## Visibility-aware preview subscriptions (unreleased)
+
+The first ACK-driven four-viewer run was not a smooth-preview pass: one reader
+received 798 images over its active window, averaging 5.07 FPS, median interval
+108 ms but p95 621.3 ms and a 7,790 ms maximum gap. Later HTTP reads reached about
+one second despite healthy ~220 ms LED frame intervals. The user-facing requirement
+is therefore still open; removing the artificial cap alone was insufficient.
+Raw results: `.pio/ack_preview_device_validation.json`.
+
+ESP32 matrixinfo now advertises optional boolean `previewControl: true`. A WebSocket
+client can send exactly `{ "preview": { "enabled": false } }` or `true` to pause or
+resume only its own previews. The top-level object and nested object must each
+contain only that member; enabled must be a JSON boolean. It is transient, never
+saved, and resets to enabled on reconnect for legacy clients. Controls, status and
+physical LED output continue. Resume marks the latest static/shared image for
+catch-up. ESP8266 does not advertise the capability and adds no flag/storage.
+`animationinfo.previewSubscribers` counts enabled non-failed ESP32 output slots
+with an assigned fd; it does not count delivered images or TCP ACKs.
+
+Companion PixelIt.WebUI supplies an inline, event-driven visibility controller
+before the existing socket plugin. It sends subscription changes only after the
+capability is advertised, pauses hidden pages, resumes visible pages and cleans up
+closed sockets. The newest capable same-device socket within one document owns
+preview subscription, avoiding duplicate streams during overlapping reconnections;
+other devices are independent. There is no new timer, polling or dependency.
+Existing open pages must reload once to load the controller; a socket reconnect
+alone cannot update page code. Old firmware and old clients preserve their existing
+behavior. Node-RED/API clients need no changes for the additive capability/command.
+External PixelIt.Docs should document the optional per-viewer command, boolean
+validation, transient/reconnect semantics, visibility behavior and diagnostic count
+at stable release.
+
+The WebUI production template inlines its source controller; a tested companion
+`scripts/preview-compatible-index.cjs` also generates an isolated index retaining
+already-published JS/CSS asset URLs, without publishing unreleased bundles. The
+firmware header is still generated through `.github/webui.py`, not edited manually.
+The root HTML handler now uses `send_P` to stream its PROGMEM index rather than
+copy the larger inline index into a request-sized String, including on ESP8266.
+No pixel buffers, limits or dependencies are raised. Extended response timing and
+ESP8266 peak heap/largest-block checks remain necessary for that larger index.
+
+Host checks: `test/esp32/preview_subscription.py` executes the actual parser with
+invalid types, extra fields, viewer isolation and reconnect defaults; queue tests
+cover subscription gating. Companion `tests/preview-visibility.test.cjs` covers
+capability fallback, hidden/visible/page lifecycle, duplicate sockets, reconnection,
+constructor/constants and idempotent published-index generation. Run the relevant
+existing host suites, all six builds, companion targeted lint/production build and
+browser visibility/reconnect flows. Device results must distinguish an actual
+smooth preview cadence from merely surviving connections.
+
+### ESP32 MQTT output stalls
+
+The ESP32 diagnostic run with a 400 ms update notification recorded a 15,372 ms
+matrix frame gap and a 10,011 ms MQTT section. Separate diagnostics recorded a
+4,492 ms PubSubClient loop and a 3,843 ms reconnect. No WLAN disconnect or
+WebSocket write failure was recorded. No preview subscriber was active when
+sampled after the stall.
+
+The pinned ESP32 WiFiClient can wait ten times for one second in a write.
+PixelIt limits MQTT writes to a 40 ms retry window with nonblocking socket
+sends and services due display frames while waiting. An incomplete write
+closes the connection to preserve MQTT framing. The MQTT reconnect interval
+still applies. PubSubClient also services display frames while waiting for
+CONNACK. TCP connection establishment, DNS and the cause of transient network
+latency are separate from the write retry window. ESP8266 keeps its existing
+transport.

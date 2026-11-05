@@ -40,6 +40,7 @@ void SaveConfig()
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
     json["bootScreenAktiv"] = bootScreenAktiv;
+    json["bootScreenStyle"] = bootScreenStyle == 1 ? "classic" : "logo";
     json["wifiScreenAktiv"] = wifiScreenAktiv;
     json["bootBatteryScreen"] = bootBatteryScreen;
     json["bootSound"] = bootSound;
@@ -295,6 +296,13 @@ void SetConfigVariables(JsonObject &json)
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
     }
 
+    if (json["bootScreenStyle"].is<const char *>())
+    {
+        const char *style = json["bootScreenStyle"].as<const char *>();
+        if (strcmp(style, "logo") == 0) bootScreenStyle = 0;
+        else if (strcmp(style, "classic") == 0) bootScreenStyle = 1;
+    }
+
     if (json["wifiScreenAktiv"].is<bool>())
     {
         wifiScreenAktiv = json["wifiScreenAktiv"].as<bool>();
@@ -508,6 +516,12 @@ String GetConfig()
             !WriteSensorPublishSettings(root, mqttSensorPublish))
         {
             Log(F("GetConfig"), F("Insufficient memory for sensor publishing settings"));
+            return "{}";
+        }
+
+        if (!root.set("bootScreenStyle", bootScreenStyle == 1 ? "classic" : "logo"))
+        {
+            Log(F("GetConfig"), F("Insufficient memory for boot screen style"));
             return "{}";
         }
 

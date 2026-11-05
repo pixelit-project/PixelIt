@@ -23,7 +23,25 @@ extern TransportReceiveStats transportReceiveStats[2];
 #endif
 
 #if defined(ESP32)
+#include <freertos/FreeRTOS.h>
+#include <freertos/portmacro.h>
 #include "PixelItSocketQueue.h"
+#include "PixelItSocketProbe.h"
+extern SocketTransportProbe socketTransportProbe;
+extern portMUX_TYPE socketTransportProbeMux;
+struct NetworkDiagnostics
+{
+    uint32_t wifiDisconnects = 0, wifiGotIP = 0;
+    uint32_t wifiLastDisconnectMillis = 0, wifiLastGotIPMillis = 0;
+    uint32_t mqttSlowLoops = 0, mqttSlowConnects = 0;
+    uint32_t mqttLastSlowMillis = 0, mqttLastSlowDuration = 0;
+    uint32_t mqttMaxLoopMillis = 0, mqttMaxConnectMillis = 0;
+    int mqttLastSlowState = 0;
+    uint8_t wifiLastReason = 0;
+    bool mqttLastSlowWasConnect = false;
+};
+extern NetworkDiagnostics networkDiagnostics;
+extern portMUX_TYPE networkDiagnosticsMux;
 extern SocketOutputQueue socketOutput[5];
 struct SocketWriteStats { uint32_t failures = 0; uint8_t client = 0; unsigned status = 0; int error = 0; };
 extern SocketWriteStats socketWriteStats;
@@ -113,7 +131,17 @@ extern BH1750 *bh1750;
 extern Max44009 *max44009;
 extern LuxSensor luxSensor;
 extern FastLED_NeoMatrix *matrix;
+#if defined(ESP32)
+class MqttWiFiClient : public WiFiClient
+{
+public:
+    size_t write(uint8_t byte) override { return write(&byte, 1); }
+    size_t write(const uint8_t *buffer, size_t size) override;
+};
+extern MqttWiFiClient wifiClientMQTT;
+#else
 extern WiFiClient wifiClientMQTT;
+#endif
 extern WiFiClient wifiClientHTTP;
 extern WiFiUDP udp;
 extern PubSubClient client;
@@ -149,6 +177,7 @@ extern String deviceID;
 extern String matrixTempCorrection;
 extern bool sleepMode;
 extern bool bootScreenAktiv;
+extern uint8_t bootScreenStyle; // 0: logo, 1: classic
 extern bool wifiScreenAktiv;
 extern bool bootBatteryScreen;
 extern bool bootSound;

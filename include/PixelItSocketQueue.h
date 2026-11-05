@@ -27,8 +27,13 @@ public:
     size_t contiguous() const { return used < capacity - head ? used : capacity - head; }
     size_t size() const { return used; }
     void consume(size_t length) { head = (head + length) % capacity; used -= length; }
-    void reset() { storage.reset(); head = used = 0; fd = -1; progress = 0; enabled = false; }
+    void reset() { ++epoch; writes = 0; transportReady = false; previewEnabled = true; storage.reset(); head = used = 0; fd = -1; progress = 0; enabled = false; failed = false; initialStep = 0; }
+    bool previewEnabled = true;
+    bool transportReady = false;
+    uint32_t epoch = 0, writes = 0;
     bool enabled = false;
+    bool failed = false;
+    uint8_t initialStep = 0;
     int fd = -1;
     unsigned long progress = 0;
 private:

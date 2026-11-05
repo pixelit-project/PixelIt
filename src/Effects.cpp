@@ -139,6 +139,7 @@ namespace
 {
 void ApplyBootLogoColors()
 {
+    if (bootScreenStyle == 1) return; // Original per-letter colors and timing.
     const int left = (MATRIX_WIDTH / 2) - 12;
     for (int y = 0; y < MATRIX_HEIGHT; ++y)
         for (int x = 0; x < MATRIX_WIDTH; ++x)

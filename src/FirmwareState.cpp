@@ -7,8 +7,12 @@ TransportReceiveStats transportReceiveStats[2];
 #endif
 
 #if defined(ESP32)
+NetworkDiagnostics networkDiagnostics;
+portMUX_TYPE networkDiagnosticsMux = portMUX_INITIALIZER_UNLOCKED;
 SocketWriteStats socketWriteStats;
 SocketOutputQueue socketOutput[5];
+SocketTransportProbe socketTransportProbe;
+portMUX_TYPE socketTransportProbeMux = portMUX_INITIALIZER_UNLOCKED;
 #endif
 
 SetGPIO setGPIOReset[SET_GPIO_SIZE];
@@ -111,7 +115,11 @@ Max44009 *max44009;
 LuxSensor luxSensor = LuxSensor_LDR;
 
 FastLED_NeoMatrix *matrix;
+#if defined(ESP32)
+MqttWiFiClient wifiClientMQTT;
+#else
 WiFiClient wifiClientMQTT;
+#endif
 WiFiClient wifiClientHTTP;
 WiFiUDP udp;
 PubSubClient client(wifiClientMQTT);
@@ -153,6 +161,7 @@ String matrixTempCorrection = "default";
 // System Vars
 bool sleepMode = false;
 bool bootScreenAktiv = true;
+uint8_t bootScreenStyle = 0;
 bool wifiScreenAktiv = true;
 bool bootBatteryScreen = VBAT_PIN > 0 ? true : false;
 bool bootSound = false;

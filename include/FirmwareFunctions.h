@@ -113,3 +113,11 @@ bool QueueHATextCommand(const char *topic, const byte *payload, unsigned int len
 void ServiceHAText();
 
 bool PrepareMqttServiceBuffer();
+
+#if defined(ESP32)
+void ServiceSocketTransportProbe();
+void ServiceSocketInitialState();
+void InitNetworkDiagnostics();
+void RecordMqttDuration(bool reconnect, unsigned long started);
+void AddNetworkDiagnostics(JsonObject &root);
+#endif

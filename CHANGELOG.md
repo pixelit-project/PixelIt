@@ -2,6 +2,12 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Keep ESP32 animations responsive during MQTT stalls.
+-   (o0shojo0o) Pause ESP32 previews in hidden WebUI tabs.
+-   (o0shojo0o) Improve ESP32 live preview smoothness.
+-   (o0shojo0o) Keep the ESP32 WebUI responsive during reconnects.
+-   (o0shojo0o) Prevent stalled WebUI connections from blocking the ESP32.
+-   (o0shojo0o) Track ESP32 WiFi disconnects and MQTT delays.
 -   (o0shojo0o) Added an independent switch for the entire startup WiFi screen.
 -   (o0shojo0o) Use logo colors with white IT at startup, a matching WiFi trail and centered WiFi text.
 -   (o0shojo0o) Show new firmware notifications immediately for 15 seconds, then every 30 minutes.

@@ -229,6 +229,9 @@ void setup()
     WiFi.hostname(hostname);
     mqttDeviceTopic = mqttMasterTopic + hostname + "/";
 
+#if defined(ESP32)
+    InitNetworkDiagnostics();
+#endif
     ShowConnectingScreen();
 
     wifiManager.setAPCallback(EnteredHotspotCallback);
@@ -441,6 +444,7 @@ void loop()
 #endif
         webSocket.loop();
 #if defined(ESP32)
+        ServiceSocketInitialState();
         webSocket.flushSkippedPreviews();
         FlushSocketOutput();
 #endif
@@ -509,14 +513,23 @@ void loop()
             if (reconnectDue)
             {
                 mqttLastReconnectAttempt = nowMillis;
+#if defined(ESP32)
+                const unsigned long started = millis();
+#endif
                 if (MQTTreconnect())
                     mqttLastReconnectAttempt = 0;
+#if defined(ESP32)
+                RecordMqttDuration(true, started);
+#endif
             }
             else
             {
                 {
                     const unsigned long started = millis();
                     client.loop();
+#if defined(ESP32)
+                    RecordMqttDuration(false, started);
+#endif
                     ServiceHADiscovery();
                     RecordAnimationWork("MQTT", started);
                 }

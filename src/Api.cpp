@@ -21,7 +21,7 @@ public:
 void HandleGetMainPage()
 {
     server.sendHeader(F("Connection"), F("close"));
-    server.send(200, F("text/html"), mainPage);
+    server.send_P(200, PSTR("text/html"), mainPage);
 }
 
 void HandleNotFound()
@@ -77,6 +77,11 @@ bool PrepareBitmapAnimation(JsonObject &screen)
 
 void SendWebSocketJson(uint8_t num, const String &payload)
 {
+#if defined(ESP32)
+    // Initial state already supplies these snapshots; avoid periodic bursts
+    // while its ordered messages are still draining.
+    if (num < 5 && socketOutput[num].initialStep) return;
+#endif
     webSocket.sendTXT(num, payload.c_str(), payload.length());
 }
 
@@ -214,6 +219,13 @@ void HandleGetAnimationInfo()
     root["slowestTask"] = animationSlowestTask;
     root["slowestTaskMillis"] = animationSlowestTaskMillis;
 #if defined(ESP32)
+    AddNetworkDiagnostics(root);
+    unsigned previewSubscribers = 0;
+    for (uint8_t n = 0; n < 5; ++n)
+        if (socketOutput[n].enabled && !socketOutput[n].failed &&
+            socketOutput[n].fd >= 0 && socketOutput[n].previewEnabled)
+            ++previewSubscribers;
+    root["previewSubscribers"] = previewSubscribers;
     JsonObject &send = root.createNestedObject("webSocketSend");
     send["failures"] = socketWriteStats.failures;
     send["client"] = socketWriteStats.client;
@@ -468,12 +480,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
         // send message to client
         // Initial state belongs to the new viewer, not every existing viewer
         // or MQTT subscriber. Avoid repeated bursts during reconnect churn.
+#if defined(ESP32)
+        socketOutput[num].initialStep = 1;
+#else
         SendWebSocketJson(num, "{\"sysinfo\":" + GetMatrixInfo() + "}");
         SendWebSocketJson(num, "{\"sensor\":" + GetLuxSensor() + "}");
         SendWebSocketJson(num, "{\"sensor\":" + GetSensor() + "}");
         SendWebSocketJson(num, "{\"config\":" + GetConfig() + "}");
         SendWebSocketJson(num, "{\"buttons\":" + GetButtons() + "}");
         SendWebSocketJson(num, "{\"telemetry\":" + GetTelemetry() + "}");
+#endif
         break;
     }
     case WStype_TEXT:
@@ -496,6 +512,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             JsonObject &json = jsonBuffer.parseObject(payload);
             int forcedDuration = 0;
 
+#if defined(ESP32)
+            // Transient per-viewer subscription; no config/display changes.
+            if (num < 5 && json.success() && json.size() == 1 && json["preview"].is<JsonObject &>())
+            {
+                JsonObject &preview = json["preview"];
+                if (preview.size() == 1 && preview["enabled"].is<bool>())
+                {
+                    socketOutput[num].previewEnabled = preview["enabled"].as<bool>();
+                    webSocket.resetPreview(num);
+                    return;
+                }
+            }
+#endif
             // Logging
             Log(F("WebSocketEvent"), "Incoming JSON (Length: " + String(length) + "/" + String(json.measureLength()) + ")");
             if (!json.success())

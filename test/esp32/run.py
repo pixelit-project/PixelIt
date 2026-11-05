@@ -102,9 +102,9 @@ void delay(unsigned long n){tick+=n;}
 struct Tcp{bool connected(){return true;}int fd(){return 4;}};
 enum { WSC_HEADER, WSC_CONNECTED };
 size_t queued=0;
-bool outputEnabled=true;
+bool outputEnabled=true,outputFailed=false;
 bool SocketOutputEnabled(uint8_t){return outputEnabled;}
-size_t QueueSocketWrite(uint8_t,int,const uint8_t*,size_t n){queued+=n;return n;}
+size_t QueueSocketWrite(uint8_t,int,const uint8_t*,size_t n){if(outputFailed)return 0;queued+=n;return n;}
 struct WSclient_t{Tcp *tcp;uint8_t num=0;int status=WSC_HEADER;explicit WSclient_t(Tcp *t):tcp(t){}};
 void RecordSocketWriteError(uint8_t,unsigned,int){}
 class WebSockets{public:int disconnected=0;size_t write(WSclient_t*,uint8_t*,size_t);void clientDisconnect(WSclient_t *c){++disconnected;c->tcp=nullptr;}};
@@ -122,6 +122,12 @@ int main(){
  WSclient_t established{&tcp};established.status=WSC_CONNECTED;tick=0;
  assert(ws.write(&established,reinterpret_cast<uint8_t*>(&data[0]),data.size())==data.size());
  assert(queued==data.size()&&tick==0&&established.tcp==&tcp);
+ // A retired queue must keep enabled=true until native disconnect cleanup,
+ // so even a stale CONNECTED client cannot fall back to timed socket writes.
+ outputFailed=true;wire.clear();budget=0;writable=0;tick=0;
+ assert(ws.write(&established,reinterpret_cast<uint8_t*>(&data[0]),data.size())==0);
+ assert(tick==0&&wire.empty()&&established.tcp==&tcp);
+ outputFailed=false;
  // The library marks sockets CONNECTED before writing HTTP 101. Queueing
  // starts only in the application callback after handshake and initial ping.
  outputEnabled=false;wire.clear();tick=0;budget=10000;writable=1;

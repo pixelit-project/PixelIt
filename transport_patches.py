@@ -12,6 +12,15 @@ def patch_mqtt(source, esp32=False):
     source = '#include "PixelItTransport.h"\n' + source
     source = once(source, '   while(!_client->available()) {',
                   '   while(!_client->available()) {\n     ServiceTransportReceive();')
+    if esp32:
+        source = once(source, '            write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE);',
+                      '            if (!write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE)) {\n'
+                      '                _client->stop();\n'
+                      '                _state = MQTT_CONNECT_FAILED;\n'
+                      '                return false;\n'
+                      '            }')
+        source = once(source, '            while (!_client->available()) {',
+                      '            while (!_client->available()) {\n                ServiceTransportReceive();')
     marker = '    uint32_t idx = len;'
     receiver = r'''
     if (isPublish && !this->stream) {
