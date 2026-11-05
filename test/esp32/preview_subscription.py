@@ -21,7 +21,14 @@ int main(){
  assert(!socketOutput[0].previewEnabled&&webSocket.resets==1);
  receive(5,"{\"preview\":{\"enabled\":true}}");assert(webSocket.resets==1);
  receive(0,"{\"preview\":{\"enabled\":true}}");assert(socketOutput[0].previewEnabled&&webSocket.resets==2);
- socketOutput[0].previewEnabled=false;socketOutput[0].reset();assert(socketOutput[0].previewEnabled);
+ receive(0,"{\"preview\":{\"enabled\":true,\"compact\":true}}");
+ assert(socketOutput[0].compactPreview&&!socketOutput[1].compactPreview&&webSocket.resets==3);
+ receive(0,"{\"preview\":{\"enabled\":true,\"compact\":1}}");
+ assert(socketOutput[0].compactPreview&&webSocket.resets==3);
+ receive(0,"{\"preview\":{\"enabled\":true,\"compact\":false}}");
+ assert(!socketOutput[0].compactPreview&&webSocket.resets==4);
+ socketOutput[0].previewEnabled=false;socketOutput[0].compactPreview=true;socketOutput[0].reset();
+ assert(socketOutput[0].previewEnabled&&!socketOutput[0].compactPreview);
 }
 '''
 with tempfile.TemporaryDirectory() as temp:

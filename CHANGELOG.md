@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Reduce ESP32 Liveview traffic with a compatible WebUI.
 -   (o0shojo0o) Keep ESP32 animations responsive during MQTT stalls.
 -   (o0shojo0o) Pause ESP32 previews in hidden WebUI tabs.
 -   (o0shojo0o) Improve ESP32 live preview smoothness.

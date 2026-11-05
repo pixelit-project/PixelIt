@@ -84,7 +84,7 @@ public:
         if (num >= WEBSOCKETS_SERVER_CLIENT_MAX) return false;
         _previewSkipped[num] = true;
         if (!SocketPreviewReady(num) || !previewTurn(num)) return true;
-        const bool sent = sendTXT(num, data, length);
+        const bool sent = SendSocketPreview(num, data, length);
         if (sent)
         {
             _previewSkipped[num] = false;

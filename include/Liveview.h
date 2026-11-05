@@ -13,6 +13,12 @@
 #define _LIVEVIEW_SUFFIX_LENGHT 2
 #define _LIVEVIEW_BUFFER_LENGHT MATRIX_WIDTH *MATRIX_HEIGHT * 6 + _LIVEVIEW_PREFIX_LENGHT + _LIVEVIEW_SUFFIX_LENGHT
 
+#if defined(ESP32)
+constexpr char compactLiveviewPrefix[] = "{\"liveview64\":\"";
+constexpr size_t compactLiveviewLength = sizeof(compactLiveviewPrefix) - 1 +
+                                         MATRIX_WIDTH * MATRIX_HEIGHT * 4 + 2;
+#endif
+
 class Liveview
 {
 public:

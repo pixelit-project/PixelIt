@@ -11,6 +11,7 @@ void ResetSocketOutput(uint8_t client, bool enabled = false);
 bool SocketOutputEnabled(uint8_t client);
 void FlushSocketOutput();
 bool SocketPreviewReady(uint8_t client);
+bool SendSocketPreview(uint8_t client, const char *data, size_t length);
 #endif
 void RecordSocketWriteError(uint8_t client, unsigned status, int error);
 void RecordTransportReceive(bool mqtt, unsigned status, size_t input, size_t output);

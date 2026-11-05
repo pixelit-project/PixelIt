@@ -517,9 +517,14 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
             if (num < 5 && json.success() && json.size() == 1 && json["preview"].is<JsonObject &>())
             {
                 JsonObject &preview = json["preview"];
-                if (preview.size() == 1 && preview["enabled"].is<bool>())
+                const bool compact = preview["compact"].is<bool>();
+                if (preview["enabled"].is<bool>() && preview.size() == (compact ? 2 : 1))
                 {
                     socketOutput[num].previewEnabled = preview["enabled"].as<bool>();
+                    const bool compactPreview = compact && preview["compact"].as<bool>();
+                    if (socketOutput[num].compactPreview != compactPreview)
+                        socketOutput[num].transportReady = false;
+                    socketOutput[num].compactPreview = compactPreview;
                     webSocket.resetPreview(num);
                     return;
                 }

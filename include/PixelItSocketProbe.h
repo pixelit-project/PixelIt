@@ -10,6 +10,6 @@ struct SocketTransportProbe
     uint32_t lastPoll = 0, lastAllocationAttempt = 0;
     int fd[5] = {-1, -1, -1, -1, -1};
     uint32_t epoch[5] = {}, writes[5] = {};
-    bool ready[5] = {};
+    bool ready[5] = {}, compact[5] = {};
     bool pending = false, result = false, allocationAttempted = false;
 };

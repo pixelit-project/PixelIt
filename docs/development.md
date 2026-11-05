@@ -1600,3 +1600,19 @@ still applies. PubSubClient also services display frames while waiting for
 CONNACK. TCP connection establishment, DNS and the cause of transient network
 latency are separate from the write retry window. ESP8266 keeps its existing
 transport.
+
+### Compact ESP32 Liveview frames
+
+ESP32 advertises `sysinfo.previewCompact`. A WebUI that supports this format
+can send `{"preview":{"enabled":true,"compact":true}}` on its own connection.
+This reduces a 32 × 8 RGB preview from 1,551 JSON bytes to 1,041 JSON bytes
+with lossless Base64 encoding. The preview schedule stays the same. Legacy
+clients and ESP8266 continue to receive the hexadecimal `liveview` message.
+The embedded WebUI controller expands compact frames before the existing
+WebUI message handler receives them. The format selection resets on reconnect.
+
+The ESP32 can queue a compact frame while up to one compact frame of TCP data
+awaits acknowledgement. It still requires room for the entire next message,
+an empty application queue, and no unsent TCP segments. This bounds the
+preview's contribution to in-flight data to two frames. Legacy previews
+still require acknowledgement of the previous data.

@@ -9,6 +9,7 @@ program=r'''
 #include "PixelItSocketProbe.h"
 #include <cassert>
 #define _LIVEVIEW_BUFFER_LENGHT 1551
+constexpr size_t compactLiveviewLength = 1041;
 #define NETCONN_TCP 16
 #define NETCONNTYPE_GROUP(t) (t)
 #define ERR_OK 0
@@ -20,7 +21,7 @@ unsigned allocations=0,posts=0;uint32_t tick=20;
 uint32_t millis(){return tick;}
 void portENTER_CRITICAL(int*){assert(locked++==0);}
 void portEXIT_CRITICAL(int*){assert(--locked==0);}
-struct tcp_pcb{int state=ESTABLISHED;void *unacked=nullptr,*unsent=nullptr;unsigned snd_buf=5744;};
+struct tcp_pcb{int state=ESTABLISHED;void *unacked=nullptr,*unsent=nullptr;unsigned snd_buf=5744;uint32_t snd_lbb=0,lastack=0;};
 struct netconn{int type=NETCONN_TCP;struct{tcp_pcb *tcp;}pcb;};
 struct lwip_sock{netconn *conn;void *lock=reinterpret_cast<void*>(1);};
 #define pdTRUE 1
@@ -48,6 +49,15 @@ int main(){
  tick=60;ServiceSocketTransportProbe();runCore();tick=70;ServiceSocketTransportProbe();
  for(int n=0;n<4;++n)assert(!socketOutput[n].transportReady);assert(socketOutput[4].transportReady);
  pcb[0].unacked=nullptr;tick=80;ServiceSocketTransportProbe();runCore();tick=90;ServiceSocketTransportProbe();assert(socketOutput[0].transportReady);
+ // One compact frame can be in flight, including across TCP sequence wrap.
+ socketOutput[4].compactPreview=true;pcb[4].unacked=&pcb[4];
+ pcb[4].lastack=0xfffffff0u;pcb[4].snd_lbb=pcb[4].lastack+1045;
+ tick=92;socketTransportProbe.lastPoll=72;ServiceSocketTransportProbe();runCore();
+ tick=93;ServiceSocketTransportProbe();assert(socketOutput[4].transportReady);
+ ++pcb[4].snd_lbb;
+ tick=95;socketTransportProbe.lastPoll=75;ServiceSocketTransportProbe();runCore();
+ tick=96;ServiceSocketTransportProbe();assert(!socketOutput[4].transportReady);
+ socketTransportProbe.lastPoll=80;
  // Native fd reuse cannot apply an old connection's core result.
  tick=100;ServiceSocketTransportProbe();socketOutput[0].reset();socketOutput[0].fd=0;
  runCore();tick=110;ServiceSocketTransportProbe();assert(!socketOutput[0].transportReady);

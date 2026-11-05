@@ -32,8 +32,21 @@ void ProbeSocketTransport(void *)
         if (socket->conn && NETCONNTYPE_GROUP(socket->conn->type) == NETCONN_TCP)
         {
             const tcp_pcb *pcb = socket->conn->pcb.tcp;
-            ready[n] = pcb && pcb->state == ESTABLISHED && !pcb->unacked && !pcb->unsent &&
-                       tcp_sndbuf(pcb) >= (_LIVEVIEW_BUFFER_LENGHT + 4);
+            if (pcb && pcb->state == ESTABLISHED && !pcb->unsent)
+            {
+                constexpr size_t websocketHeader = 4;
+                constexpr size_t compactFrame = compactLiveviewLength + websocketHeader;
+                if (socketTransportProbe.compact[n])
+                {
+                    // Bound in-flight data to two compact frames in total.
+                    const uint32_t inFlight = pcb->snd_lbb - pcb->lastack;
+                    ready[n] = inFlight <= compactFrame && tcp_sndbuf(pcb) >= compactFrame;
+                }
+                else
+                {
+                    ready[n] = !pcb->unacked && tcp_sndbuf(pcb) >= (_LIVEVIEW_BUFFER_LENGHT + websocketHeader);
+                }
+            }
         }
         xSemaphoreGive(socket->lock);
     }
@@ -71,7 +84,8 @@ void ServiceSocketTransportProbe()
             SocketOutputQueue &queue = socketOutput[n];
             if (queue.fd == socketTransportProbe.fd[n] &&
                 queue.epoch == socketTransportProbe.epoch[n] &&
-                queue.writes == socketTransportProbe.writes[n])
+                queue.writes == socketTransportProbe.writes[n] &&
+                queue.compactPreview == socketTransportProbe.compact[n])
                 queue.transportReady = socketTransportProbe.ready[n];
         }
         socketTransportProbe.result = false;
@@ -87,6 +101,7 @@ void ServiceSocketTransportProbe()
         socketTransportProbe.fd[n] = socketOutput[n].fd;
         socketTransportProbe.epoch[n] = socketOutput[n].epoch;
         socketTransportProbe.writes[n] = socketOutput[n].writes;
+        socketTransportProbe.compact[n] = socketOutput[n].compactPreview;
     }
     socketTransportProbe.pending = true;
     portEXIT_CRITICAL(&socketTransportProbeMux);

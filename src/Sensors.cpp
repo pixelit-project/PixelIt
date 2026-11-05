@@ -232,6 +232,7 @@ String GetMatrixInfo()
     wifi_ps_type_t wifiSleep;
     root["wifiSleepMode"] = esp_wifi_get_ps(&wifiSleep) == ESP_OK ? static_cast<int>(wifiSleep) : -1;
     root["previewControl"] = true;
+    root["previewCompact"] = true;
 #endif
 
     root["cpuFreqMHz"] = ESP.getCpuFreqMHz();

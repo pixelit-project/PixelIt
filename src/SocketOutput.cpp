@@ -28,6 +28,37 @@ bool SocketPreviewReady(uint8_t client)
            socketOutput[client].transportReady && socketOutput[client].size() == 0;
 }
 
+static uint8_t PreviewHexDigit(char digit)
+{
+    return digit <= '9' ? digit - '0' : digit - 'A' + 10;
+}
+
+bool SendSocketPreview(uint8_t client, const char *data, size_t length)
+{
+    if (!socketOutput[client].compactPreview || length != _LIVEVIEW_BUFFER_LENGHT)
+        return webSocket.sendTXT(client, data, length);
+
+    // Liveview emits six uppercase hex digits per RGB pixel.
+    constexpr char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    char message[compactLiveviewLength];
+    memcpy(message, compactLiveviewPrefix, sizeof(compactLiveviewPrefix) - 1);
+    char *output = message + sizeof(compactLiveviewPrefix) - 1;
+    const char *pixel = data + _LIVEVIEW_PREFIX_LENGHT;
+    for (size_t i = 0; i < MATRIX_WIDTH * MATRIX_HEIGHT; ++i, pixel += 6)
+    {
+        const uint8_t red = (PreviewHexDigit(pixel[0]) << 4) | PreviewHexDigit(pixel[1]);
+        const uint8_t green = (PreviewHexDigit(pixel[2]) << 4) | PreviewHexDigit(pixel[3]);
+        const uint8_t blue = (PreviewHexDigit(pixel[4]) << 4) | PreviewHexDigit(pixel[5]);
+        *output++ = alphabet[red >> 2];
+        *output++ = alphabet[((red & 3) << 4) | (green >> 4)];
+        *output++ = alphabet[((green & 15) << 2) | (blue >> 6)];
+        *output++ = alphabet[blue & 63];
+    }
+    *output++ = '"';
+    *output = '}';
+    return webSocket.sendTXT(client, message, sizeof(message));
+}
+
 static void FlushSocketClient(uint8_t client);
 
 size_t QueueSocketWrite(uint8_t client, int fd, const uint8_t *data, size_t length)

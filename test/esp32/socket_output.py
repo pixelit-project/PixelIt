@@ -13,10 +13,22 @@ program=r'''
 #define WEBSOCKETS_SERVER_CLIENT_MAX 5
 #define MSG_DONTWAIT 1
 #define SHUT_RDWR 2
+#define MATRIX_WIDTH 32
+#define MATRIX_HEIGHT 8
+#define _LIVEVIEW_PREFIX_LENGHT 13
+#define _LIVEVIEW_BUFFER_LENGHT (13 + 32 * 8 * 6 + 2)
+constexpr char compactLiveviewPrefix[] = "{\"liveview64\":\"";
+constexpr size_t compactLiveviewLength = 1041;
 SocketOutputQueue socketOutput[5];
 void ResetSocketOutput(uint8_t,bool enabled=false);
 unsigned long tick=0;unsigned failures=0,services=0,retired=0;int closed=-1;
-struct { void disconnect(uint8_t num) {
+struct {
+ std::string preview;
+ bool sendTXT(uint8_t, const char *data, size_t length) {
+  preview.assign(data, length);
+  return true;
+ }
+ void disconnect(uint8_t num) {
  assert(socketOutput[num].enabled && socketOutput[num].failed);
  ++retired;ResetSocketOutput(num);
 } } webSocket;
@@ -32,6 +44,13 @@ int send(int fd,const void *data,size_t length,int){
 }
 '''+source+r'''
 int main(){
+ std::string hex = "{\"liveview\":\"", compact = "{\"liveview64\":\"";
+ for (int pixel = 0; pixel < 256; ++pixel) { hex += "01F0FF"; compact += "AfD/"; }
+ hex += "\"}"; compact += "\"}";
+ assert(SendSocketPreview(0, hex.data(), hex.size()) && webSocket.preview == hex);
+ socketOutput[0].compactPreview = true;
+ assert(SendSocketPreview(0, hex.data(), hex.size()) && webSocket.preview == compact);
+ socketOutput[0].compactPreview = false;
  std::string first(3000,'a'),second(2000,'b');
  socketOutput[0].transportReady=true;socketOutput[0].previewEnabled=false;
  assert(!SocketPreviewReady(0));socketOutput[0].previewEnabled=true;
