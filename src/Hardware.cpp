@@ -125,8 +125,6 @@ void ShowConnectingScreen()
     if (!wifiScreenAktiv)
     {
         connectingAnimTicker.detach();
-        matrix->clear();
-        matrix->show();
         return;
     }
     // Bar starts at left edge, moving right

@@ -1079,9 +1079,10 @@ peak heap/largest-block safety under concurrent workloads.
 `bootScreenAktiv`, defaulting to `true`. Set it to `false` to suppress the entire
 startup WiFi connection display (text and moving trail) as well as the matrix
 HOTSPOT notice. The connection/configuration portal still works and keeps its
-existing logs. Disabled startup clears the prior boot image once without fading
-or attaching the animation ticker. Defensive tick/hotspot guards draw nothing
-while disabled. It affects the next startup, not regular matrix content.
+existing logs. With the WiFi screen disabled, the last startup image (boot logo
+or battery screen, if enabled) stays visible until the next normal display
+update. The WiFi animation ticker is skipped, and the tick and hotspot callbacks
+leave the display alone. The setting takes effect at the next startup.
 
 The setting follows existing HTTP/MQTT/WebSocket config writes, persisted config,
 and config reads. Missing keys preserve the current value; legacy saved files
@@ -1099,8 +1100,8 @@ editable control; no missing field is silently interpreted as off. Demo data has
 the enabled default. WebUI code changes live in that repository, not the generated
 firmware header. Node-RED's configuration forwarding preserves the boolean and
 requires no client changes; PixelIt.API is not involved in device settings.
-External PixelIt.Docs needs the option, enabled default, startup scope and hotspot
-behavior in its WebUI/firmware guide at stable release.
+External PixelIt.Docs needs the option, enabled default, startup scope, retained
+startup image and hotspot behavior in its WebUI/firmware guide at stable release.
 
 The WebUI production build references externally hosted hashed assets. Its matching
 bundle must be published by the normal WebUI release pipeline before regenerating
