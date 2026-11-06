@@ -135,21 +135,25 @@ uint ColorWheel(byte wheelPos, int pos)
     }
 }
 
+void ColorLogoText(int left, int width, int whiteFrom)
+{
+    for (int y = 0; y < MATRIX_HEIGHT; ++y)
+        for (int x = left; x < left + width && x < MATRIX_WIDTH; ++x)
+        {
+            if (x < 0) continue;
+            const CRGB &pixel = leds[matrix->XY(x, y)];
+            if (pixel.r || pixel.g || pixel.b)
+                matrix->drawPixel(x, y, x >= whiteFrom ? matrix->Color(255, 255, 255)
+                                                      : LogoGradientColor(x - left, width));
+        }
+}
+
 namespace
 {
 void ApplyBootLogoColors()
 {
-    if (bootScreenStyle == 1) return; // Original per-letter colors and timing.
-    const int left = (MATRIX_WIDTH / 2) - 12;
-    for (int y = 0; y < MATRIX_HEIGHT; ++y)
-        for (int x = 0; x < MATRIX_WIDTH; ++x)
-        {
-            const CRGB &pixel = leds[matrix->XY(x, y)];
-            if (pixel.r || pixel.g || pixel.b)
-                matrix->drawPixel(x, y, x >= (MATRIX_WIDTH / 2) + 6
-                    ? matrix->Color(255, 255, 255)
-                    : LogoGradientColor(x < left ? 0 : x - left, 23));
-        }
+    if (bootScreenStyle != 1)
+        ColorLogoText((MATRIX_WIDTH / 2) - 12, 23, (MATRIX_WIDTH / 2) + 6);
 }
 }
 

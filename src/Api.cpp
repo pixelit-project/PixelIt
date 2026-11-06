@@ -296,13 +296,17 @@ void SleepScreen(bool startSleep, bool forceClockOnWake)
     {
         Log(F("SleepScreen"), F("Sleeping..."));
         matrix->clear();
-        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 6, 1);
+        const int left = (MATRIX_WIDTH / 2) - 6;
+        DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) - 6, 1);
+        ColorLogoText(left, 13);
         matrix->show();
         delay(200);
-        DrawTextHelper("Z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) - 1, 1);
+        DrawTextHelper("Z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) - 1, 1);
+        ColorLogoText(left, 13);
         matrix->show();
         delay(200);
-        DrawTextHelper("z", false, false, false, false, false, 0, 0, 255, (MATRIX_WIDTH / 2) + 4, 1);
+        DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 4, 1);
+        ColorLogoText(left, 13);
         matrix->show();
         delay(500);
         FadeOut(30, 0);

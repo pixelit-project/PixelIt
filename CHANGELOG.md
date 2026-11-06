@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Use the logo colors for the zZz sleep screen.
 -   (o0shojo0o) Keep Home Assistant status and commands separate for each PixelIt.
 -   (o0shojo0o) Add six screen transitions and include them in random screen changes.
 -   (o0shojo0o) Add the six transitions to Clock Auto Fallback and Random Wipe with the matching WebUI.

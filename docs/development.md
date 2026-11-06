@@ -1684,3 +1684,17 @@ device-specific updates when discovery is enabled.
 
 Update external PixelIt.Docs for the release to explain this behavior and the
 unique-hostname requirement. WebUI, Node-RED and PixelIt.API require no changes.
+
+
+### Sleep screen colors
+
+The `zZz` sleep screen uses the same violet-to-pink gradient as `REBOOT`.
+Each existing letter stage recolors only the lit pixels in the logical text
+area through the existing LED buffer. Letter positions, delays, fade-out, and
+wake behavior are unchanged. The boot screen reuses the recoloring helper and
+keeps its white `IT` and untouched classic option. No setting, client payload,
+pixel buffer or periodic work was added. `python3 test/startup/run.py` checks
+both boot styles and the sleep gradient, stage delays and wake request.
+Document the new appearance in the Sleep Mode section of external
+PixelIt.Docs `src/api.md` with the matching stable firmware. No companion
+client code changes are required.

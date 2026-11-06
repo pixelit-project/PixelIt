@@ -77,6 +77,7 @@ void BitmapWipe(JsonArray &data, int16_t w);
 void ColorFlash(int red, int green, int blue);
 uint ColorWheel(byte wheelPos, int pos);
 void ShowBootAnimation();
+void ColorLogoText(int left, int width, int whiteFrom = MATRIX_WIDTH);
 void ShowBatteryScreen();
 ColorTemperature GetUserColorTemp();
 LEDColorCorrection GetUserColorCorrection();

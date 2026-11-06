@@ -13,7 +13,9 @@ visuals = '\n'.join(line for line in visuals.splitlines() if not line.startswith
 hardware = (root / 'src/Hardware.cpp').read_text()
 connecting = hardware[hardware.index('namespace\n{'):]
 effects = (root / 'src/Effects.cpp').read_text()
-boot = effects[effects.index('namespace\n{\nvoid ApplyBootLogoColors()'):effects.index('void ShowBatteryScreen()')]
+boot = effects[effects.index('void ColorLogoText('):effects.index('void ShowBatteryScreen()')]
+api = (root / "src/Api.cpp").read_text()
+sleep = api[api.index("void SleepScreen("):api.index("void HandleAndSendButtonPress(")]
 program = r'''
 #include <cassert>
 #include <cstdint>
@@ -32,7 +34,9 @@ struct CRGB { uint8_t r=0,g=0,b=0; };
 CRGB leds[256];
 bool reversed = false;
 struct Matrix {
-    int cx=0,cy=0,shows=0,prints=0; uint16_t color=0; bool bootCheck=false;
+    int cx=0,cy=0,shows=0,prints=0; uint16_t color=0; bool bootCheck=false, sleepCheck=false;
+    void setBrightness(int value) { brightness=value; }
+    int brightness=255;
     int XY(int x,int y) { return y*32 + ((reversed && (y&1)) ? 31-x : x); }
     uint16_t Color(int r,int g,int b) {return ((r&248)<<8)|((g&252)<<3)|(b>>3);}
     void clear() { for(auto &p:leds) p=CRGB(); }
@@ -59,12 +63,18 @@ struct Matrix {
     }
     void show() {
         ++shows;
+        if(sleepCheck) for(int y=0;y<8;++y) for(int x=0;x<32;++x)
+            if(pixel(x,y)) { assert(x>=10 && x<=22); assert(pixel(x,y)==LogoGradientColor(x-10,13)); }
         if(bootCheck) for(int y=0;y<8;++y) for(int x=0;x<32;++x)
             if(pixel(x,y)) assert(pixel(x,y)==(x>=22?Color(255,255,255):LogoGradientColor(x<4?0:x-4,23)));
     }
 } display;
 Matrix *matrix=&display;
-bool wifiScreenAktiv=true;
+bool wifiScreenAktiv=true, forceClock=false;
+uint8_t bootScreenStyle=0;
+void ColorLogoText(int,int,int = MATRIX_WIDTH);
+void CancelScreenTransition() {}
+void FadeOut(int delay, int minBrightness) { assert(delay==30 && minBrightness==0); }
 struct WiFiManager {};
 #define F(x) x
 void Log(const char*,const char*) {}
@@ -79,7 +89,7 @@ void FadeIn(){matrix->show();}
 void DrawTextHelper(const char *s,int,bool,bool,bool,bool,int r,int g,int b,int x,int y) {
     matrix->setTextColor(matrix->Color(r,g,b));matrix->setCursor(x,y+5);matrix->print(s);
 }
-''' + visuals + connecting + boot + r'''
+''' + visuals + connecting + boot + sleep + r'''
 void checkCenter() {
     int left=32,right=-1,top=8,bottom=-1;
     for(int y=0;y<7;++y) for(int x=0;x<32;++x) if(matrix->pixel(x,y)) {
@@ -105,6 +115,15 @@ int main() {
     for(bool mapping:{false,true}) {
         reversed=mapping; matrix->clear(); delayTotal=0; display.bootCheck=true;
         ShowBootAnimation(); assert(delayTotal==2300);display.bootCheck=false;
+        matrix->clear(); delayTotal=0; bootScreenStyle=1;
+        ShowBootAnimation(); assert(delayTotal==2300);
+        bool green=false;
+        for(int y=0;y<8;++y) if(display.pixel(8,y)==display.Color(0,255,42)) green=true;
+        assert(green); bootScreenStyle=0;
+        delayTotal=0; display.sleepCheck=true;
+        SleepScreen(true,false); assert(delayTotal==900 && display.brightness==0);
+        display.sleepCheck=false;
+        SleepScreen(false,true); assert(forceClock);
         connectingTextPlaced=false;
         ShowConnectingScreen();checkCenter();
         assert(tickerMs==60 && tickerFn==ConnectingAnimationTick);
@@ -129,4 +148,4 @@ with tempfile.TemporaryDirectory() as temp:
     (path/'startup.cpp').write_text(program)
     subprocess.run(['c++','-std=c++11','-Wall','-Wextra','-I',str(root/'include'),str(path/'startup.cpp'),'-o',str(path/'startup')],check=True)
     subprocess.run([str(path/'startup')],check=True)
-print('Boot palette and WiFi ink-centering/trail tests passed')
+print('Boot styles, sleep palette and WiFi centering/trail tests passed')
