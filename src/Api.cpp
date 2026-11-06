@@ -291,6 +291,7 @@ void HandleFactoryReset()
 
 void SleepScreen(bool startSleep, bool forceClockOnWake)
 {
+    CancelScreenTransition();
     if (startSleep)
     {
         Log(F("SleepScreen"), F("Sleeping..."));

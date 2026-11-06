@@ -1627,3 +1627,29 @@ awaits acknowledgement. It still requires room for the entire next message,
 an empty application queue, and no unsent TCP segments. This bounds the
 preview's contribution to in-flight data to two frames. Legacy previews
 still require acknowledgement of the previous data.
+
+## Screen transitions
+
+Send a screen payload with `"switchAnimation": {"aktiv": true, "animation": "curtain"}`.
+The new names are `curtain`, `pixelDissolve`, `slide`, `blinds`, `crt` and `glitch`.
+They apply to incoming screen content, including a clock command. Existing
+`random` and clock fallback settings keep their current effect selections.
+
+The new renderer uses one fixed 768-byte RGB snapshot on both platforms. It
+composites into the existing LED buffer and renders at most one step per service
+call, skipping overdue intermediate steps over a nominal 384 ms. No request
+storage survives the handler. Bitmap and scrolling playback start from the
+prepared frame after the transition. Another screen can replace an in-progress
+transition, and sleep, clock fallback and firmware upload can take over the display.
+
+Existing HTTP, MQTT and WebSocket screen commands accept the new names. The
+Node-RED Switch Animation editor needs six additional dropdown choices to expose
+them in the editor. PixelIt.WebUI and PixelIt.API require no changes for this
+payload. Add the names, an example with screen content and the distinction from
+clock fallback to the Switch Animation section of external PixelIt.Docs before
+stable release.
+
+Run `python3 test/animation/transitions.py` to check the transition renderer with
+simulated time and a serpentine matrix. Check visuals, frame intervals, dropped
+LED frames, minimum ESP8266 free heap and largest free block with repeated screen
+changes and concurrent network traffic on a designated device.

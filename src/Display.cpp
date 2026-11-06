@@ -118,7 +118,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         }
         else
         {
-            matrix->show();
+            ShowScreenContentFrame();
         }
     }
     else
@@ -154,7 +154,7 @@ void ScrollText(bool isFadeInRequired)
         }
         else
         {
-            matrix->show();
+            ShowScreenContentFrame();
         }
     }
     else
@@ -388,7 +388,7 @@ void DrawClock(bool fromJSON)
         {
             clockCounterClock++;
         }
-        if (clockCounterClock > clockSwitchSec)
+        if (clockCounterClock > clockSwitchSec && !(fromJSON && ScreenTransitionActive()))
         {
             clockCounterDate = 0;
 

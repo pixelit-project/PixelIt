@@ -186,8 +186,9 @@ void CreateFrames(JsonObject &json, int forceDuration)
     {
         matrix->setBrightness(currentMatrixBrightness);
 
-        // Prüfung für die Unterbrechnung der lokalen Schleifen
-        if (json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation"))
+        const bool hasContent = json.containsKey("bitmap") || json.containsKey("bitmaps") || json.containsKey("text") || json.containsKey("bar") || json.containsKey("bars") || json.containsKey("bitmapAnimation");
+        const bool changesDisplay = hasContent || json.containsKey("clock");
+        if (hasContent)
         {
             lastScreenMessageMillis = millis();
             clockAktiv = false;
@@ -200,6 +201,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         bool coloredBarWipeAnimationAktiv = false;
         bool zigzagWipeAnimationAktiv = false;
         bool bitmapWipeAnimationAktiv = false;
+        bool transitionPrepared = false;
         if (json.containsKey("switchAnimation"))
         {
             logMessage += F("SwitchAnimation, ");
@@ -238,7 +240,17 @@ void CreateFrames(JsonObject &json, int forceDuration)
                         break;
                     }
                 }
+                else if (changesDisplay)
+                {
+                    transitionPrepared = PrepareScreenTransition(json["switchAnimation"]["animation"].as<const char *>());
+                }
             }
+        }
+
+        if (!transitionPrepared && (changesDisplay || fadeAnimationAktiv || coloredBarWipeAnimationAktiv ||
+                                    zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
+        {
+            CancelScreenTransition();
         }
 
         // Fade aktiv?
@@ -557,7 +569,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
 
         // Fade aktiv?
-        if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
+        if (transitionPrepared)
+        {
+            StartScreenTransition();
+        }
+        else if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
         {
             FadeIn();
         }

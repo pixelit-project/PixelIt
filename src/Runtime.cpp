@@ -480,7 +480,7 @@ void loop()
 
         // Defer blocking internet requests while pixels or text are moving.
         // Check new FW Version first time after 30.5 seconds
-        if (!animateBMPAktivLoop && !scrollTextAktivLoop &&
+        if (!animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() &&
             ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL))
         {
             checkUpdatePrevMillis = millis();
@@ -493,7 +493,7 @@ void loop()
 
     // Send Telemetry data first time after 30.3 seconds
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (sendTelemetry == true && !animateBMPAktivLoop && !scrollTextAktivLoop && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
+    if (sendTelemetry == true && !animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
@@ -548,6 +548,7 @@ void loop()
     // Clock Auto Fallback
     if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
     {
+        CancelScreenTransition();
         forceClock = false;
         scrollTextAktivLoop = false;
         animateBMPAktivLoop = false;
@@ -590,7 +591,7 @@ void loop()
         }
     }
 
-    if (clockAktiv && now() != clockLastUpdate)
+    if (clockAktiv && !ScreenTransitionActive() && now() != clockLastUpdate)
     {
         if (timeStatus() == timeNotSet && ntpTimeOut <= millis())
         {
@@ -698,9 +699,9 @@ void loop()
 // Also called during chunked HTTP body reception; no HTTP/MQTT reentrancy.
 void ServiceDisplayFrames()
 {
-    if (firmwareUpdateDisplayActive)
+    if (firmwareUpdateDisplayActive || sleepMode || ServiceScreenTransition())
         return;
-    if (!sleepMode && (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay))
+    if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
     {
         animateBMPPrevMillis = millis();
         {
@@ -710,7 +711,7 @@ void ServiceDisplayFrames()
         }
     }
 
-    if (!sleepMode && (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay))
+    if (scrollTextAktivLoop && millis() - scrollTextPrevMillis >= scrollTextDelay)
     {
         scrollTextPrevMillis = millis();
         ScrollText(false);

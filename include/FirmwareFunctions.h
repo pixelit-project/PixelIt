@@ -4,6 +4,12 @@
 #include "UpdateVisuals.h"
 #include "UpdateScreen.h"
 
+bool PrepareScreenTransition(const char *name);
+void StartScreenTransition();
+void CancelScreenTransition();
+bool ScreenTransitionActive();
+bool ServiceScreenTransition();
+void ShowScreenContentFrame();
 void FadeOut(int delay = 10, int minBrightness = 0);
 void FadeIn(int delay = 10, int minBrightness = 0);
 String ResetReason();

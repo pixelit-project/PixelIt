@@ -91,6 +91,7 @@ void FirmwareUpdateUpload(int status, size_t received, size_t requestBytes, bool
 {
     if (status == UPLOAD_FILE_START)
     {
+        CancelScreenTransition();
         firmwareUpdateDisplayActive = true;
         uploadStarted = millis();
         lastPercent = -1;
