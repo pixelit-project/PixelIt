@@ -1632,8 +1632,11 @@ still require acknowledgement of the previous data.
 
 Send a screen payload with `"switchAnimation": {"aktiv": true, "animation": "curtain"}`.
 The new names are `curtain`, `pixelDissolve`, `slide`, `blinds`, `crt` and `glitch`.
-They apply to incoming screen content, including a clock command. Existing
-`random` and clock fallback settings keep their current effect selections.
+They apply to incoming screen content, including a clock command. With screen
+content, `random` chooses among the six new effects, Fade, Colored Bar Wipe
+and Zig Zag Wipe. Effect-only requests keep the three legacy choices.
+Bitmap Wipe is selected explicitly with its pixel data. Clock fallback has a
+separate effect setting with its existing selection.
 
 The new renderer uses one fixed 768-byte RGB snapshot on both platforms. It
 composites into the existing LED buffer and renders at most one step per service
@@ -1643,10 +1646,9 @@ prepared frame after the transition. Another screen can replace an in-progress
 transition, and sleep, clock fallback and firmware upload can take over the display.
 
 Existing HTTP, MQTT and WebSocket screen commands accept the new names. The
-Node-RED Switch Animation editor needs six additional dropdown choices to expose
-them in the editor. PixelIt.WebUI and PixelIt.API require no changes for this
-payload. Add the names, an example with screen content and the distinction from
-clock fallback to the Switch Animation section of external PixelIt.Docs before
+Node-RED Switch Animation editor exposes the six styles in its dropdown. PixelIt.WebUI and PixelIt.API require no changes for this
+payload. Add the names, the random selection, an example with screen content and the
+distinction from clock fallback to the Switch Animation section of external PixelIt.Docs before
 stable release.
 
 Run `python3 test/animation/transitions.py` to check the transition renderer with

@@ -208,41 +208,38 @@ void CreateFrames(JsonObject &json, int forceDuration)
             // Switch Animation aktiv?
             if (json["switchAnimation"]["aktiv"])
             {
+                const char *animation = json["switchAnimation"]["animation"].as<const char *>();
+                if (json["switchAnimation"]["animation"] == "random")
+                {
+                    // A bitmap wipe needs caller-supplied pixels. Effect-only
+                    // commands can use the three effects that need no new screen.
+                    static const char *const choices[] = {
+                        "fade", "coloredBarWipe", "zigzagWipe",
+                        "curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch"
+                    };
+                    animation = choices[random(changesDisplay ? sizeof(choices) / sizeof(choices[0]) : 3)];
+                }
+
                 // Fade Animation aktiv?
-                if (json["switchAnimation"]["animation"] == "fade")
+                if (animation && strcmp(animation, "fade") == 0)
                 {
                     fadeAnimationAktiv = true;
                 }
-                else if (json["switchAnimation"]["animation"] == "coloredBarWipe")
+                else if (animation && strcmp(animation, "coloredBarWipe") == 0)
                 {
                     coloredBarWipeAnimationAktiv = true;
                 }
-                else if (json["switchAnimation"]["animation"] == "zigzagWipe")
+                else if (animation && strcmp(animation, "zigzagWipe") == 0)
                 {
                     zigzagWipeAnimationAktiv = true;
                 }
-                else if (json["switchAnimation"]["animation"] == "bitmapWipe")
+                else if (animation && strcmp(animation, "bitmapWipe") == 0)
                 {
                     bitmapWipeAnimationAktiv = true;
                 }
-                else if (json["switchAnimation"]["animation"] == "random")
-                {
-                    switch (millis() % 3)
-                    {
-                    case 0:
-                        fadeAnimationAktiv = true;
-                        break;
-                    case 1:
-                        coloredBarWipeAnimationAktiv = true;
-                        break;
-                    case 2:
-                        zigzagWipeAnimationAktiv = true;
-                        break;
-                    }
-                }
                 else if (changesDisplay)
                 {
-                    transitionPrepared = PrepareScreenTransition(json["switchAnimation"]["animation"].as<const char *>());
+                    transitionPrepared = PrepareScreenTransition(animation);
                 }
             }
         }
