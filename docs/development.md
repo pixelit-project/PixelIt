@@ -781,16 +781,17 @@ preserve their previous values. Keys and defaults:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `periodic` | `false` | Check for qualifying changes periodically instead of each sample |
+| `dynamic` | `true` | Automatically publish qualifying changes |
+| `periodic` | `false` | Legacy option to check for qualifying changes periodically instead of each sample |
 | `interval` | `60` | Periodic check interval in whole seconds, 3–86400 |
 | `minInterval` | `0` | Minimum time between event-mode publications, 0–86400 seconds |
 | `maxInterval` | `0` | Publish even unchanged values after this many seconds; 0 disables, maximum 86400 |
-| `temperature` | `0` | Absolute change in the configured temperature unit (°C or °F) |
-| `humidity` | `0` | Absolute change in percentage points |
-| `pressure` | `0` | Absolute change in hPa |
-| `gas` | `0` | Absolute change in kΩ |
-| `battery` | `0` | Absolute change in percentage points |
-| `lux` | `0` | Absolute change in lx |
+| `temperature` | `0.5` | Absolute change in the configured temperature unit (°C or °F) |
+| `humidity` | `1` | Absolute change in percentage points |
+| `pressure` | `1` | Absolute change in hPa |
+| `gas` | `5` | Absolute change in kΩ |
+| `battery` | `1` | Absolute change in percentage points |
+| `lux` | `5` | Absolute change in lx |
 
 Thresholds accept finite JSON numbers from 0 to 1000000. A threshold of 0 accepts
 any actual change, but does not send unchanged values. The comparison is inclusive,
@@ -805,15 +806,22 @@ publications bypass the normal filter; discovery seeds are independent of the
 automatic publication baseline. Buttons, availability and direct API queries are
 unaffected. Automatic brightness and WebSocket updates retain their sampling cadence.
 
-A nonzero maximum must be at least the active periodic interval or event minimum.
+A nonzero maximum must be at least the active check interval or event minimum
+when dynamic sending is enabled. With both modes disabled, automatic sends stop.
+The threshold defaults apply to fresh configurations and to missing thresholds
+in saved configurations. Explicitly saved thresholds, including zero, are preserved.
+
+The top-level `mqttMatrixInfoInterval` sets the automatic MQTT Matrixinfo cadence
+in whole seconds (10–86400, default 15). WebSocket status keeps its existing
+cadence. Immediate status updates triggered by device events and explicit
+requests are still available.
 Invalid types, ranges or interval combinations preserve the entire previous policy
 object; other existing config fields still follow their normal handling. Validation
 is logged, not a new configuration error protocol. Intervals are evaluated at the
 existing sampling cadence (sensor 3 seconds, lux at its existing cadence), with
 wrap-safe millis arithmetic. There are no added timers, sensor reads or JSON parses
-in the loop. Two fixed snapshots and the settings occupy 120 bytes on the supported
-32-bit targets; snapshots are captured while the existing sensor JSON is assembled.
-The persisted/returned JSON gains one bounded object (10 members). Configuration
+in the loop. The settings and two snapshots use fixed storage. Snapshots are captured while the existing sensor JSON is assembled.
+The persisted/returned JSON contains a bounded sensor policy (11 members) and the Matrixinfo interval. Configuration
 serialization/parsing needs additional transient heap; no message/buffer limits or
 pinned dependencies are raised. Physical ESP8266 minimum heap/largest-block and
 frame-jitter validation under concurrent load remain outstanding for this change.
@@ -1635,8 +1643,12 @@ The new names are `curtain`, `pixelDissolve`, `slide`, `blinds`, `crt` and `glit
 They apply to incoming screen content, including a clock command. With screen
 content, `random` chooses among the six new effects, Fade, Colored Bar Wipe
 and Zig Zag Wipe. Effect-only requests keep the three legacy choices.
-Bitmap Wipe is selected explicitly with its pixel data. Clock fallback has a
-separate effect setting with its existing selection.
+Bitmap Wipe is selected explicitly with its pixel data. Clock Auto Fallback has
+a separate numeric setting, `clockAutoFallbackAnimation`. Values 0–4 retain
+their meanings (None, Fade, Colored Bar Wipe, ZigZag Wipe, Random Wipe). Values
+5–10 select Curtain, Pixel Dissolve, Slide, Blinds, CRT and Glitch respectively.
+Random Wipe chooses among all nine effects that can render the clock with no
+extra payload. Deploy the matching WebUI bundle with the firmware.
 
 The new renderer uses one fixed 768-byte RGB snapshot on both platforms. It
 composites into the existing LED buffer and renders at most one step per service
@@ -1646,7 +1658,7 @@ prepared frame after the transition. Another screen can replace an in-progress
 transition, and sleep, clock fallback and firmware upload can take over the display.
 
 Existing HTTP, MQTT and WebSocket screen commands accept the new names. The
-Node-RED Switch Animation editor exposes the six styles in its dropdown. PixelIt.WebUI and PixelIt.API require no changes for this
+Node-RED Switch Animation editor exposes the six styles in its dropdown. The WebUI exposes the new clock fallback choices in Options. PixelIt.API requires no changes for this
 payload. Add the names, the random selection, an example with screen content and the
 distinction from clock fallback to the Switch Animation section of external PixelIt.Docs before
 stable release.

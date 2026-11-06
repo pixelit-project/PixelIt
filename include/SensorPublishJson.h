@@ -4,18 +4,20 @@
 
 inline bool WriteSensorPublishSettings(JsonObject &root, const SensorPublishSettings &s)
 {
-    JsonObject &json = root.createNestedObject("mqttSensorPublish");
-    json["periodic"] = s.periodic;
-    json["interval"] = s.interval;
-    json["minInterval"] = s.minInterval;
-    json["maxInterval"] = s.maxInterval;
-    json["temperature"] = s.temperature;
-    json["humidity"] = s.humidity;
-    json["pressure"] = s.pressure;
-    json["gas"] = s.gas;
-    json["battery"] = s.battery;
-    json["lux"] = s.lux;
-    return json.success() && json.size() == 10;
+    JsonObject &existing = root["mqttSensorPublish"].as<JsonObject &>();
+    JsonObject &json = existing.success() ? existing : root.createNestedObject("mqttSensorPublish");
+    return json.success() &&
+        json.set("periodic", s.periodic) &&
+        json.set("dynamic", s.dynamic) &&
+        json.set("interval", s.interval) &&
+        json.set("minInterval", s.minInterval) &&
+        json.set("maxInterval", s.maxInterval) &&
+        json.set("temperature", s.temperature) &&
+        json.set("humidity", s.humidity) &&
+        json.set("pressure", s.pressure) &&
+        json.set("gas", s.gas) &&
+        json.set("battery", s.battery) &&
+        json.set("lux", s.lux);
 }
 
 // Apply partial objects atomically. Invalid types/ranges preserve all settings.
@@ -29,6 +31,11 @@ inline bool ReadSensorPublishSettings(JsonVariant value, SensorPublishSettings &
         if (!json["periodic"].is<bool>()) return false;
         candidate.periodic = json["periodic"].as<bool>();
     }
+    if (json.containsKey("dynamic"))
+    {
+        if (!json["dynamic"].is<bool>()) return false;
+        candidate.dynamic = json["dynamic"].as<bool>();
+    }
     const char *times[] = {"interval", "minInterval", "maxInterval"};
     uint32_t *targets[] = {&candidate.interval, &candidate.minInterval, &candidate.maxInterval};
     for (unsigned i = 0; i < 3; ++i)
@@ -41,7 +48,7 @@ inline bool ReadSensorPublishSettings(JsonVariant value, SensorPublishSettings &
         *targets[i] = n;
     }
     const uint32_t minimum = candidate.periodic ? candidate.interval : candidate.minInterval;
-    if (candidate.maxInterval && candidate.maxInterval < minimum) return false;
+    if (candidate.dynamic && candidate.maxInterval && candidate.maxInterval < minimum) return false;
     const char *keys[] = {"temperature", "humidity", "pressure", "gas", "battery", "lux"};
     float *thresholds[] = {&candidate.temperature, &candidate.humidity, &candidate.pressure,
         &candidate.gas, &candidate.battery, &candidate.lux};

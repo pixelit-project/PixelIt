@@ -52,7 +52,8 @@ void SaveConfig()
     json["mqttPort"] = mqttPort;
     json["mqttUseDeviceTopic"] = mqttUseDeviceTopic;
     json["mqttHAdiscoverable"] = mqttHAdiscoverable;
-    if (!WriteSensorPublishSettings(json, mqttSensorPublish))
+    if (!json.set("mqttMatrixInfoInterval", mqttMatrixInfoInterval) ||
+        !WriteSensorPublishSettings(json, mqttSensorPublish))
     {
         Log(F("SaveConfig"), F("Insufficient memory for sensor publishing settings"));
         return; // Preserve the existing file rather than persisting a partial policy.
@@ -254,7 +255,10 @@ void SetConfigVariables(JsonObject &json)
 
     if (json.containsKey("clockAutoFallbackAnimation"))
     {
-        clockAutoFallbackAnimation = json["clockAutoFallbackAnimation"].as<uint>();
+        const JsonVariant value = json["clockAutoFallbackAnimation"];
+        const unsigned long effect = value.as<unsigned long>();
+        if (value.is<unsigned long>() && effect <= ClockFallbackLastEffect)
+            clockAutoFallbackAnimation = effect;
     }
 
     if (json.containsKey("clockAutoFallbackTime"))
@@ -361,6 +365,15 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("mqttHAdiscoverable"))
     {
         mqttHAdiscoverable = json["mqttHAdiscoverable"].as<bool>();
+    }
+
+    if (json.containsKey("mqttMatrixInfoInterval"))
+    {
+        JsonVariant value = json["mqttMatrixInfoInterval"];
+        const unsigned long seconds = value.as<unsigned long>();
+        if (value.is<unsigned long>() && seconds >= 10 && seconds <= 86400)
+            mqttMatrixInfoInterval = seconds;
+        else Log(F("SetConfig"), F("Invalid mqttMatrixInfoInterval; preserved previous value"));
     }
 
     if (json.containsKey("mqttSensorPublish"))
@@ -511,8 +524,8 @@ String GetConfig()
             return "{}";
         }
 
-        // Advertise defaults for configurations saved before this feature existed.
-        if (!root.containsKey("mqttSensorPublish") &&
+        // Report the complete active policy, including defaults for missing fields.
+        if (!root.set("mqttMatrixInfoInterval", mqttMatrixInfoInterval) ||
             !WriteSensorPublishSettings(root, mqttSensorPublish))
         {
             Log(F("GetConfig"), F("Insufficient memory for sensor publishing settings"));

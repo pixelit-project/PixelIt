@@ -3,14 +3,21 @@
 
 void SendMatrixInfo()
 {
-    // Check if mqtt or websocket connected
-    if ((mqttAktiv == true && client.connected()) || (webSocket.connectedClients() > 0))
+    SendMatrixInfoTo(true, true);
+}
+
+void SendMatrixInfoTo(bool mqtt, bool websocket)
+{
+    mqtt = mqtt && mqttAktiv && client.connected();
+    websocket = websocket && webSocket.connectedClients() > 0;
+    if (mqtt || websocket)
     {
         String matrixInfo = GetMatrixInfo();
 
         // Check if sending via MQTT is required
-        if (mqttAktiv == true && client.connected())
+        if (mqtt)
         {
+            lastMqttMatrixInfoMillis = millis();
             PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
             if (mqttUseDeviceTopic)
             {
@@ -18,7 +25,7 @@ void SendMatrixInfo()
             }
         }
         // Check if sending via websocket is required
-        if (webSocket.connectedClients() > 0)
+        if (websocket)
         {
             for (uint i = 0; i < sizeof websocketConnection / sizeof websocketConnection[0]; i++)
             {

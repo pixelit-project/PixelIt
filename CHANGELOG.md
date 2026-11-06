@@ -3,6 +3,7 @@
 ### Unreleased
 
 -   (o0shojo0o) Add six screen transitions and include them in random screen changes.
+-   (o0shojo0o) Add the six transitions to Clock Auto Fallback and Random Wipe with the matching WebUI.
 -   (o0shojo0o) Select the classic boot animation with the updated WebUI.
 -   (o0shojo0o) Reduce ESP32 Liveview traffic with a compatible WebUI.
 -   (o0shojo0o) Keep ESP32 animations responsive during MQTT stalls.
@@ -16,7 +17,7 @@
 -   (o0shojo0o) Use logo colors with white IT at startup, a matching WiFi trail and centered WiFi text.
 -   (o0shojo0o) Show new firmware notifications immediately for 15 seconds, then every 30 minutes.
 -   (o0shojo0o) Show animated firmware progress, a logo-color reboot screen and matching update notifications.
--   (o0shojo0o) Added configurable MQTT sensor intervals and change thresholds.
+-   (o0shojo0o) Configure MQTT sensor updates on change or periodically, with a separate Matrixinfo interval.
 -   (o0shojo0o) Keep ESP32 WebUI connections responsive with slow viewers and repeated reconnects.
 -   (o0shojo0o) Added gallery data copying, clearer report controls and refresh after uploads.
 -   (o0shojo0o) Removed the prefilled space from the bitmap save dialog.

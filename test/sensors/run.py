@@ -77,6 +77,16 @@ int main() {
  cfg.maxInterval = 120; a = state.sent;
  assert(state.due(a, thresholds, cfg, 195000));
  assert(state.due(a, thresholds, cfg, 75001, true));
+ // A heartbeat and change detection can be enabled independently.
+ cfg.dynamic = false; cfg.maxInterval = 0;
+ SensorPublishState disabled;
+ assert(!disabled.due(a, thresholds, cfg, 0));
+ assert(disabled.due(a, thresholds, cfg, 0, true));
+ cfg.maxInterval = 60;
+ assert(disabled.due(a, thresholds, cfg, 0)); disabled.commit(a, 0);
+ a.values[0] += 5;
+ assert(!disabled.due(a, thresholds, cfg, 59999));
+ assert(disabled.due(a, thresholds, cfg, 60000));
  // Wrap-safe millis arithmetic and error/recovery transitions.
  cfg = SensorPublishSettings(); state.commit(a, UINT32_MAX - 999);
  cfg.minInterval = 3; a.states[0] = 2;
@@ -98,7 +108,7 @@ int main() {
  assert(!WriteSensorPublishSettings(scarce.createObject(), cfg));
  SensorPublishSettings parsed;
  assert(ReadSensorPublishSettings(json["mqttSensorPublish"], parsed));
- assert(parsed.minInterval == 0 && parsed.temperature == 0);
+ assert(parsed.dynamic && parsed.minInterval == 0 && parsed.temperature == 0.5f && parsed.battery == 1);
  const char *valid = "{\"periodic\":true,\"interval\":60,\"maxInterval\":900,\"temperature\":0.2,\"pressure\":0.5}";
  assert(ReadSensorPublishSettings(buffer.parseObject(valid), parsed));
  assert(parsed.periodic && parsed.maxInterval == 900 && parsed.pressure == 0.5f);
@@ -111,6 +121,12 @@ int main() {
   assert(!ReadSensorPublishSettings(v, parsed));
   assert(parsed.periodic && parsed.maxInterval == 900 && parsed.temperature == 0.2f);
  }
+ StaticJsonBuffer<256> modeBuffer;
+ JsonObject &mode = modeBuffer.createObject();
+ mode["dynamic"] = false; mode["maxInterval"] = 30;
+ assert(ReadSensorPublishSettings(mode, parsed) && !parsed.dynamic && parsed.maxInterval == 30);
+ mode["dynamic"] = 1;
+ assert(!ReadSensorPublishSettings(mode, parsed) && !parsed.dynamic);
  // Actual notifications: shared payload baseline, WebSocket independence,
  // failed publish retry, lux independence and optional device + legacy topics.
  reading.states[0] = 1; reading.values[0] = 20;

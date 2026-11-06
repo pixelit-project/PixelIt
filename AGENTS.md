@@ -63,6 +63,24 @@ If a companion repository cannot be inspected, report that limitation.
   of user-visible logs, including components, fields, units, examples, normal/error
   cases and troubleshooting. Verify byte-count meanings against that release's code.
 
+## New screen transitions
+
+When adding a screen transition, check and update all of these entry points:
+
+- Firmware `switchAnimation: random`. Include the effect where its input
+  requirements are met, and check both screen payloads and effect-only requests.
+- Clock Auto Fallback. Check explicit selection in the WebUI, the corresponding
+  firmware configuration and playback, and the fallback's own random mode.
+  Preserve existing numeric setting values. Firmware and its bundled WebUI ship
+  together, so new Clock Auto Fallback options can be exposed without a
+  compatibility gate for older firmware. Deploy the matching WebUI bundle with
+  the firmware change.
+- `node-red-contrib-pixelit`. Update the Switch Animation editor, check the
+  emitted payload, and update its documentation.
+
+Verify explicit and random selection where applicable, and document any
+intentional exclusions and required companion changes.
+
 ## Validation
 
 Run checks appropriate to the affected behavior from the repository root:

@@ -250,6 +250,8 @@ extern unsigned long sendLuxPrevMillis;
 extern unsigned long getLuxPrevMillis;
 extern unsigned long sendSensorPrevMillis;
 extern unsigned long sendInfoPrevMillis;
+extern unsigned long lastMqttMatrixInfoMillis;
+extern uint32_t mqttMatrixInfoInterval;
 extern String oldGetLuxSensor;
 extern String oldGetSensor;
 extern float currentLux;

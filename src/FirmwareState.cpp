@@ -247,6 +247,8 @@ unsigned long sendLuxPrevMillis = 0;
 unsigned long getLuxPrevMillis = 0;
 unsigned long sendSensorPrevMillis = 0;
 unsigned long sendInfoPrevMillis = 0;
+unsigned long lastMqttMatrixInfoMillis = 0;
+uint32_t mqttMatrixInfoInterval = 15;
 String oldGetLuxSensor;
 String oldGetSensor;
 float currentLux = 0.0f;

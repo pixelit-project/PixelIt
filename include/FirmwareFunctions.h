@@ -4,6 +4,7 @@
 #include "UpdateVisuals.h"
 #include "UpdateScreen.h"
 
+constexpr unsigned ClockFallbackLastEffect = 10;
 bool PrepareScreenTransition(const char *name);
 void StartScreenTransition();
 void CancelScreenTransition();
@@ -94,6 +95,7 @@ void checkUpdate();
 void RecordAnimationWork(const char *task, unsigned long started);
 void loop();
 void SendMatrixInfo();
+void SendMatrixInfoTo(bool mqtt, bool websocket);
 void SendLDR(bool force);
 bool sendLiveview(const char *data, size_t length, bool retry);
 void SendSensor(bool force);

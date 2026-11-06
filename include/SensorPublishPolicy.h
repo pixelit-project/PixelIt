@@ -6,9 +6,10 @@
 // Fixed storage only: no JSON or pixel buffers are retained by the policy.
 struct SensorPublishSettings
 {
-    bool periodic = false;
+    bool periodic = false; // Legacy change-check cadence
+    bool dynamic = true;
     uint32_t interval = 60, minInterval = 0, maxInterval = 0; // seconds
-    float temperature = 0, humidity = 0, pressure = 0, gas = 0, battery = 0, lux = 0;
+    float temperature = 0.5f, humidity = 1, pressure = 1, gas = 5, battery = 1, lux = 5;
 };
 
 struct SensorSample
@@ -27,9 +28,12 @@ struct SensorPublishState
     bool due(const SensorSample &sample, const float *thresholds,
              const SensorPublishSettings &settings, uint32_t now, bool force = false)
     {
-        if (force || !initialized) return true;
+        if (force) return true;
+        if (!settings.dynamic && !settings.maxInterval) return false;
+        if (!initialized) return true;
         const uint32_t elapsed = now - lastSent;
         if (settings.maxInterval && elapsed >= settings.maxInterval * 1000UL) return true;
+        if (!settings.dynamic) return false;
         if (settings.periodic)
         {
             if (uint32_t(now - lastChecked) < settings.interval * 1000UL) return false;

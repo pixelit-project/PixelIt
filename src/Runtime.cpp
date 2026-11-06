@@ -553,20 +553,22 @@ void loop()
         scrollTextAktivLoop = false;
         animateBMPAktivLoop = false;
 
-        int performWipe = 0;
-
-        switch (clockAutoFallbackAnimation)
+        unsigned performWipe = clockAutoFallbackAnimation;
+        if (performWipe == 4)
         {
-        case 1:
-        case 2:
-        case 3:
-            performWipe = clockAutoFallbackAnimation;
-            break;
-        case 4:
-            performWipe = (millis() % 3) + 1;
-            break;
-        default:;
+            // Choose among the effects, skipping the Random Wipe setting itself.
+            performWipe = random(1, ClockFallbackLastEffect);
+            if (performWipe >= 4)
+                ++performWipe;
         }
+
+        static const char *const transitions[] = {
+            "curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch"
+        };
+        static_assert(ClockFallbackLastEffect == 4 + sizeof(transitions) / sizeof(transitions[0]),
+                      "Clock fallback setting range must match the transition list");
+        const bool transitionPrepared = performWipe >= 5 && performWipe <= ClockFallbackLastEffect &&
+                                        PrepareScreenTransition(transitions[performWipe - 5]);
 
         if (performWipe == 1)
         {
@@ -585,9 +587,17 @@ void loop()
         clockCounterDate = 0;
         DrawClock(true);
 
-        if (performWipe != 0)
+        if (transitionPrepared)
+        {
+            StartScreenTransition();
+        }
+        else if (performWipe >= 1 && performWipe <= 3)
         {
             FadeIn();
+        }
+        else if (performWipe >= 5 && !firmwareUpdateDisplayActive)
+        {
+            ShowScreenContentFrame();
         }
     }
 
@@ -681,16 +691,15 @@ void loop()
         RecordAnimationWork("Liveview", started);
     }
 
-    // send matrix info
-    if (millis() - sendInfoPrevMillis >= SEND_MATRIXINFO_INTERVAL)
+    const unsigned long now = millis();
+    const bool websocketInfoDue = now - sendInfoPrevMillis >= SEND_MATRIXINFO_INTERVAL;
+    const bool mqttInfoDue = mqttAktiv &&
+        now - lastMqttMatrixInfoMillis >= mqttMatrixInfoInterval * 1000UL && client.connected();
+    if (websocketInfoDue || mqttInfoDue)
     {
-        sendInfoPrevMillis = millis();
-        {
-            const unsigned long started = millis();
-            SendMatrixInfo();
-            RecordAnimationWork("MatrixInfo", started);
-        }
-        // SendMp3PlayerInfo(false);
+        if (websocketInfoDue) sendInfoPrevMillis = now;
+        SendMatrixInfoTo(mqttInfoDue, websocketInfoDue);
+        RecordAnimationWork("MatrixInfo", now);
     }
 
     ServiceDisplayFrames();
