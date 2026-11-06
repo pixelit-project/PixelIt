@@ -9,7 +9,7 @@ bool haTextPending = false;
 bool IsTextTopic(const char *topic, const char *command)
 {
     return String(topic) == mqttMasterTopic + command ||
-           (mqttUseDeviceTopic && String(topic) == mqttDeviceTopic + command);
+           (MqttDeviceTopicsEnabled() && String(topic) == mqttDeviceTopic + command);
 }
 
 bool ValidTextColor(const String &color)

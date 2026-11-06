@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 root = Path(__file__).resolve().parents[2]
 lib = root / '.pio/libdeps/ESP8266_d1_mini/ArduinoJson/src'
+topic_policy = next(line for line in (root / 'include/FirmwareState.h').read_text().splitlines()
+                    if line.startswith('inline bool MqttDeviceTopicsEnabled'))
 source = (root / 'src/Notifications.cpp').read_text()
 ldr = source[source.index('void SendLDR('):source.index('bool sendLiveview(')]
 sensor = source[source.index('void SendSensor('):source.index('void SendConfig(')]
@@ -22,7 +24,7 @@ using String = std::string;
 using uint = unsigned;
 uint32_t tick = 0;
 uint32_t millis() { return tick; }
-bool mqttAktiv = true, mqttUseDeviceTopic = false;
+bool mqttAktiv = true, mqttUseDeviceTopic = false, mqttHAdiscoverable = false;
 String mqttMasterTopic = "pixelit/", mqttDeviceTopic = "pixelit/device/";
 String oldGetSensor, oldGetLuxSensor;
 SensorPublishSettings mqttSensorPublish;
@@ -41,7 +43,7 @@ bool PublishMqtt(const char *topic, const char *, bool) {
 void SendWebSocketJson(unsigned, const String &text) { ws.push_back(text); }
 String GetSensor(SensorSample *sample) { *sample = reading; return payload; }
 String GetLuxSensor() { return std::to_string(currentLux); }
-''' + 'void capture(JsonObject &root, SensorSample *sample) {\n' + sampling + '}\n' + ldr + sensor + r'''
+''' + topic_policy + '\n' + 'void capture(JsonObject &root, SensorSample *sample) {\n' + sampling + '}\n' + ldr + sensor + r'''
 int main() {
  // Capture the actual existing JSON values without reparsing/copying the payload.
  StaticJsonBuffer<512> captureBuffer;
@@ -137,7 +139,7 @@ int main() {
  reading.values[0] = 20.5f; payload = "threshold"; failPublish = true;
  tick = 9000; SendSensor(false); assert(mqtt.size() == 2);
  assert(mqttSensorState.sent.values[0] == 20);
- failPublish = false; mqtt.clear(); ws.clear(); mqttUseDeviceTopic = true;
+ failPublish = false; mqtt.clear(); ws.clear(); mqttHAdiscoverable = true;
  tick = 12000; SendSensor(false); assert(mqtt.size() == 4 && ws.empty());
  assert(mqttSensorState.sent.values[0] == 20.5f);
  mqtt.clear(); SendSensor(false); assert(mqtt.empty());

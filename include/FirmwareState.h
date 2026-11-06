@@ -65,6 +65,8 @@ extern String mqttMasterTopic;
 extern String mqttDeviceTopic;
 extern bool mqttUseDeviceTopic;
 extern bool mqttHAdiscoverable;
+// Discovery must never bind entities to shared state and command topics.
+inline bool MqttDeviceTopicsEnabled() { return mqttUseDeviceTopic || mqttHAdiscoverable; }
 extern int mqttPort;
 extern unsigned long mqttLastReconnectAttempt;
 extern unsigned long mqttLastService;

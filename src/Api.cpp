@@ -330,7 +330,7 @@ void HandleAndSendButtonPress(uint button, bool state)
     if (mqttAktiv == true && client.connected())
     {
         PublishMqtt((mqttMasterTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
-        if (mqttUseDeviceTopic)
+        if (MqttDeviceTopicsEnabled())
         {
             PublishMqtt((mqttDeviceTopic + "buttons/button" + String(button)).c_str(), (state ? "true" : "false"), true);
         }
@@ -421,7 +421,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         else if (channel.equals("getLuxsensor"))
         {
             PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
-            if (mqttUseDeviceTopic)
+            if (MqttDeviceTopicsEnabled())
             {
                 PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
             }
@@ -429,7 +429,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         else if (channel.equals("getMatrixinfo"))
         {
             PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
-            if (mqttUseDeviceTopic)
+            if (MqttDeviceTopicsEnabled())
             {
                 PublishMqtt((mqttDeviceTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
             }
@@ -437,7 +437,7 @@ void callback(char *topic, byte *payload, unsigned int length)
         else if (channel.equals("getConfig"))
         {
             PublishMqtt((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
-            if (mqttUseDeviceTopic)
+            if (MqttDeviceTopicsEnabled())
             {
                 PublishMqtt((mqttDeviceTopic + "config").c_str(), GetConfig().c_str());
             }

@@ -4,6 +4,14 @@ Enable MQTT and Home Assistant discovery in the PixelIt configuration, then
 restart the device after installing the firmware. Home Assistant's MQTT integration
 must use the same broker and the default discovery prefix `homeassistant`.
 
+Give each PixelIt on the broker a unique hostname. Discovery uses the device's
+`<master topic>/<hostname>/` prefix for status, availability and commands, even
+if **Use additional device topic** is off. This keeps one display's updates out
+of another display's entities. Existing discovery entity IDs are preserved and
+updated when the device reconnects. Existing master topics still work for shared
+commands; target the device prefix in automations meant for a single display.
+On older firmware, enable **Use additional device topic** and restart each PixelIt.
+
 In addition to the matrix light, installed sensors, button states and WLAN
 information, the device offers:
 

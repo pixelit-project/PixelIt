@@ -1667,3 +1667,20 @@ Run `python3 test/animation/transitions.py` to check the transition renderer wit
 simulated time and a serpentine matrix. Check visuals, frame intervals, dropped
 LED frames, minimum ESP8266 free heap and largest free block with repeated screen
 changes and concurrent network traffic on a designated device.
+
+
+## Home Assistant topic isolation
+
+Home Assistant discovery enables the existing per-device MQTT topics even when
+`mqttUseDeviceTopic` is off. The effective setting applies to subscriptions,
+periodic and on-demand states, button events and the Last Will, so discovery
+cannot bind a device to another display's status on a shared master topic.
+Master-topic publications and commands remain available. The broker's single
+Last Will uses the device topic whenever device topics are active. Discovery
+keeps the same entity IDs and refreshes retained configs on reconnect. Hostnames
+must be unique on the broker. No new payload buffers or publishing intervals
+are introduced; installations previously using only master topics now also send
+device-specific updates when discovery is enabled.
+
+Update external PixelIt.Docs for the release to explain this behavior and the
+unique-hostname requirement. WebUI, Node-RED and PixelIt.API require no changes.

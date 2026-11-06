@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
+topic_policy = next(line for line in (root / 'include/FirmwareState.h').read_text().splitlines()
+                    if line.startswith('inline bool MqttDeviceTopicsEnabled'))
 source = (root / 'src/Buttons.cpp').read_text()
 service = source[source.index('void ServiceButtons()'):].replace("unsigned long", "uint32_t")
 program = r'''
@@ -96,7 +98,7 @@ bool PublishMqtt(const char *topic,const char *payload,bool retained=false) {
 std::string GetMatrixInfo() { return "{}"; }
 std::string GetSensor() { return "{}"; }
 std::string GetLuxSensor() { return "{}"; }
-''' + discovery + r'''
+''' + topic_policy + '\n' + discovery + r'''
 void run() {
  for(int i=0;i<100 && haDiscoveryPending;i++) {
   tick+=150;
@@ -109,11 +111,15 @@ void run() {
 int main() {
  RequestHADiscovery(); run();
  assert(messages.size()==38);
+ assert(messages[32].topic=="device/matrixinfo");
+ assert(messages[33].topic=="device/sensor");
+ assert(messages[34].topic=="device/luxsensor");
  for (const auto &m:messages) std::cout<<m.topic<<"\t"<<m.payload<<"\n";
  // Clean up every entity when discovery is disabled, retaining initial states.
  mqttHAdiscoverable=false; messages.clear(); RequestHADiscovery(); run();
  assert(messages.size()==38);
  for(int i=0;i<32;i++) assert(messages[i].payload.empty());
+ assert(messages[32].topic=="master/matrixinfo");
  mqttHAdiscoverable=true; mqttUseDeviceTopic=true; messages.clear();
  tempSensor=TempSensor_BMP280; btnEnabled[1]=false;
  RequestHADiscovery(); run();
@@ -144,7 +150,10 @@ for line in output.splitlines():
     if topic.endswith('/config'):
         config = json.loads(payload)
         assert '#' not in config['unique_id']
-        assert config['availability_topic'] == 'master/state'
+        assert config['availability_topic'] == 'device/state'
+        for key in ('state_topic', 'command_topic'):
+            if key in config:
+                assert config[key].startswith('device/'), (topic, key, config[key])
         configs[config['unique_id'].removeprefix('PixelIt-test')] = config
 assert len(configs) == 32
 assert configs['Humidity']['unique_id'] == 'PixelIt-testHumidity'
@@ -159,19 +168,19 @@ for identifier in ('Uptime', 'FreeHeap', 'ResetReason'):
 assert configs['Button0Event']['event_types'] == ['press','release','single_press','double_press','long_press']
 print('Discovery payload, cleanup and scheduling tests passed')
 
-assert configs['DisplayText']['command_topic'] == 'master/setTextOptions/text'
-assert configs['ShowText']['command_topic'] == 'master/showText'
+assert configs['DisplayText']['command_topic'] == 'device/setTextOptions/text'
+assert configs['ShowText']['command_topic'] == 'device/showText'
 assert 'state_topic' not in configs['ShowText']
 assert configs['TextFont']['options'] == ['Small', 'Large']
 assert configs['TextAlignment']['options'] == ['Centered', 'Left']
 assert configs['TextScroll']['options'] == ['Auto', 'Always', 'Off']
 assert configs['TextColor']['pattern'] == '^#[0-9A-Fa-f]{6}$'
 assert configs['TextColorPicker']['schema'] == 'template'
-assert configs['TextColorPicker']['command_topic'] == 'master/setTextOptions/colorPicker'
+assert configs['TextColorPicker']['command_topic'] == 'device/setTextOptions/colorPicker'
 assert all(key in configs['TextColorPicker'] for key in ('red_template', 'green_template', 'blue_template'))
 assert 'brightness_template' not in configs['TextColorPicker']
 assert configs['FirmwareUpdate']['device_class'] == 'firmware'
-assert configs['FirmwareUpdate']['state_topic'] == 'master/matrixinfo'
+assert configs['FirmwareUpdate']['state_topic'] == 'device/matrixinfo'
 assert 'latest_version_topic' not in configs['FirmwareUpdate']
 assert configs['FirmwareUpdate']['value_template'] == "{{ {'installed_version': value_json.pixelitVersion, 'latest_version': value_json.latestReleaseVersion} | tojson }}"
 assert 'command_topic' not in configs['FirmwareUpdate']
@@ -195,7 +204,7 @@ using uint=unsigned int;
 using byte=uint8_t;
 #define MATRIX_HEIGHT 8
 std::string mqttMasterTopic="master/", mqttDeviceTopic="device/";
-bool mqttUseDeviceTopic=false;
+bool mqttUseDeviceTopic=false, mqttHAdiscoverable=false;
 std::string haTextMessage,haTextColor="#FFFFFF",haTextFont="Small",haTextAlignment="Centered",haTextScroll="Auto";
 int PixelItFont=1;
 struct Matrix {
@@ -212,7 +221,7 @@ int updates=0;
 void SendMatrixInfo() { ++updates; }
 std::vector<std::string> screens;
 void CreateFrames(JsonObject &screen) { std::string json; screen.printTo(json); screens.push_back(json); }
-''' + text_source + r'''
+''' + topic_policy + '\n' + text_source + r'''
 bool send(const char *topic,const std::string &body) {
  return HandleHATextCommand(topic,reinterpret_cast<const byte*>(body.data()),body.size());
 }
@@ -261,7 +270,7 @@ int main() {
  JsonObject &always=buffer.parseObject(screens[1]); assert(always["text"]["scrollText"]==true);
  screens.clear(); send("master/setText",std::string(256,'x')); assert(screens.empty());
  assert(!send("device/setTextOptions",R"({"text":"device"})"));
- mqttUseDeviceTopic=true; send("device/setTextOptions",R"({"text":"device"})");
+ mqttHAdiscoverable=true; send("device/setTextOptions",R"({"text":"device"})");
  assert(haTextMessage=="device" && screens.empty());
  send("device/setTextOptions",R"({"text":""})"); send("device/showText","PRESS");
  assert(haTextMessage.empty() && screens.size()==2);

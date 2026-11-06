@@ -42,12 +42,12 @@ boolean MQTTreconnect()
     if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
     {
         Log(F("MQTTreconnect"), F("MQTT connecting to broker..."));
-        connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), ((mqttUseDeviceTopic ? mqttDeviceTopic : mqttMasterTopic) + "state").c_str(), 0, true, "disconnected");
+        connected = client.connect(hostname.c_str(), mqttUser.c_str(), mqttPassword.c_str(), ((MqttDeviceTopicsEnabled() ? mqttDeviceTopic : mqttMasterTopic) + "state").c_str(), 0, true, "disconnected");
     }
     else
     {
         Log(F("MQTTreconnect"), F("MQTT connecting to broker..."));
-        connected = client.connect(hostname.c_str(), ((mqttUseDeviceTopic ? mqttDeviceTopic : mqttMasterTopic) + "state").c_str(), 0, true, "disconnected");
+        connected = client.connect(hostname.c_str(), ((MqttDeviceTopicsEnabled() ? mqttDeviceTopic : mqttMasterTopic) + "state").c_str(), 0, true, "disconnected");
     }
 
     if (connected)
@@ -65,7 +65,7 @@ boolean MQTTreconnect()
         client.subscribe((mqttMasterTopic + "getMatrixinfo").c_str());
         client.subscribe((mqttMasterTopic + "getConfig").c_str());
         client.subscribe((mqttMasterTopic + "setConfig").c_str());
-        if (mqttUseDeviceTopic)
+        if (MqttDeviceTopicsEnabled())
         {
             client.subscribe((mqttDeviceTopic + "setScreen").c_str());
             client.subscribe((mqttDeviceTopic + "setText").c_str());
@@ -79,7 +79,7 @@ boolean MQTTreconnect()
         }
         // ... and publish state ....
         PublishMqtt((mqttMasterTopic + "state").c_str(), "connected", true);
-        if (mqttUseDeviceTopic)
+        if (MqttDeviceTopicsEnabled())
         {
             PublishMqtt((mqttDeviceTopic + "state").c_str(), "connected", true);
         }
@@ -134,7 +134,7 @@ const uint8_t haConfigCount = haSensorCount + haControlCount + 6;
 // topics and unique IDs so existing HA entity customizations survive upgrades.
 void PublishHAConfig(uint8_t step)
 {
-    const String base = mqttUseDeviceTopic ? mqttDeviceTopic : mqttMasterTopic;
+    const String base = MqttDeviceTopicsEnabled() ? mqttDeviceTopic : mqttMasterTopic;
     DynamicJsonBuffer buffer;
     JsonObject &root = buffer.createObject();
     String component, id, name;
@@ -374,7 +374,7 @@ void ServiceHADiscovery()
     }
     else
     {
-        const String base = mqttUseDeviceTopic ? mqttDeviceTopic : mqttMasterTopic;
+        const String base = MqttDeviceTopicsEnabled() ? mqttDeviceTopic : mqttMasterTopic;
         const uint8_t state = haDiscoveryStep - haConfigCount;
         // Initial states are also spread out; avoid a second burst at the end.
         if (state == 0) PublishMqtt((base + "matrixinfo").c_str(), GetMatrixInfo().c_str(), true);

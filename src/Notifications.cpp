@@ -19,7 +19,7 @@ void SendMatrixInfoTo(bool mqtt, bool websocket)
         {
             lastMqttMatrixInfoMillis = millis();
             PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
-            if (mqttUseDeviceTopic)
+            if (MqttDeviceTopicsEnabled())
             {
                 PublishMqtt((mqttDeviceTopic + "matrixinfo").c_str(), matrixInfo.c_str(), true);
             }
@@ -57,7 +57,7 @@ void SendLDR(bool force)
         mqttLuxState.due(sample, thresholds, mqttSensorPublish, millis(), force))
     {
         bool sent = PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), luxSensor.c_str(), true);
-        if (mqttUseDeviceTopic)
+        if (MqttDeviceTopicsEnabled())
         {
             sent = PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), luxSensor.c_str(), true) && sent;
         }
@@ -113,7 +113,7 @@ void SendSensor(bool force)
     {
         bool sent = PublishMqtt((mqttMasterTopic + "dhtsensor").c_str(), Sensor.c_str(), true); // Legacy
         sent = PublishMqtt((mqttMasterTopic + "sensor").c_str(), Sensor.c_str(), true) && sent;
-        if (mqttUseDeviceTopic)
+        if (MqttDeviceTopicsEnabled())
         {
             sent = PublishMqtt((mqttDeviceTopic + "dhtsensor").c_str(), Sensor.c_str(), true) && sent;
             sent = PublishMqtt((mqttDeviceTopic + "sensor").c_str(), Sensor.c_str(), true) && sent;

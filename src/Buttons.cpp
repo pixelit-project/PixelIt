@@ -8,7 +8,7 @@ void PublishButtonEvent(uint button, const char *event)
     const String suffix = "buttons/button" + String(button) + "/event";
     // Events must never be retained: reconnecting must not replay a press.
     PublishMqtt((mqttMasterTopic + suffix).c_str(), payload.c_str());
-    if (mqttUseDeviceTopic) PublishMqtt((mqttDeviceTopic + suffix).c_str(), payload.c_str());
+    if (MqttDeviceTopicsEnabled()) PublishMqtt((mqttDeviceTopic + suffix).c_str(), payload.c_str());
 }
 
 void ServiceButtons()
