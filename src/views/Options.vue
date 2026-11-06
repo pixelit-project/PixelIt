@@ -35,6 +35,7 @@
                             :items="[{ text: 'Gradient letters', value: 'logo' }, { text: 'Multicolor letters', value: 'classic' }]"
                             :disabled="!config.bootScreenAktiv"
                             label="Boot animation"
+                            class="mt-4"
                             hide-details
                             dense
                         ></v-select>
