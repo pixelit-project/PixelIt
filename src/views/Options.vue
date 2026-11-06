@@ -1,7 +1,7 @@
 <template>
     <v-container class="options app-page">
         <div class="page-actions config-actions">
-            <ButtonCondition color="success" :condition="configReady && hasUnsavedChanges && isValid && !sensorPublishValidationError && sockedIsConnected && !$demoMode" text="Save config" :onclick="save" icon="mdi-content-save" />
+            <ButtonCondition color="success" :condition="configReady && hasUnsavedChanges && isValid && !sensorPublishValidationError && !matrixInfoIntervalError && sockedIsConnected && !$demoMode" text="Save config" :onclick="save" icon="mdi-content-save" />
             <span class="text-caption" role="status">{{ !configReady ? 'Loading configuration…' : hasUnsavedChanges ? 'Unsaved changes' : 'No unsaved changes' }}</span>
             <v-btn v-if="hasUnsavedChanges" small text @click="resetDraft()">Discard changes</v-btn>
             <span class="action-spacer" />
@@ -155,8 +155,26 @@
                         <v-text-field v-model="config.mqttMasterTopic" label="Master topic" :disabled="!config.mqttAktiv" :rules="config.mqttAktiv ? [rules.required] : []"></v-text-field>
                         <v-switch v-model="config.mqttUseDeviceTopic" :label="deviceTopicLabel" :disabled="!config.mqttAktiv" dense></v-switch>
                         <v-switch v-model="config.mqttHAdiscoverable" label="Making the device discoverable by HomeAssistant" :disabled="!config.mqttAktiv" dense></v-switch>
+                        <template v-if="config.mqttMatrixInfoInterval !== undefined">
+                            <h3 class="mt-4">Matrix info</h3>
+                            <v-text-field v-model.number="config.mqttMatrixInfoInterval" type="number" label="Matrix info send interval" suffix="s" min="10" max="86400" step="1" :error-messages="matrixInfoIntervalError" :disabled="!config.mqttAktiv"></v-text-field>
+                        </template>
                         <h3 class="mt-4">Sensor publishing</h3>
                         <v-alert v-if="!config.mqttSensorPublish" type="info" dense text role="status">The connected firmware does not support sensor intervals and change thresholds yet. Install firmware with sensor publishing support to configure them here.</v-alert>
+                        <template v-else-if="typeof config.mqttSensorPublish.dynamic === 'boolean'">
+                            <v-switch v-model="periodicSensorPublishing" label="Send sensor readings periodically" :disabled="!config.mqttAktiv" dense></v-switch>
+                            <v-text-field v-if="periodicSensorPublishing" v-model.number="config.mqttSensorPublish.maxInterval" type="number" label="Send interval" suffix="s" min="1" max="86400" step="1" hint="Sends readings at this interval, even when unchanged." persistent-hint :disabled="!config.mqttAktiv"></v-text-field>
+                            <v-switch v-model="dynamicSensorPublishing" label="Send sensor readings when they change" :disabled="!config.mqttAktiv" dense></v-switch>
+                            <v-alert v-if="periodicSensorPublishing && dynamicSensorPublishing" type="info" dense text role="status">Both modes were saved with an earlier configuration. Turn one off to choose a single mode.</v-alert>
+                            <template v-if="config.mqttSensorPublish.dynamic">
+                                <v-switch v-if="config.mqttSensorPublish.periodic || legacyPeriodicCheck" v-model="config.mqttSensorPublish.periodic" label="Check for changes at the previously configured interval" :disabled="!config.mqttAktiv" dense></v-switch>
+                                <v-text-field v-if="config.mqttSensorPublish.periodic" v-model.number="config.mqttSensorPublish.interval" type="number" label="Check interval" suffix="s" min="3" max="86400" step="1" :disabled="!config.mqttAktiv"></v-text-field>
+                                <v-text-field v-else v-model.number="config.mqttSensorPublish.minInterval" type="number" label="Minimum send interval" suffix="s" min="0" max="86400" step="1" hint="0 allows a send at every sample." :disabled="!config.mqttAktiv"></v-text-field>
+                                <v-card-text class="px-0">Change since last sent value. 0 = any change.</v-card-text>
+                                <v-btn color="primary" outlined small class="mt-2 mb-3" :disabled="!config.mqttAktiv" @click="useDefaultSensorThresholds">Use default thresholds</v-btn>
+                                <v-text-field v-for="field in sensorThresholds" :key="field.key" v-model.number="config.mqttSensorPublish[field.key]" type="number" :label="field.label + ' change threshold'" :suffix="field.unit" min="0" max="1000000" step="any" :disabled="!config.mqttAktiv"></v-text-field>
+                            </template>
+                        </template>
                         <template v-else>
                             <v-switch v-model="config.mqttSensorPublish.periodic" label="Check MQTT changes periodically" :disabled="!config.mqttAktiv" hint="Off: check each sensor sample. WebUI and automatic brightness remain responsive." persistent-hint dense></v-switch>
                             <v-text-field v-if="config.mqttSensorPublish.periodic" v-model.number="config.mqttSensorPublish.interval" type="number" label="Check interval" suffix="s" min="3" max="86400" step="1" :disabled="!config.mqttAktiv"></v-text-field>
@@ -164,8 +182,8 @@
                             <v-text-field v-model.number="config.mqttSensorPublish.maxInterval" type="number" label="Maximum silent interval" suffix="s" min="0" max="86400" step="1" hint="0: disabled. Otherwise also send unchanged readings by this interval." persistent-hint :disabled="!config.mqttAktiv"></v-text-field>
                             <v-card-text class="px-0">Change since last sent value. 0 = any change.</v-card-text>
                             <v-text-field v-for="field in sensorThresholds" :key="field.key" v-model.number="config.mqttSensorPublish[field.key]" type="number" :label="field.label + ' change threshold'" :suffix="field.unit" min="0" max="1000000" step="any" :disabled="!config.mqttAktiv"></v-text-field>
-                            <v-alert v-if="sensorPublishValidationError" type="error" dense text role="alert">{{ sensorPublishValidationError }}</v-alert>
                         </template>
+                        <v-alert v-if="sensorPublishValidationError" type="error" dense text role="alert">{{ sensorPublishValidationError }}</v-alert>
                     </v-card>
                 </v-col>
             </v-row>
@@ -177,7 +195,7 @@
 import ColorPickerTextfield from '../components/ColorPickerTextfield';
 import ButtonCondition from '../components/ButtonCondition';
 import configDraft from '../mixins/configDraft';
-import { sensorPublishError } from '../utils/sensorPublish';
+import { matrixInfoIntervalError, sensorPublishError } from '../utils/sensorPublish';
 import actionFeedback from '../mixins/actionFeedback';
 import ButtonConfirm from '../components/ButtonConfirm';
 import { PrismEditor } from 'vue-prism-editor';
@@ -201,17 +219,44 @@ export default {
         PrismEditor,
     },
     computed: {
+        matrixInfoIntervalError() {
+            return matrixInfoIntervalError(this.config.mqttMatrixInfoInterval);
+        },
+        legacyPeriodicCheck() {
+            return !!this.$store.state.configData.mqttSensorPublish?.periodic;
+        },
+        periodicSensorPublishing: {
+            get() {
+                return this.config.mqttSensorPublish.maxInterval !== 0;
+            },
+            set(enabled) {
+                const settings = this.config.mqttSensorPublish;
+                if (enabled) settings.dynamic = false;
+                settings.maxInterval = enabled ? 60 : 0;
+            },
+        },
+        dynamicSensorPublishing: {
+            get() {
+                return this.config.mqttSensorPublish.dynamic;
+            },
+            set(enabled) {
+                const settings = this.config.mqttSensorPublish;
+                if (enabled) settings.maxInterval = 0;
+                settings.dynamic = enabled;
+            },
+        },
         sensorPublishValidationError() {
             return this.config.mqttSensorPublish ? sensorPublishError(this.config.mqttSensorPublish) : '';
         },
         sensorThresholds() {
+            // Match fresh configuration defaults in the firmware SensorPublishPolicy.h.
             return [
-                { key: 'temperature', label: 'Temperature', unit: Number(this.config.temperatureUnit) === 1 ? '°F' : '°C' },
-                { key: 'humidity', label: 'Humidity', unit: '%' },
-                { key: 'pressure', label: 'Pressure', unit: 'hPa' },
-                { key: 'gas', label: 'Gas resistance', unit: 'kΩ' },
-                { key: 'battery', label: 'Battery', unit: '%' },
-                { key: 'lux', label: 'Illuminance', unit: 'lx' },
+                { key: 'temperature', label: 'Temperature', unit: Number(this.config.temperatureUnit) === 1 ? '°F' : '°C', defaultValue: 0.5 },
+                { key: 'humidity', label: 'Humidity', unit: '%', defaultValue: 1 },
+                { key: 'pressure', label: 'Pressure', unit: 'hPa', defaultValue: 1 },
+                { key: 'gas', label: 'Gas resistance', unit: 'kΩ', defaultValue: 5 },
+                { key: 'battery', label: 'Battery', unit: '%', defaultValue: 1 },
+                { key: 'lux', label: 'Illuminance', unit: 'lx', defaultValue: 5 },
             ];
         },
         rules() {
@@ -265,8 +310,13 @@ export default {
     },
     methods: {
         save() {
-            if (this.config.mqttSensorPublish && sensorPublishError(this.config.mqttSensorPublish)) return;
+            if (this.sensorPublishValidationError || this.matrixInfoIntervalError) return;
             this.saveDraftConfig();
+        },
+        useDefaultSensorThresholds() {
+            for (const { key, defaultValue } of this.sensorThresholds) {
+                this.config.mqttSensorPublish[key] = defaultValue;
+            }
         },
         wifiReset() {
             this.$socket.sendObj({ wifiReset: true });

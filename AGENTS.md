@@ -40,8 +40,17 @@ fallback. Device-local HTTP and WebSocket operations still use the device API.
 
 ## WebUI conventions and validation
 
+- Firmware and its bundled WebUI ship together. Throughout the WebUI, target
+  the matching firmware version. New UI features do not need compatibility
+  checks or fallbacks solely for older firmware.
 - Change Vue source here; the firmware embeds generated HTML in
   `include/Webinterface.h`. Do not substitute manual edits to that generated file.
+- When adding a screen transition, check the Clock Auto Fallback dropdown in
+  `src/store/index.js` against the firmware's supported effects. Preserve existing
+  numeric values and verify that Random Wipe covers every effect selectable on
+  its own in that dropdown. Also check firmware `switchAnimation: random` and
+  the Node-RED Switch Animation node as described in
+  [PixelIt AGENTS.md](https://github.com/pixelit-project/PixelIt/blob/HEAD/AGENTS.md).
 - Preserve HTTP and WebSocket contracts, persisted settings and existing workflows.
   Validate device-bound input before sending it; handle firmware rejections clearly.
 - Bound live-preview traffic and clean up timers, listeners and sockets when views

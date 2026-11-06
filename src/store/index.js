@@ -285,6 +285,12 @@ export default new Vuex.Store({
                 text: 'Random Wipe',
                 value: 4,
             },
+            { text: 'Curtain', value: 5 },
+            { text: 'Pixel Dissolve', value: 6 },
+            { text: 'Slide', value: 7 },
+            { text: 'Blinds', value: 8 },
+            { text: 'CRT', value: 9 },
+            { text: 'Glitch', value: 10 },
         ],
         temperatureUnits: [
             {

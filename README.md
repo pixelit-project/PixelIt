@@ -106,24 +106,32 @@ in the stable Gallery/Creator user guide when releasing the WebUI.
 
 ## MQTT sensor publishing (development firmware)
 
-Options exposes sensor publishing controls when the connected firmware advertises
-`config.mqttSensorPublish`. Older firmware shows a firmware-update hint instead of editable controls. Event mode checks
-each sample and optionally limits send frequency; periodic mode checks at the
-configured interval. Each measurement has its own change threshold, compared with
-the last successfully published sensor payload. Temperature uses the configured
-°C/°F unit, humidity and battery use percentage points, pressure hPa, gas kΩ and
-illuminance lx. Any qualifying measurement publishes its whole topic payload;
-sensor and lux topics have independent baselines. Zero thresholds accept any
-change, while zero minimum/maximum intervals disable the additional interval.
-A maximum silent interval also republishes unchanged readings. Initial connection,
-Home Assistant discovery and forced publications bypass normal filtering.
+The MQTT options have separate controls for Matrix info and sensor readings.
+Matrix info is sent via MQTT every 15 seconds by default (configurable from
+10 to 86400 whole seconds); WebSocket status retains its own cadence.
 
-Intervals are whole seconds (check interval 3–86400, minimum/maximum 0–86400).
-A nonzero maximum must be at least the active check/minimum interval. Thresholds
-must be finite numbers from 0 to 1000000. Invalid settings cannot be sent by the
-form. The firmware preserves previous publishing settings on invalid input.
-Sensor sampling and WebSocket updates retain their existing cadence, so timings
-are evaluated on the next available sample rather than exact wall-clock deadlines.
+By default, sensor readings are sent when they change. The thresholds are
+0.5 in the configured temperature unit (°C/°F), 1 percentage point for humidity,
+1 hPa for pressure, 5 kΩ for gas, 1 percentage point for battery and 5 lx for
+illuminance. Firmware uses these defaults for missing settings and preserves
+explicitly saved thresholds, including zero. **Use default thresholds** fills these
+values into the Options draft for an existing device. Save the configuration
+to apply them. A zero
+threshold matches any actual change; a zero minimum interval adds no rate limit.
+
+Enable sending **when readings change** or **periodically**. Turning on one
+mode turns off the other. Periodic sending starts with a 60-second interval. Lux and the other sensor readings
+track successful publications independently. The firmware evaluates the selected
+mode at the existing sample cadence. Initial delivery for enabled modes and
+forced MQTT messages (such as discovery) still work. WebSocket sensor updates
+and automatic brightness use their existing sample cadence.
+
+Intervals must be whole seconds. The WebUI shows previously saved combinations
+of change and periodic sending until a new mode is selected. The firmware
+continues to accept such combinations from existing clients, with the periodic
+interval at least as long as the active minimum or legacy check interval.
+Older firmware keeps the original settings or displays an upgrade hint when
+it lacks sensor settings.
 
 Run `node tests/sensor-publish.test.cjs` and `npm run build`. The matching WebUI
 bundle must be published and embedded by the firmware pipeline before delivery.
