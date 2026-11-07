@@ -148,7 +148,7 @@ String GetSensor(SensorSample *sample)
         for (unsigned i = 0; i < 5; ++i)
         {
             const JsonVariant value = root[keys[i]];
-            if (value.is<float>() && isfinite(value.as<float>()))
+            if (value.is<float>() && std::isfinite(value.as<float>()))
             {
                 sample->values[i] = value.as<float>();
                 sample->states[i] = 1;

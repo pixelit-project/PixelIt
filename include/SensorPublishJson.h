@@ -1,6 +1,7 @@
 #pragma once
 #include "SensorPublishPolicy.h"
 #include <ArduinoJson.h>
+#include <cmath>
 
 inline bool WriteSensorPublishSettings(JsonObject &root, const SensorPublishSettings &s)
 {
@@ -58,7 +59,7 @@ inline bool ReadSensorPublishSettings(JsonVariant value, SensorPublishSettings &
         JsonVariant v = json[keys[i]];
         if (!v.is<float>()) return false;
         const float n = v.as<float>();
-        if (!isfinite(n) || n < 0 || n > 1000000) return false;
+        if (!std::isfinite(n) || n < 0 || n > 1000000) return false;
         *thresholds[i] = n;
     }
     settings = candidate;

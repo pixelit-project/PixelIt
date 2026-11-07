@@ -32,6 +32,7 @@ if version == "":
 # Rename binary according to environnement/board
 # ex: firmware_esp32dev.bin or firmware_nodemcuv2.bin
 env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}")
+legacy_esp8266_core = build_tag == "ESP8266_nodemcuv2"
 
 # Avoid a second full HTTP POST body on the ESP8266's small heap. Build against
 # a local header copy, leaving the installed pinned framework untouched.
@@ -51,7 +52,8 @@ if env.PioPlatform().name == "espressif8266":
     contents = contents.replace(old, "arg.value = std::move(plainBuf);")
     # Stream/compact only the screen JSON body. Other endpoints, multipart OTA
     # and URL-encoded forms retain the pinned core's parser and move patch.
-    contents = '#include "PixelItHttpBody.h"\n' + contents
+    server_header = patched / "ESP8266WebServer.h"
+    server_header.write_text('#include "PixelItHttpBody.h"\n' + server_header.read_text())
     screen_reader = """    String plainBuf;
     if (   !isForm"""
     screen_replacement = """    String plainBuf;
@@ -67,13 +69,20 @@ if env.PioPlatform().name == "espressif8266":
     } else if (   !isForm"""
     if contents.count(screen_reader) != 1:
         raise RuntimeError("Review ESP8266 screen body reader patch for this framework version")
+    if legacy_esp8266_core:
+        # Core 2.7.4 always sends Connection: close and uses a boolean parser result.
+        screen_replacement = screen_replacement.replace(
+            '        _keepAlive = false;\n        sendHeader(F("Connection"), F("close"));\n',
+            '        setContentLength(CONTENT_LENGTH_NOT_SET);\n',
+        ).replace("return CLIENT_REQUEST_IS_HANDLED;", "return false;")
     contents = contents.replace(screen_reader, screen_replacement)
     # Core 3 reads through S2Stream, otherwise growing/reallocating the String
     # repeatedly while TCP data arrives. Reserve the advertised size once.
     reader = "  S2Stream dataStream(data);"
-    if contents.count(reader) != 1:
-        raise RuntimeError("Review ESP8266 HTTP body reserve patch for this framework version")
-    contents = contents.replace(reader, "  if (!data.reserve(maxLength + 1)) return false;\n" + reader)
+    if not legacy_esp8266_core:
+        if contents.count(reader) != 1:
+            raise RuntimeError("Review ESP8266 HTTP body reserve patch for this framework version")
+        contents = contents.replace(reader, "  if (!data.reserve(maxLength + 1)) return false;\n" + reader)
     parser.write_text(contents)
     env.Prepend(CPPPATH=[str(patched)])
     # Keep the same template implementation first in library builds as well.
@@ -169,7 +178,12 @@ updater_target = Path(env.subst("$BUILD_DIR")) / "pixelit_updater"
 shutil.copytree(updater_source, updater_target, dirs_exist_ok=True)
 implementation = updater_target / (updater_name + ("-impl.h" if updater_name.startswith("ESP8266") else ".h"))
 contents = implementation.read_text()
-anchor = "      esp_yield();" if updater_name.startswith("ESP8266") else "                delay(0);"
+if legacy_esp8266_core:
+    anchor = "      delay(0);"
+elif updater_name.startswith("ESP8266"):
+    anchor = "      esp_yield();"
+else:
+    anchor = "                delay(0);"
 if contents.count(anchor) != 1:
     raise RuntimeError("Review OTA display hook for this framework version")
 length = "upload.contentLength" if updater_name.startswith("ESP8266") else '_server->header("Content-Length").toInt()'

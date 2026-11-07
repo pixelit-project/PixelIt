@@ -51,7 +51,7 @@ void SendLDR(bool force)
     }
     SensorSample sample;
     sample.values[0] = currentLux;
-    sample.states[0] = isfinite(currentLux) ? 1 : 2;
+    sample.states[0] = std::isfinite(currentLux) ? 1 : 2;
     const float thresholds[5] = {mqttSensorPublish.lux, 0, 0, 0, 0};
     if (mqttAktiv && client.connected() &&
         mqttLuxState.due(sample, thresholds, mqttSensorPublish, millis(), force))

@@ -32,8 +32,19 @@ Build every supported variant:
 pio run -e ESP8266_generic -e ESP8266_d1_mini -e ESP8266_nodemcuv2 -e ESP32_generic -e ESP32_d1_mini32 -e ESP32_ulanzi
 ```
 
-ESP8266 builds use espressif8266 4.2.1 / Arduino core 3.1.2 at 160 MHz,
-with WiFi modem sleep disabled and additional FastLED transfer retries.
+ESP8266 generic and D1 mini builds use espressif8266 4.2.1 / Arduino core
+3.1.2 at 160 MHz. NodeMCU v2 uses espressif8266 2.6.3 / Arduino core 2.7.4
+at 160 MHz. The reported NodeMCU v2 with WS2812 displayed correctly with
+2.7.0-beta.1 rebuilt on this older platform at 80 MHz, after the same beta
+on the newer platform failed at both clock rates. The user also confirmed
+display output with the 3.0.0-beta.3 port on the older platform at both
+80 and 160 MHz. Frame timing, peak heap and OTA still need device validation.
+All ESP8266 builds disable WiFi modem sleep and use additional FastLED transfer retries.
+
+The NodeMCU v2 HTTP hook uses the older core's boolean parser result and
+built-in request body reservation. Its OTA display hook runs at the older
+updater's existing yield point. Recheck these hooks when changing platforms.
+
 ESP32 builds use espressif32 6.5.0 for Arduino 2.0.14 compatibility and run
 at 160 MHz to retain rendering headroom during larger screen commands. Both
 platforms disable WiFi modem sleep to avoid DTIM/wakeup delays during playback.

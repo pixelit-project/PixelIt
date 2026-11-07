@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Use Arduino Core 2.7.4 on NodeMCU v2 for WS2812 compatibility.
 -   (o0shojo0o) Use the logo colors for the zZz sleep screen.
 -   (o0shojo0o) Keep Home Assistant status and commands separate for each PixelIt.
 -   (o0shojo0o) Add six screen transitions and include them in random screen changes.
