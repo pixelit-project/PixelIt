@@ -298,7 +298,6 @@ void DrawSingleBitmap(JsonObject &json)
 
 void DrawClock(bool fromJSON)
 {
-    matrix->clear();
 
     char date[14];
     char time[14];
@@ -382,110 +381,49 @@ void DrawClock(bool fromJSON)
         }
     }
 
-    if (!clockSwitchAktiv || (clockSwitchAktiv && clockCounterClock <= clockSwitchSec))
+    bool showDate = false;
+    bool switchPage = false;
+    if (clockSwitchAktiv && fromJSON)
     {
-        if (clockSwitchAktiv)
+        clockCounterClock = clockSwitchSec > 0 ? 1 : 0;
+        clockCounterDate = 0;
+    }
+    else if (clockSwitchAktiv)
+    {
+        if (clockCounterClock <= clockSwitchSec)
         {
-            clockCounterClock++;
-        }
-        if (clockCounterClock > clockSwitchSec && !(fromJSON && ScreenTransitionActive()))
-        {
-            clockCounterDate = 0;
-
-            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
-            {
-                DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
-                FadeOut(30);
-                matrix->clear();
-                DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
-                FadeIn(30);
-            }
-            else
-            {
-                int counter = 0;
-                while (counter <= 6) // vertical animate
-                {
-                    counter++;
-                    matrix->clear();
-                    DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (1 + counter));
-                    DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (-6 + counter));
-                    matrix->drawLine(0, 7, 33, 7, 0);
-                    if (clockDrawWeekDays)
-                    {
-                        DrawWeekDay();
-                    }
-                    matrix->show();
-                    delay(35);
-                }
-            }
-        }
-        else if (clockFontIsLarge)
-        {
-
-            DrawTextCenter(String(time), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
+            showDate = ++clockCounterClock > clockSwitchSec;
+            switchPage = showDate;
+            if (switchPage)
+                clockCounterDate = 0;
         }
         else
         {
-            DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, 1);
-            xPosTime = 3;
+            switchPage = ++clockCounterDate >= clockSwitchSec;
+            showDate = !switchPage;
+            if (switchPage)
+                clockCounterClock = 0;
         }
     }
+
+    const bool transitionPrepared = switchPage && !fromJSON &&
+        PrepareClockTransition(clockDateTransition, clockFontIsLarge, clockDrawWeekDays && !clockFontIsLarge);
+    matrix->clear();
+    const String text(showDate ? date : time);
+    if (clockFontIsLarge)
+        DrawTextCenter(text, clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
     else
-    {
-        clockCounterDate++;
-
-        if (clockCounterDate == clockSwitchSec)
-        {
-            clockCounterClock = 0;
-
-            if (clockFontIsLarge) // fade rather than vertical animate purely because DrawTextCenter doesnt have a Y argument...
-            {
-                DrawTextCenter(String(date), 2, clockColorR, clockColorG, clockColorB, 0, 1);
-                FadeOut(30);
-                matrix->clear();
-                DrawTextCenter(String(time), 2, clockColorR, clockColorG, clockColorB, 0, 1);
-                FadeIn(30);
-            }
-            else
-            {
-                int counter = 0;
-                while (counter <= 6) // vertical animate
-                {
-                    counter++;
-                    matrix->clear();
-                    DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, (1 + counter));
-                    DrawText(String(time), false, clockColorR, clockColorG, clockColorB, xPosTime, (-6 + counter));
-                    matrix->drawLine(0, 7, 33, 7, 0);
-                    if (clockDrawWeekDays)
-                    {
-                        DrawWeekDay();
-                    }
-                    matrix->show();
-                    delay(35);
-                }
-            }
-        }
-        else if (clockFontIsLarge)
-        {
-            DrawTextCenter(String(date), clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
-        }
-        else
-        {
-            DrawText(String(date), false, clockColorR, clockColorG, clockColorB, 7, 1);
-        }
-    }
+        DrawText(text, false, clockColorR, clockColorG, clockColorB, showDate ? 7 : xPosTime, 1);
 
     if (!clockFontIsLarge && clockDrawWeekDays)
     {
         DrawWeekDay();
     }
 
-    // Wenn der Aufruf nicht über JSON sondern über den Loop kommt
-    // muss ich mich selbst ums Show kümmern.
-    if (!fromJSON)
-    {
-        matrix->show();
-    }
+    if (transitionPrepared)
+        StartScreenTransition();
+    else if (!fromJSON)
+        ShowScreenContentFrame();
 }
 
 void DrawWeekDay()

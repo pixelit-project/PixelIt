@@ -232,6 +232,7 @@ extern bool clockSwitchAktiv;
 extern bool clockWithSeconds;
 extern bool clockAutoFallbackActive;
 extern uint clockAutoFallbackAnimation;
+extern uint clockDateTransition;
 extern uint clockSwitchSec;
 extern uint clockCounterClock;
 extern uint clockCounterDate;

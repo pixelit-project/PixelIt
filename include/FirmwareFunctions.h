@@ -4,8 +4,11 @@
 #include "UpdateVisuals.h"
 #include "UpdateScreen.h"
 
-constexpr unsigned ClockFallbackLastEffect = 10;
-bool PrepareScreenTransition(const char *name);
+constexpr unsigned ClockFallbackLastEffect = 11;
+constexpr unsigned ClockDateTransitionAuto = 12;
+bool PrepareScreenTransition(const char *name, CRGB color = CRGB::White, bool hasTarget = true);
+bool PrepareBitmapWipe(const JsonArray &data, int width, bool hasTarget);
+bool PrepareClockTransition(unsigned selection, bool largeFont = false, bool keepWeekday = false);
 void StartScreenTransition();
 void CancelScreenTransition();
 bool ScreenTransitionActive();
@@ -71,9 +74,6 @@ void DrawSingleBitmap(JsonObject &json);
 void DrawClock(bool fromJSON);
 void DrawWeekDay();
 boolean MQTTreconnect();
-void ColoredBarWipe();
-void ZigZagWipe(uint8_t r, uint8_t g, uint8_t b);
-void BitmapWipe(JsonArray &data, int16_t w);
 void ColorFlash(int red, int green, int blue);
 uint ColorWheel(byte wheelPos, int pos);
 void ShowBootAnimation();

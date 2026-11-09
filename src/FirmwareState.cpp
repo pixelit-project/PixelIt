@@ -195,6 +195,7 @@ bool clockSwitchAktiv = true;
 bool clockWithSeconds = false;
 bool clockAutoFallbackActive = false;
 uint clockAutoFallbackAnimation = 1;
+uint clockDateTransition = ClockDateTransitionAuto;
 uint clockSwitchSec = 7;
 uint clockCounterClock = 0;
 uint clockCounterDate = 0;

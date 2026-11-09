@@ -197,10 +197,6 @@ void CreateFrames(JsonObject &json, int forceDuration)
         }
 
         // Ist eine Switch Animation übergeben worden?
-        bool fadeAnimationAktiv = false;
-        bool coloredBarWipeAnimationAktiv = false;
-        bool zigzagWipeAnimationAktiv = false;
-        bool bitmapWipeAnimationAktiv = false;
         bool transitionPrepared = false;
         if (json.containsKey("switchAnimation"))
         {
@@ -215,71 +211,37 @@ void CreateFrames(JsonObject &json, int forceDuration)
                     // commands can use the three effects that need no new screen.
                     static const char *const choices[] = {
                         "fade", "coloredBarWipe", "zigzagWipe",
-                        "curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch"
+                        "curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch", "verticalSlide"
                     };
                     animation = choices[random(changesDisplay ? sizeof(choices) / sizeof(choices[0]) : 3)];
                 }
 
-                // Fade Animation aktiv?
-                if (animation && strcmp(animation, "fade") == 0)
+                JsonObject &settings = json["switchAnimation"].as<JsonObject>();
+                if (animation && strcmp(animation, "bitmapWipe") == 0)
                 {
-                    fadeAnimationAktiv = true;
+                    transitionPrepared = PrepareBitmapWipe(settings["data"].as<JsonArray>(), settings["width"].as<int>(), changesDisplay);
                 }
-                else if (animation && strcmp(animation, "coloredBarWipe") == 0)
+                else
                 {
-                    coloredBarWipeAnimationAktiv = true;
-                }
-                else if (animation && strcmp(animation, "zigzagWipe") == 0)
-                {
-                    zigzagWipeAnimationAktiv = true;
-                }
-                else if (animation && strcmp(animation, "bitmapWipe") == 0)
-                {
-                    bitmapWipeAnimationAktiv = true;
-                }
-                else if (changesDisplay)
-                {
-                    transitionPrepared = PrepareScreenTransition(animation);
+                    uint8_t r = 255, g = 255, b = 255;
+                    if (animation && strcmp(animation, "zigzagWipe") == 0)
+                    {
+                        if (settings["hexColor"].as<char *>())
+                            HEXtoRGB(settings["hexColor"].as<char *>(), r, g, b);
+                        else if (settings["color"].as<JsonObject>().containsKey("r"))
+                        {
+                            r = settings["color"]["r"].as<uint8_t>();
+                            g = settings["color"]["g"].as<uint8_t>();
+                            b = settings["color"]["b"].as<uint8_t>();
+                        }
+                    }
+                    transitionPrepared = PrepareScreenTransition(animation, CRGB(r, g, b), changesDisplay);
                 }
             }
         }
 
-        if (!transitionPrepared && (changesDisplay || fadeAnimationAktiv || coloredBarWipeAnimationAktiv ||
-                                    zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
-        {
+        if (!transitionPrepared && changesDisplay)
             CancelScreenTransition();
-        }
-
-        // Fade aktiv?
-        if (fadeAnimationAktiv)
-        {
-            FadeOut();
-        }
-        else if (coloredBarWipeAnimationAktiv)
-        {
-            ColoredBarWipe();
-        }
-        else if (zigzagWipeAnimationAktiv)
-        {
-            uint8_t r = 255;
-            uint8_t g = 255;
-            uint8_t b = 255;
-            if (json["switchAnimation"]["hexColor"].as<char *>() != NULL)
-            {
-                HEXtoRGB(json["switchAnimation"]["hexColor"].as<char *>(), r, g, b);
-            }
-            else if (json["switchAnimation"]["color"]["r"].as<char *>() != NULL)
-            {
-                r = json["switchAnimation"]["color"]["r"].as<uint8_t>();
-                g = json["switchAnimation"]["color"]["g"].as<uint8_t>();
-                b = json["switchAnimation"]["color"]["b"].as<uint8_t>();
-            }
-            ZigZagWipe(r, g, b);
-        }
-        else if (bitmapWipeAnimationAktiv)
-        {
-            BitmapWipe(json["switchAnimation"]["data"].as<JsonArray>(), json["switchAnimation"]["width"].as<uint8_t>());
-        }
 
         // Clock
         if (json.containsKey("clock"))
@@ -537,7 +499,6 @@ void CreateFrames(JsonObject &json, int forceDuration)
 
                 bool centerText = json["text"]["centerText"];
 
-                bool fadeInRequired = ((json.containsKey("bars") || json.containsKey("bar") || json.containsKey("bitmap") || json.containsKey("bitmapAnimation")) && fadeAnimationAktiv);
 
                 // Wurde ein Benutzerdefeniertes Delay übergeben?
                 if (json["text"]["scrollTextDelay"])
@@ -547,11 +508,11 @@ void CreateFrames(JsonObject &json, int forceDuration)
 
                 if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
                 {
-                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, fadeInRequired, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
+                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, false, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
                 }
                 else
                 {
-                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, fadeInRequired, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
+                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, false, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
                 }
             }
             // is centerText selected?
@@ -565,21 +526,10 @@ void CreateFrames(JsonObject &json, int forceDuration)
             }
         }
 
-        // Fade aktiv?
         if (transitionPrepared)
-        {
             StartScreenTransition();
-        }
-        else if (!scrollTextAktiv && (fadeAnimationAktiv || coloredBarWipeAnimationAktiv || zigzagWipeAnimationAktiv || bitmapWipeAnimationAktiv))
-        {
-            FadeIn();
-        }
-        else
-        {
-            // Fade nicht aktiv!
-            // Muss mich selbst um Show kümmern
-            matrix->show();
-        }
+        else if (changesDisplay || !ScreenTransitionActive())
+            ShowScreenContentFrame();
     }
 
     if (sleepMode && !json.containsKey("sleepMode"))

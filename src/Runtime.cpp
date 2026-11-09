@@ -553,42 +553,14 @@ void loop()
     ServiceButtons();
 
     // Clock Auto Fallback
-    if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
+    if (!sleepMode && ((clockAutoFallbackActive && !clockAktiv && !ScreenTransitionActive() && millis() - lastScreenMessageMillis >= (clockAutoFallbackTime * 1000)) || forceClock))
     {
         CancelScreenTransition();
         forceClock = false;
         scrollTextAktivLoop = false;
         animateBMPAktivLoop = false;
 
-        unsigned performWipe = clockAutoFallbackAnimation;
-        if (performWipe == 4)
-        {
-            // Choose among the effects, skipping the Random Wipe setting itself.
-            performWipe = random(1, ClockFallbackLastEffect);
-            if (performWipe >= 4)
-                ++performWipe;
-        }
-
-        static const char *const transitions[] = {
-            "curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch"
-        };
-        static_assert(ClockFallbackLastEffect == 4 + sizeof(transitions) / sizeof(transitions[0]),
-                      "Clock fallback setting range must match the transition list");
-        const bool transitionPrepared = performWipe >= 5 && performWipe <= ClockFallbackLastEffect &&
-                                        PrepareScreenTransition(transitions[performWipe - 5]);
-
-        if (performWipe == 1)
-        {
-            FadeOut();
-        }
-        else if (performWipe == 2)
-        {
-            ColoredBarWipe();
-        }
-        else if (performWipe == 3)
-        {
-            ZigZagWipe(clockColorR, clockColorG, clockColorB);
-        }
+        const bool transitionPrepared = PrepareClockTransition(clockAutoFallbackAnimation);
         clockAktiv = true;
         clockCounterClock = 0;
         clockCounterDate = 0;
@@ -598,11 +570,7 @@ void loop()
         {
             StartScreenTransition();
         }
-        else if (performWipe >= 1 && performWipe <= 3)
-        {
-            FadeIn();
-        }
-        else if (performWipe >= 5 && !firmwareUpdateDisplayActive)
+        else if (clockAutoFallbackAnimation != 0 && !firmwareUpdateDisplayActive)
         {
             ShowScreenContentFrame();
         }
@@ -694,7 +662,11 @@ void loop()
     // liveview
     {
         const unsigned long started = millis();
-        liveview.loop(animateBMPAktivLoop ? animateBMPDelay : 0);
+        // Liveview samples at half the supplied frame interval.
+        constexpr uint16_t transitionPreviewFrameInterval = 200;
+        const uint16_t frameInterval = ScreenTransitionActive() ? transitionPreviewFrameInterval
+            : (animateBMPAktivLoop ? animateBMPDelay : 0);
+        liveview.loop(frameInterval);
         RecordAnimationWork("Liveview", started);
     }
 

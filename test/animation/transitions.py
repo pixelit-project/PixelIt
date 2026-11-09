@@ -11,15 +11,35 @@ stub = r'''
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 using std::min;
+using std::max;
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 8
 
 struct CRGB {
     uint32_t value;
-    static const CRGB Black;
+    uint8_t r = 0, g = 0, b = 0;
+    CRGB() : value(0) {}
+    CRGB(uint32_t value) : value(value), r(value) {}
+    CRGB(uint8_t r, uint8_t g, uint8_t b) : value(r), r(r), g(g), b(b) {}
+    static const CRGB Black, White;
 };
 extern CRGB leds[256];
+struct JsonVariant {
+    uint16_t value;
+    template <typename T> T as() const { return value; }
+};
+using JsonArray = std::vector<JsonVariant>;
+bool PrepareScreenTransition(const char *, CRGB = CRGB::White, bool = true);
+constexpr unsigned ClockFallbackLastEffect = 11;
+constexpr unsigned ClockDateTransitionAuto = 12;
+extern uint8_t clockColorR, clockColorG, clockColorB;
+extern long randomChoice;
+inline long random(long first, long last) {
+    return std::max(first, std::min(last - 1, randomChoice));
+}
+inline uint16_t ColorWheel(uint8_t pos, int) { return pos + 1; }
 extern bool firmwareUpdateDisplayActive;
 extern unsigned long animateBMPPrevMillis, scrollTextPrevMillis, animationLastRenderedMillis;
 extern uint32_t tick;
@@ -31,6 +51,20 @@ struct Matrix {
         return y * 32 + (y % 2 ? 31 - x : x);
     }
     void show() { ++shown; }
+    void drawPixel(int x, int y, uint16_t color) {
+        if (x >= 0 && x < 32 && y >= 0 && y < 8)
+            leds[XY(x, y)] = CRGB(color);
+    }
+    void fillRect(int x, int y, int w, int h, uint16_t color) {
+        for (int row = y; row < y + h; ++row)
+            for (int col = x; col < x + w; ++col)
+                drawPixel(col, row, color);
+    }
+    void drawFastVLine(int x, int y, int h, uint16_t color) {
+        fillRect(x, y, 1, h, color);
+    }
+    uint16_t Color(uint8_t r, uint8_t, uint8_t) { return r; }
+    void clear() { fillRect(0, 0, 32, 8, 0); }
 };
 extern Matrix *matrix;
 '''
@@ -39,8 +73,11 @@ checks = r'''
 #include "ScreenTransition.cpp"
 
 const CRGB CRGB::Black = {0};
+const CRGB CRGB::White = {255};
 CRGB leds[256];
 bool firmwareUpdateDisplayActive = false;
+uint8_t clockColorR = 255, clockColorG = 255, clockColorB = 255;
+long randomChoice = 1;
 unsigned long animateBMPPrevMillis, scrollTextPrevMillis, animationLastRenderedMillis;
 uint32_t tick;
 Matrix display;
@@ -58,6 +95,92 @@ uint32_t pixel(int x, int y) {
 int main() {
     assert(!PrepareScreenTransition(nullptr));
     assert(!PrepareScreenTransition("unknown"));
+    assert(!PrepareScreenTransition("slide", CRGB::White, false));
+    for (const char *name : {"fade", "coloredBarWipe", "zigzagWipe", "bitmapWipe"}) {
+        fill(100);
+        tick = UINT32_MAX - 100;
+        const uint32_t start = tick;
+        if (strcmp(name, "bitmapWipe") == 0) {
+            assert(!PrepareBitmapWipe({}, 1, true));
+            assert(!PrepareBitmapWipe({}, 33, true));
+            assert(PrepareBitmapWipe(JsonArray(8, {42}), 1, true));
+        } else {
+            assert(PrepareScreenTransition(name));
+        }
+        fill(200);
+        StartScreenTransition();
+        assert(pixel(0, 0) == 100);
+        tick = start + 140;
+        const int shown = display.shown;
+        assert(ServiceScreenTransition());
+        assert(display.shown == shown + 1);
+        if (strcmp(name, "fade") == 0)
+            assert(leds[display.XY(0, 0)].r < 100);
+        else
+            assert(pixel(0, 0) == 0);
+        assert(ServiceScreenTransition());
+        assert(display.shown == shown + 1);
+        tick = start + 2300;
+        assert(ServiceScreenTransition());
+        assert(!ScreenTransitionActive() && pixel(0, 0) == 200);
+    }
+    fill(50);
+    assert(PrepareScreenTransition("fade", CRGB::White, false));
+    StartScreenTransition();
+    tick += 600;
+    assert(ServiceScreenTransition() && pixel(0, 0) == 50);
+    assert(PrepareScreenTransition("coloredBarWipe", CRGB::White, false));
+    StartScreenTransition();
+    tick += 900;
+    assert(ServiceScreenTransition() && pixel(0, 0) == 0);
+
+    assert(PrepareBitmapWipe(JsonArray(8, {42}), 1, false));
+    StartScreenTransition();
+    tick += 900;
+    assert(ServiceScreenTransition());
+    assert(pixel(30, 0) == 0 && pixel(31, 0) == 42);
+
+    assert(!PrepareScreenTransition("verticalSlide", CRGB::White, false));
+    assert(!PrepareClockTransition(0, false, false));
+    for (int mode : {0, 1, 2, 3}) {
+        fill(100);
+        if (mode == 0)
+            assert(PrepareScreenTransition("verticalSlide"));
+        else if (mode == 1)
+            assert(PrepareClockTransition(11, false, true));
+        else if (mode == 2)
+            assert(PrepareClockTransition(ClockDateTransitionAuto, false, true));
+        else {
+            randomChoice = 10;
+            assert(PrepareClockTransition(4, false, false));
+        }
+        const int rows = mode == 1 || mode == 2 ? 7 : 8;
+        fill(1000);
+        StartScreenTransition();
+        const uint32_t start = tick;
+        for (int step : {1, 3, 6}) {
+            tick = start + 35 * step;
+            assert(ServiceScreenTransition());
+            assert(pixel(0, 0) == 1000 + display.XY(0, rows - step));
+            assert(pixel(1, step) == 100 + display.XY(1, 0));
+            if (rows == 7)
+                assert(pixel(1, 7) == 100 + display.XY(1, 7));
+        }
+        tick = start + 35 * rows;
+        assert(ServiceScreenTransition() && !ScreenTransitionActive());
+        assert(pixel(1, 7) == 1000 + display.XY(1, 7));
+    }
+    fill(100);
+    assert(PrepareClockTransition(ClockDateTransitionAuto, true, false));
+    fill(200);
+    StartScreenTransition();
+    const int shown = display.shown;
+    tick += 29;
+    assert(ServiceScreenTransition() && display.shown == shown);
+    tick += 1;
+    assert(ServiceScreenTransition() && display.shown == shown + 1);
+    CancelScreenTransition();
+
     for (const char *name : {"curtain", "pixelDissolve", "slide", "blinds", "crt", "glitch"}) {
         fill(1);
         tick = UINT32_MAX - 100;

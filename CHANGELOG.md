@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Add selectable clock/date transitions and Vertical Slide for screen changes.
+-   (o0shojo0o) Show legacy screen transitions in Liveview.
 -   (o0shojo0o) Reduce MQTT status memory peaks and ESP8266 playback stalls during writes and reconnects.
 -   (o0shojo0o) Use Arduino Core 2.7.4 on NodeMCU v2 for WS2812 compatibility.
 -   (o0shojo0o) Use the logo colors for the zZz sleep screen.

@@ -32,6 +32,14 @@ Build every supported variant:
 pio run -e ESP8266_generic -e ESP8266_d1_mini -e ESP8266_nodemcuv2 -e ESP32_generic -e ESP32_d1_mini32 -e ESP32_ulanzi
 ```
 
+Before a local OTA build, check that the script and stylesheet URLs in
+`include/Webinterface.h` still resolve. The device serves the embedded HTML,
+while the browser loads its assets from GitHub Pages. For a local build using
+the published WebUI, save the current published `webui/index.html` as
+`pixelit-webui-artifact/index.html` and run `python3 .github/webui.py` from the
+repository root before building. Verify that the published bundle exposes the
+options required by the firmware.
+
 ESP8266 generic and D1 mini builds use espressif8266 4.2.1 / Arduino core
 3.1.2 at 160 MHz. NodeMCU v2 uses espressif8266 2.6.3 / Arduino core 2.7.4
 at 160 MHz. The reported NodeMCU v2 with WS2812 displayed correctly with
@@ -1767,30 +1775,41 @@ still require acknowledgement of the previous data.
 
 ## Screen transitions
 
-Send a screen payload with `"switchAnimation": {"aktiv": true, "animation": "curtain"}`.
-The new names are `curtain`, `pixelDissolve`, `slide`, `blinds`, `crt` and `glitch`.
-They apply to incoming screen content, including a clock command. With screen
-content, `random` chooses among the six new effects, Fade, Colored Bar Wipe
-and Zig Zag Wipe. Effect-only requests keep the three legacy choices.
-Bitmap Wipe is selected explicitly with its pixel data. Clock Auto Fallback has
-a separate numeric setting, `clockAutoFallbackAnimation`. Values 0–4 retain
-their meanings (None, Fade, Colored Bar Wipe, ZigZag Wipe, Random Wipe). Values
-5–10 select Curtain, Pixel Dissolve, Slide, Blinds, CRT and Glitch respectively.
-Random Wipe chooses among all nine effects that can render the clock with no
-extra payload. Deploy the matching WebUI bundle with the firmware.
+Send a screen payload with `"switchAnimation": {"aktiv": true, "animation": "verticalSlide"}`.
+Vertical Slide moves the old screen down while bringing the new screen in from
+above. It requires target content, including a clock command. With screen content,
+`random` chooses among Fade, Colored Bar Wipe, Zig Zag Wipe, Curtain, Pixel
+Dissolve, Slide, Blinds, CRT, Glitch and Vertical Slide. Effect-only random
+requests keep the three legacy choices. Select Bitmap Wipe explicitly with its
+pixel data.
+
+Clock Auto Fallback uses `clockAutoFallbackAnimation`. Values 0–4 are None,
+Fade, Colored Bar Wipe, Zig Zag Wipe and Random Wipe. Values 5–11 select Curtain,
+Pixel Dissolve, Slide, Blinds, CRT, Glitch and Vertical Slide. Random Wipe chooses
+among all ten effects that can render the clock without extra payload.
+
+The separate `clockDateTransition` setting uses the same values and adds 12
+(Auto), the default for existing configurations. Auto uses Vertical Slide for
+the small clock font and Fade for large and bold fonts. Both directions use
+the selected effect. Vertical Slide keeps the weekday indicators in place when
+the small clock font shows them. Select **Clock/date transition** in WebUI
+Options and deploy the matching WebUI bundle with the firmware.
 
 The new renderer uses one fixed 768-byte RGB snapshot on both platforms. It
 composites into the existing LED buffer and renders at most one step per service
-call, skipping overdue intermediate steps over a nominal 384 ms. No request
-storage survives the handler. Bitmap and scrolling playback start from the
+call, skipping overdue intermediate steps. The six newer effects take a nominal
+384 ms. Fade, Colored Bar Wipe, Zig Zag Wipe and Bitmap Wipe also yield between
+steps. Bitmap Wipe copies up to 512 bytes into fixed RGB565 storage and expects
+the documented width of 1–32 and exactly width × 8 pixels. No request storage
+survives the handler. Liveview can sample active transitions every 100 ms,
+subject to WebSocket backpressure. Bitmap and scrolling playback start from the
 prepared frame after the transition. Another screen can replace an in-progress
 transition, and sleep, clock fallback and firmware upload can take over the display.
 
-Existing HTTP, MQTT and WebSocket screen commands accept the new names. The
-Node-RED Switch Animation editor exposes the six styles in its dropdown. The WebUI exposes the new clock fallback choices in Options. PixelIt.API requires no changes for this
-payload. Add the names, the random selection, an example with screen content and the
-distinction from clock fallback to the Switch Animation section of external PixelIt.Docs before
-stable release.
+The Node-RED Switch Animation editor exposes Vertical Slide. PixelIt.API
+requires no changes. When this firmware becomes stable, update external
+PixelIt.Docs with the `verticalSlide` screen payload, random coverage, fallback
+value 11 and the separate `clockDateTransition` setting.
 
 Run `python3 test/animation/transitions.py` to check the transition renderer with
 simulated time and a serpentine matrix. Check visuals, frame intervals, dropped

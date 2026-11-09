@@ -26,6 +26,7 @@ void SaveConfig()
     json["clockColor"] = "#" + RGBtoHEX(clockColorR, clockColorG, clockColorB);
     json["clockSwitchAktiv"] = clockSwitchAktiv;
     json["clockSwitchSec"] = clockSwitchSec;
+    json["clockDateTransition"] = clockDateTransition;
     json["clock24Hours"] = clock24Hours;
     json["clockDayLightSaving"] = clockDayLightSaving;
     json["clockWithSeconds"] = clockWithSeconds;
@@ -226,6 +227,14 @@ void SetConfigVariables(JsonObject &json)
     if (json.containsKey("clockSwitchSec"))
     {
         clockSwitchSec = json["clockSwitchSec"].as<uint>();
+    }
+
+    if (json.containsKey("clockDateTransition"))
+    {
+        const JsonVariant value = json["clockDateTransition"];
+        const unsigned long effect = value.as<unsigned long>();
+        if (value.is<unsigned long>() && (effect <= ClockFallbackLastEffect || effect == ClockDateTransitionAuto))
+            clockDateTransition = effect;
     }
 
     if (json.containsKey("clock24Hours"))
@@ -541,6 +550,12 @@ String GetConfig()
         if (!root.set("wifiScreenAktiv", wifiScreenAktiv))
         {
             Log(F("GetConfig"), F("Insufficient memory for WiFi screen setting"));
+            return "{}";
+        }
+
+        if (!root.set("clockDateTransition", clockDateTransition))
+        {
+            Log(F("GetConfig"), F("Insufficient memory for clock/date transition setting"));
             return "{}";
         }
 
