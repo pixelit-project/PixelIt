@@ -8,6 +8,14 @@ void SendMatrixInfo()
 
 void SendMatrixInfoTo(bool mqtt, bool websocket)
 {
+    // Never serialize or publish into PubSubClient's shared packet buffer
+    // while the callback still uses zero-copy JSON pointers into that buffer.
+    if (mqttReceiveActive)
+    {
+        if (mqtt) mqttPendingResponses |= MqttResponseMatrixPublish;
+        if (websocket) mqttPendingResponses |= MqttResponseMatrixWebsocket;
+        return;
+    }
     mqtt = mqtt && mqttAktiv && client.connected();
     websocket = websocket && webSocket.connectedClients() > 0;
     if (mqtt || websocket)
@@ -32,6 +40,34 @@ void SendMatrixInfoTo(bool mqtt, bool websocket)
                 SendWebSocketJson(i, "{\"sysinfo\":" + matrixInfo + "}");
             }
         }
+    }
+}
+
+void ServiceMqttResponses()
+{
+    if (mqttReceiveActive) return;
+    MqttWorkTimer work(mqttWorkStats.statusMillis);
+    const uint8_t pending = mqttPendingResponses;
+    mqttPendingResponses = 0;
+    if (pending & (MqttResponseMatrixPublish | MqttResponseMatrixWebsocket))
+    {
+        SendMatrixInfoTo(pending & MqttResponseMatrixPublish, pending & MqttResponseMatrixWebsocket);
+        ServiceDisplayFrames();
+    }
+    // Query replies keep their existing non-retained delivery and topics.
+    // Each snapshot is released before preparing the next one; only flags queue.
+    const uint8_t queries[] = {MqttResponseLux, MqttResponseMatrixQuery, MqttResponseConfig};
+    for (uint8_t query : queries)
+    {
+        if (!(pending & query) || !mqttAktiv || !client.connected()) continue;
+        const char *suffix = query == MqttResponseLux ? "luxsensor" :
+                             query == MqttResponseMatrixQuery ? "matrixinfo" : "config";
+        const String payload = query == MqttResponseLux ? GetLuxSensor() :
+                               query == MqttResponseMatrixQuery ? GetMatrixInfo() : GetConfig();
+        PublishMqtt((mqttMasterTopic + suffix).c_str(), payload.c_str());
+        if (MqttDeviceTopicsEnabled())
+            PublishMqtt((mqttDeviceTopic + suffix).c_str(), payload.c_str());
+        ServiceDisplayFrames();
     }
 }
 

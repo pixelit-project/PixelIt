@@ -218,6 +218,13 @@ void HandleGetAnimationInfo()
     root["animationFailedLedFrames"] = animationFailedLedFrames;
     root["slowestTask"] = animationSlowestTask;
     root["slowestTaskMillis"] = animationSlowestTaskMillis;
+    root["webSocketClients"] = webSocket.connectedClients();
+    JsonObject &mqttWork = root.createNestedObject("mqttWork");
+    mqttWork["callbackMillis"] = mqttWorkStats.callbackMillis;
+    mqttWork["screenMillis"] = mqttWorkStats.screenMillis;
+    mqttWork["statusMillis"] = mqttWorkStats.statusMillis;
+    mqttWork["reconnectMillis"] = mqttWorkStats.reconnectMillis;
+    mqttWork["discoveryMillis"] = mqttWorkStats.discoveryMillis;
 #if defined(ESP32)
     AddNetworkDiagnostics(root);
     unsigned previewSubscribers = 0;
@@ -386,6 +393,7 @@ void HandleAndSendButtonPress(uint button, bool state)
 
 void callback(char *topic, byte *payload, unsigned int length)
 {
+    MqttWorkTimer work(mqttWorkStats.callbackMillis);
     if (String(topic) == "homeassistant/status")
     {
         if (length == 6 && memcmp(payload, "online", 6) == 0) RequestHADiscovery();
@@ -419,32 +427,23 @@ void callback(char *topic, byte *payload, unsigned int length)
         }
         if (channel.equals("setScreen"))
         {
-            CreateFrames(json);
+            {
+                MqttWorkTimer screenWork(mqttWorkStats.screenMillis);
+                CreateFrames(json);
+            }
             SendMatrixInfo();
         }
         else if (channel.equals("getLuxsensor"))
         {
-            PublishMqtt((mqttMasterTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
-            if (MqttDeviceTopicsEnabled())
-            {
-                PublishMqtt((mqttDeviceTopic + "luxsensor").c_str(), GetLuxSensor().c_str());
-            }
+            mqttPendingResponses |= MqttResponseLux;
         }
         else if (channel.equals("getMatrixinfo"))
         {
-            PublishMqtt((mqttMasterTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
-            if (MqttDeviceTopicsEnabled())
-            {
-                PublishMqtt((mqttDeviceTopic + "matrixinfo").c_str(), GetMatrixInfo().c_str());
-            }
+            mqttPendingResponses |= MqttResponseMatrixQuery;
         }
         else if (channel.equals("getConfig"))
         {
-            PublishMqtt((mqttMasterTopic + "config").c_str(), GetConfig().c_str());
-            if (MqttDeviceTopicsEnabled())
-            {
-                PublishMqtt((mqttDeviceTopic + "config").c_str(), GetConfig().c_str());
-            }
+            mqttPendingResponses |= MqttResponseConfig;
         }
         else if (channel.equals("setConfig"))
         {

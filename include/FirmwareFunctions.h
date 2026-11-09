@@ -97,6 +97,7 @@ void RecordAnimationWork(const char *task, unsigned long started);
 void loop();
 void SendMatrixInfo();
 void SendMatrixInfoTo(bool mqtt, bool websocket);
+void ServiceMqttResponses();
 void SendLDR(bool force);
 bool sendLiveview(const char *data, size_t length, bool retry);
 void SendSensor(bool force);

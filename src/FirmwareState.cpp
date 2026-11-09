@@ -115,11 +115,10 @@ Max44009 *max44009;
 LuxSensor luxSensor = LuxSensor_LDR;
 
 FastLED_NeoMatrix *matrix;
-#if defined(ESP32)
 MqttWiFiClient wifiClientMQTT;
-#else
-WiFiClient wifiClientMQTT;
-#endif
+bool mqttReceiveActive = false;
+uint8_t mqttPendingResponses = 0;
+MqttWorkStats mqttWorkStats;
 WiFiClient wifiClientHTTP;
 WiFiUDP udp;
 PubSubClient client(wifiClientMQTT);

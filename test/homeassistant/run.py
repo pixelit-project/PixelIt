@@ -7,6 +7,9 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
+state = (root / 'include/FirmwareState.h').read_text()
+mqtt_timers = state[state.index('struct MqttWorkStats'):state.index('extern const int MQTT_RECONNECT_INTERVAL;')]
+mqtt_timers = mqtt_timers.replace('extern MqttWorkStats mqttWorkStats;', 'MqttWorkStats mqttWorkStats;')
 topic_policy = next(line for line in (root / 'include/FirmwareState.h').read_text().splitlines()
                     if line.startswith('inline bool MqttDeviceTopicsEnabled'))
 source = (root / 'src/Buttons.cpp').read_text()
@@ -98,7 +101,7 @@ bool PublishMqtt(const char *topic,const char *payload,bool retained=false) {
 std::string GetMatrixInfo() { return "{}"; }
 std::string GetSensor() { return "{}"; }
 std::string GetLuxSensor() { return "{}"; }
-''' + topic_policy + '\n' + discovery + r'''
+''' + topic_policy + '\n' + mqtt_timers + discovery + r'''
 void run() {
  for(int i=0;i<100 && haDiscoveryPending;i++) {
   tick+=150;

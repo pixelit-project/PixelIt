@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Reduce MQTT status memory peaks and ESP8266 playback stalls during writes and reconnects.
 -   (o0shojo0o) Use Arduino Core 2.7.4 on NodeMCU v2 for WS2812 compatibility.
 -   (o0shojo0o) Use the logo colors for the zZz sleep screen.
 -   (o0shojo0o) Breaking change: Home Assistant discovery now always enables device topics; migrate master-topic availability automations to `<master>/<hostname>/state` when device topics were previously disabled.

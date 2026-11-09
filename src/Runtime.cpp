@@ -509,6 +509,7 @@ void loop()
         // pointers into the buffer, so resizing from Client::available is unsafe.
         if ((reconnectDue || receiveDue) && PrepareMqttServiceBuffer())
         {
+            const unsigned long serviceStarted = millis();
             mqttLastService = nowMillis;
             if (reconnectDue)
             {
@@ -525,18 +526,24 @@ void loop()
             else
             {
                 {
+#if defined(ESP32)
                     const unsigned long started = millis();
+#endif
+                    mqttReceiveActive = true;
                     client.loop();
+                    mqttReceiveActive = false;
 #if defined(ESP32)
                     RecordMqttDuration(false, started);
 #endif
-                    ServiceHADiscovery();
-                    RecordAnimationWork("MQTT", started);
                 }
             }
 #if defined(ESP8266)
             client.setBufferSize(MQTT_IDLE_BUFFER_SIZE);
 #endif
+            ServiceDisplayFrames();
+            ServiceMqttResponses();
+            ServiceHADiscovery();
+            RecordAnimationWork("MQTT", serviceStarted);
             // Persist config only after releasing the large receive buffer.
             ServiceMqttConfig();
             ServiceHAText();

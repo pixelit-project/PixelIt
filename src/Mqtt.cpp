@@ -35,8 +35,48 @@ size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
 }
 #endif
 
+#if defined(ESP8266)
+size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
+{
+    if (!buffer || size == 0 || !connected()) return 0;
+    constexpr unsigned long writeBudgetMillis = 40;
+    const unsigned long previousTimeout = _timeout;
+    // availableForWrite reports TCP room, not whether lwIP can allocate a pbuf.
+    // Bound even a write that encounters allocation pressure after this check.
+    setTimeout(1);
+    unsigned long started = millis();
+    size_t written = 0;
+    do
+    {
+        const unsigned long displayStarted = millis();
+        ServiceDisplayFrames();
+        // LED retries consume rendering time, not TCP backpressure budget.
+        // Counting them here can disconnect a healthy socket before any write.
+        started += millis() - displayStarted;
+        if (millis() - started >= writeBudgetMillis) break;
+        const int room = availableForWrite();
+        if (room > 0)
+        {
+            size_t chunk = size - written;
+            if (chunk > 512) chunk = 512;
+            if (chunk > static_cast<size_t>(room)) chunk = room;
+            written += WiFiClient::write(buffer + written, chunk);
+            if (written == size) break;
+        }
+        if (!connected()) break;
+        delay(1);
+    } while (millis() - started < writeBudgetMillis);
+    setTimeout(previousTimeout);
+    // A partial packet must never be followed by another packet on this stream.
+    // Unlike stop(), this overload does not wait for the normal flush timeout.
+    if (written != size) WiFiClient::stop(1);
+    return written;
+}
+#endif
+
 boolean MQTTreconnect()
 {
+    MqttWorkTimer work(mqttWorkStats.reconnectMillis);
 
     bool connected = false;
     if (mqttUser != NULL && mqttUser.length() > 0 && mqttPassword != NULL && mqttPassword.length() > 0)
@@ -86,7 +126,6 @@ boolean MQTTreconnect()
 
         client.subscribe("homeassistant/status");
         RequestHADiscovery();
-        ServiceHADiscovery();
     }
     else
     {
@@ -367,6 +406,7 @@ bool HADiscoveryDue()
 void ServiceHADiscovery()
 {
     if (!client.connected() || !HADiscoveryDue()) return;
+    MqttWorkTimer work(mqttWorkStats.discoveryMillis);
     haDiscoveryLastStep = millis();
     if (haDiscoveryStep < haConfigCount)
     {

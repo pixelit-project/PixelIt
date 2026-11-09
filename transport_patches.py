@@ -12,15 +12,27 @@ def patch_mqtt(source, esp32=False):
     source = '#include "PixelItTransport.h"\n' + source
     source = once(source, '   while(!_client->available()) {',
                   '   while(!_client->available()) {\n     ServiceTransportReceive();')
-    if esp32:
-        source = once(source, '            write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE);',
+    source = once(source, '            write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE);',
                       '            if (!write(MQTTCONNECT,this->buffer,length-MQTT_MAX_HEADER_SIZE)) {\n'
                       '                _client->stop();\n'
                       '                _state = MQTT_CONNECT_FAILED;\n'
                       '                return false;\n'
                       '            }')
+    source = once(source, '            while (!_client->available()) {',
+                  '            while (!_client->available()) {\n'
+                  '                ServiceTransportReceive();\n'
+                  '                if (!_client->connected()) {\n'
+                  '                    _client->stop();\n'
+                  '                    _state = MQTT_CONNECTION_LOST;\n'
+                  '                    return false;\n'
+                  '                }')
+    if not esp32:
+        # Only bound the ESP8266 CONNACK wait, not receive/inter-byte deadlines.
         source = once(source, '            while (!_client->available()) {',
-                      '            while (!_client->available()) {\n                ServiceTransportReceive();')
+                      '            const unsigned long connackTimeout = this->socketTimeout < 2 ? this->socketTimeout*1000UL : 1500UL;\n'
+                      '            while (!_client->available()) {')
+        source = once(source, 'if (t-lastInActivity >= ((int32_t) this->socketTimeout*1000UL))',
+                      'if (t-lastInActivity >= connackTimeout)')
     marker = '    uint32_t idx = len;'
     receiver = r'''
     if (isPublish && !this->stream) {

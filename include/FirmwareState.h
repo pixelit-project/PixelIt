@@ -70,6 +70,35 @@ inline bool MqttDeviceTopicsEnabled() { return mqttUseDeviceTopic || mqttHAdisco
 extern int mqttPort;
 extern unsigned long mqttLastReconnectAttempt;
 extern unsigned long mqttLastService;
+extern bool mqttReceiveActive;
+enum MqttResponse : uint8_t
+{
+    MqttResponseLux = 1,
+    MqttResponseMatrixQuery = 2,
+    MqttResponseConfig = 4,
+    MqttResponseMatrixPublish = 8,
+    MqttResponseMatrixWebsocket = 16
+};
+extern uint8_t mqttPendingResponses;
+struct MqttWorkStats
+{
+    uint32_t callbackMillis = 0, screenMillis = 0, statusMillis = 0;
+    uint32_t reconnectMillis = 0, discoveryMillis = 0;
+};
+extern MqttWorkStats mqttWorkStats;
+class MqttWorkTimer
+{
+public:
+    explicit MqttWorkTimer(uint32_t &maximum) : maximum(maximum), started(millis()) {}
+    ~MqttWorkTimer()
+    {
+        const uint32_t elapsed = millis() - started;
+        if (elapsed > maximum) maximum = elapsed;
+    }
+private:
+    uint32_t &maximum;
+    uint32_t started;
+};
 extern const int MQTT_RECONNECT_INTERVAL;
 extern String dfpRXPin;
 extern String dfpTXPin;
@@ -133,7 +162,6 @@ extern BH1750 *bh1750;
 extern Max44009 *max44009;
 extern LuxSensor luxSensor;
 extern FastLED_NeoMatrix *matrix;
-#if defined(ESP32)
 class MqttWiFiClient : public WiFiClient
 {
 public:
@@ -141,9 +169,6 @@ public:
     size_t write(const uint8_t *buffer, size_t size) override;
 };
 extern MqttWiFiClient wifiClientMQTT;
-#else
-extern WiFiClient wifiClientMQTT;
-#endif
 extern WiFiClient wifiClientHTTP;
 extern WiFiUDP udp;
 extern PubSubClient client;

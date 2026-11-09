@@ -131,6 +131,117 @@ The MQTT receive buffer grows before PubSubClient processes packets, then
 returns to 256 bytes on ESP8266. It is never resized while a packet is being
 read. Outgoing telemetry temporarily reserves the space required for its message.
 
+MQTT screen callbacks defer Matrixinfo notifications and query replies until
+`client.loop()` has returned, its JSON pool is destroyed and the ESP8266 receive
+buffer has been shrunk. A fixed bit mask merges duplicate pending notifications;
+no payload copies or growing queue are retained. Automatic Matrixinfo updates
+remain retained, query replies remain non-retained, and master/device topics and
+WebSocket `sysinfo` envelopes are unchanged. Discovery also runs after receive
+buffer release. Node-RED, WebUI and external API documentation were inspected;
+no companion client changes are required. Before stable release, external
+PixelIt.Docs should explain deferred status delivery and possible reconnects
+during MQTT backpressure; its stable-only documentation remains unchanged here.
+
+The ESP8266 MQTT writer uses TCP room checks, chunks of at most 512 bytes and a
+1 ms per-call write timeout to limit allocation-pressure stalls. A 40 ms network
+budget applies to each writer invocation, excluding time servicing LED frames;
+due display frames run between chunks
+and during backpressure. Incomplete writes close the connection with a 1 ms flush
+wait so another MQTT packet cannot follow a partial one. Status delivery can be
+lost until a later update/reconnect. The budget is not a hard timing bound:
+display service, core scheduling and the final write/close add overhead. MQTT
+receive/TCP-connect timeouts and legacy blocking screen effects remain separate.
+The MQTT CONNECT packet must be sent successfully before waiting for CONNACK;
+disconnected sockets abort that wait immediately. Both platforms service frames
+while waiting. ESP8266 bounds the CONNACK wait to 1,500 ms, or the configured
+socket timeout if shorter, without reducing payload receive/inter-byte timeouts.
+An unusually slow broker can therefore cause more reconnect attempts. TCP
+connection establishment and synchronous legacy effects still need measurement.
+No receive limits or persistent pixel/network buffers were increased. Physical
+ESP8266 peak-heap, largest-block, jitter and long-runtime crash validation under
+concurrent MQTT/HTTP/WebSocket traffic remain required; host tests and builds do
+not establish that the reported Exception 29 is fixed.
+
+On 2026-11-08, the user authorized OTA installation on `192.168.0.5`
+(`PixelIt_Buero`, `ESP8266_d1_mini`). The 534,496-byte development image
+reported `0.0.0-beta`; its SHA-256 was
+`5da2b7259ce144dcea859d387b136f2256a8cab1e5bb52df272aa7dd7820b48c`.
+OTA returned `Update Success! Rebooting...`; the subsequent status matched the
+image size and reported `Software/System restart`. The development version
+still prompts for published beta.4; installing that release would replace this
+candidate. No synthetic screen workload or configuration command was sent.
+Startup's existing version migration may persist the current settings/version.
+
+Seven paired status/animation polls during existing MQTT traffic covered uptime
+35–96 seconds. All requests succeeded (11–770 ms), MQTT stayed connected at each
+sample and no further restart was observed. Sampled free heap settled at 13,480
+bytes, largest block 9,064 bytes; the last receive-stage sample was 8,344/4,488
+bytes respectively. These are stage samples, not allocation-time minima. The
+largest sampled animation gap was 478 ms at 200 ms configured, and the largest
+MQTT task duration was 2,293 ms; no sampled animation reported failed LED frames.
+Incoming screens reset animation diagnostics, so these are not whole-run maxima
+or totals. Remaining multi-second work is unresolved: this short smoke test does
+not establish smooth playback, leak freedom, or a fix for Exception 29. Extended
+runtime, isolated backpressure and concurrent preview/memory tests remain open.
+
+After the user reported another stall, a longer status request eventually
+completed in 10.812 seconds at uptime 602 seconds, still with software-restart
+status. Animation diagnostics recorded a 20,038 ms MQTT task; this includes
+reconnect/discovery work and does not identify the slow subtask. With explicit
+permission, a roughly one-minute passive MQTT capture observed ordinary
+236–1,984-byte screen messages with random transitions and valid-size 8×8
+animations. No screen commands were published by the diagnostic subscriber.
+This does not isolate transitions, network backpressure or memory as the cause.
+
+A host regression then reproduced an error in the first candidate: a simulated
+60 ms LED service made the writer disconnect a healthy broker before sending
+anything because rendering consumed its network budget. The revised writer
+excludes that time. The transport patch also applies its failed-CONNECT guard
+and frame servicing to ESP8266, with the separate CONNACK bound described above.
+`/api/animationinfo` adds `webSocketClients` and `mqttWork` boot-lifetime maximum
+durations in milliseconds: `callbackMillis` (including parsing/logging/rendering),
+`screenMillis` (screen application inside the MQTT callback), `statusMillis`
+(deferred reply service), `reconnectMillis` (connection/subscription setup), and
+`discoveryMillis` (one discovery service step). These overlap and are not additive;
+all reset on reboot, not on new screen content. The counters use 20 bytes of
+fixed state and small stack timers, with no event/payload queue. Their extra JSON
+nodes exist only during diagnostic requests; physical peak memory still needs
+validation. Existing clients ignore these optional diagnostics; document their
+units, scope and examples in external PixelIt.Docs before stable release.
+
+The revised D1 mini image (534,928 bytes, SHA-256
+`cb53a6fcbd8a558005e66920537c26c89c85954e2652e12ad31be04166ec68e4`)
+was then installed on the same authorized `.5` device; OTA succeeded and the
+reported image size matched after the software restart. All six board builds
+and MQTT, animation, transport, Home Assistant and ESP32 host suites passed.
+The new MQTT regression fails on the first candidate's slow-LED case and passes
+after correction; it also exercises failed CONNECT writes, disconnected sockets,
+CONNACK timeout/early success and display service during waiting. D1 mini static
+RAM is 50,668 bytes, 108 bytes above the first candidate, including diagnostic
+state/strings; this is not a peak-heap measurement.
+
+Thirty-nine paired read-only polls covered uptime 22–622 seconds (ten minutes)
+under existing traffic, with no additional screen/config commands or preview
+clients. All 78 API requests succeeded; the longest Matrixinfo request took
+2.036 seconds and Animationinfo 71 ms. No unexpected reboot was observed and
+every Matrixinfo sample reported MQTT connected; this does not exclude brief
+reconnects between samples. After initial allocation, sampled heap ranged from
+11,656 to 13,384 bytes and ended at 13,192; the largest block ended at 12,736
+bytes (minimum sampled 6,768). The receive-stage minima were 7,784 bytes free
+and a 5,264-byte block, not allocator-level peak minima.
+
+Boot-lifetime maxima were callback 2,254 ms, screen application 2,250 ms,
+deferred status 76 ms, reconnect 91 ms and discovery 44 ms. The largest sampled
+overall MQTT task was 2,317 ms, versus the previous 20,038 ms observation;
+different workloads/random transitions prevent a causal A/B claim. Animation
+gap samples reached 478 ms around screen changes, with no sampled failed LED
+frames; counters reset on incoming animations. Short blocking screen work
+therefore remains, and this run is not a smooth-playback pass. It showed no
+continuing sampled heap decline or repeat of the long stall during that window,
+but does not establish leak freedom or hours-long stability. Physical visual
+confirmation, concurrent preview/peak-memory tests and extended runtime remain
+outstanding. The revised image remains installed with the existing MQTT content.
+
 [extra_script.py](../extra_script.py) prepares local copies of the pinned
 ESP8266 HTTP server headers. The request body is moved instead of copied and
 receive capacity is reserved in advance. The installed framework is unchanged.
@@ -187,6 +298,13 @@ After at least one PlatformIO build has installed ArduinoJson, run:
 
 ```sh
 python3 test/animation/run.py
+```
+
+For deferred MQTT status delivery and ESP8266 writes under TCP backpressure and
+allocation pressure, including partial-packet disconnect and timer rollover:
+
+```sh
+python3 test/mqtt/run.py
 ```
 
 For streaming compaction, exact RGB565 round-tripping, bounded allocations,
