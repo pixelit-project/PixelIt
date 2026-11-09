@@ -291,6 +291,7 @@ export default new Vuex.Store({
             { text: 'Blinds', value: 8 },
             { text: 'CRT', value: 9 },
             { text: 'Glitch', value: 10 },
+            { text: 'Vertical Slide', value: 11 },
         ],
         temperatureUnits: [
             {
