@@ -106,9 +106,9 @@
                         <v-switch v-model="config.clockDateDayMonth" label="Date format DD.MM." dense></v-switch>
 
                         <v-text-field v-model="config.clockSwitchSec" type="number" label="Switch clock/date time" hint="the unit is seconds (s)" suffix="seconds" :disabled="!config.clockSwitchAktiv" :rules="config.clockSwitchAktiv ? [rules.required, rules.min0] : []"></v-text-field>
-                        <v-select :items="clockDateAnimations" v-model="config.clockDateTransition" label="Clock/date transition" :disabled="!config.clockSwitchAktiv"></v-select>
+                        <v-select :items="clockDateAnimations" v-model="config.clockDateTransition" label="Clock/date animation" :disabled="!config.clockSwitchAktiv"></v-select>
                         <v-switch v-model="config.clockAutoFallbackActive" label="Clock auto fallback" dense></v-switch>
-                        <v-select :items="autoFallbackAnimation" v-model="config.clockAutoFallbackAnimation" label="Fallback Animation" :disabled="!config.clockAutoFallbackActive"></v-select>
+                        <v-select :items="autoFallbackAnimation" v-model="config.clockAutoFallbackAnimation" label="Fallback animation" :disabled="!config.clockAutoFallbackActive"></v-select>
                         <v-text-field v-model="config.clockAutoFallbackTime" type="number" label="Fallback time" hint="the unit is seconds (s)" suffix="seconds" :disabled="!config.clockAutoFallbackActive" :rules="config.clockSwitchAktiv ? [rules.required, rules.min0] : []"></v-text-field>
                     </v-card>
                     <v-card class="ui-panel" elevation="2">
