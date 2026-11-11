@@ -41,7 +41,6 @@ The current development firmware supports these limits over HTTP, MQTT and WebUI
 | Frame size (width × height) | Maximum frames |
 | --- | ---: |
 | 8×8 | 28 |
-| 16×8 | 14 |
 | 32×8 (full display) | 7 |
 
 See [animation usage and examples](docs/animations.md) for the JSON format,
