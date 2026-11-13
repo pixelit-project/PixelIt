@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased
+### 3.0.1 (2026-11-13)
 
 -   (o0shojo0o) Accept compactable ESP8266 WebSocket animations when heap fragmentation prevents the full receive reservation.
 
