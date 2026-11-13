@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 3.0.0 (2026-11-13)
+
 -   (o0shojo0o) Add selectable clock/date transitions and Vertical Slide for screen changes.
 -   (o0shojo0o) Show legacy screen transitions in Liveview.
 -   (o0shojo0o) Reduce MQTT status memory peaks and ESP8266 playback stalls during writes and reconnects.
