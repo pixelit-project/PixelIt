@@ -87,8 +87,12 @@ def patch_websocket(source, esp32=False):
     marker = '    if(header->payloadLen > 0) {\n        // if text data we need one more'
     receiver = r'''
     if (header->opCode == WSop_text && header->fin) {
+#if defined(ESP8266)
+        const size_t capacity = Esp8266SocketReceiveCapacity(header->payloadLen, ESP.getMaxFreeBlockSize());
+#else
         const size_t capacity = header->payloadLen > 6080 ? 6144 : header->payloadLen + 64;
-        payload = header->payloadLen <= 12288 ? (uint8_t *)malloc(capacity + 1) : nullptr;
+#endif
+        payload = header->payloadLen <= 12288 && capacity ? (uint8_t *)malloc(capacity + 1) : nullptr;
         size_t used = 0;
         const unsigned status = ReadCompactSocket(*client->tcp, payload, capacity,
             header->payloadLen, header->mask ? header->maskKey : nullptr, used);

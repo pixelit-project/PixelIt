@@ -102,6 +102,43 @@ int main(int argc,char **argv){
  for(size_t i=0;i<masked.size();++i)masked[i]^=mask[i%4];
  uint8_t output[6145];size_t used;WiFiClient ws(masked);serviced=tick=0;
  assert(ReadCompactSocket(ws,output,6144,masked.size(),mask,used)==200&&serviced>0&&used<6144);
+ // Regression: the .40 device rejected a 6x256 gallery animation before
+ // compaction because its largest block was below the old 6145-byte malloc.
+ assert(Esp8266SocketReceiveCapacity(7848,5440)==5376);
+ assert(Esp8266SocketReceiveCapacity(7848,4336)==4272);
+ assert(Esp8266SocketReceiveCapacity(56,5440)==120);
+ assert(Esp8266SocketReceiveCapacity(7848,64)==0);
+ assert(Esp8266SocketReceiveCapacity(7848,20000)==6144);
+ std::string alert="{\"setScreen\":{\"bitmapAnimation\":{\"size\":{\"width\":32,\"height\":8},\"data\":[";
+ for(unsigned frame=0;frame<6;++frame){
+  if(frame)alert+=",";alert+="[";
+  for(unsigned pixel=0;pixel<256;++pixel){if(pixel)alert+=",";alert+=pixel%2?"65535":"0";}
+  alert+="]";
+ }
+ alert+="]}},\"forcedDuration\":0}";
+ const size_t smaller=Esp8266SocketReceiveCapacity(alert.size(),4336);
+ std::vector<uint8_t> limited(smaller+1,0xaa);
+ WiFiClient fragmented(alert);size_t packed=0;tick=0;
+ assert(ReadCompactSocket(fragmented,limited.data(),smaller,alert.size(),nullptr,packed)==200);
+ assert(fragmented.offset==alert.size() && packed<smaller && limited[smaller]==0xaa);
+ limited[packed]=0;DynamicJsonBuffer alertJson;
+ auto &envelope=alertJson.parseObject(reinterpret_cast<char*>(limited.data()));
+ assert(envelope.success() && IsValidBitmapAnimation(envelope["setScreen"].as<JsonObject&>()));
+ for(unsigned frame=0;frame<6;++frame){
+  const char *encoded=envelope["setScreen"]["bitmapAnimation"]["data"][frame];
+  uint16_t pixels[256];assert(encoded && DecodeAnimationPixels(encoded,strlen(encoded),pixels)==256);
+  for(unsigned pixel=0;pixel<256;++pixel)assert(pixels[pixel]==(pixel%2?65535:0));
+ }
+
+ // Content that does not fit is drained and rejected, never truncated/applied.
+ WiFiClient insufficient(alert);tick=0;
+ assert(ReadCompactSocket(insufficient,limited.data(),128,alert.size(),nullptr,packed)==503);
+ assert(insufficient.offset==alert.size());
+ // Heap fragmentation can change between sizing and malloc; failure stays safe.
+ WiFiClient allocationFailed(alert);tick=0;
+ assert(ReadCompactSocket(allocationFailed,nullptr,smaller,alert.size(),nullptr,packed)==503);
+ assert(allocationFailed.offset==alert.size());
+
  output[used]=0;DynamicJsonBuffer json;auto &screen=json.parseObject(reinterpret_cast<char*>(output));assert(screen.success()&&IsValidBitmapAnimation(screen));
  WiFiClient oom(masked);tick=0;assert(ReadCompactSocket(oom,nullptr,6144,masked.size(),mask,used)==503&&oom.offset==masked.size());
  WiFiClient tooBig(std::string(12289,' '));tick=0;assert(ReadCompactSocket(tooBig,output,6144,12289,nullptr,used)==413&&tooBig.offset==12289);

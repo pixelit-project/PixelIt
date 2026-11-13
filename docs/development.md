@@ -1846,3 +1846,63 @@ both boot styles and the sleep gradient, stage delays and wake request.
 Document the new appearance in the Sleep Mode section of external
 PixelIt.Docs `src/api.md` with the matching stable firmware. No companion
 client code changes are required.
+
+
+## ESP8266 WebSocket receive allocation under fragmentation
+
+WebSocket text commands retain the existing 12,288-byte wire limit and 6,144-byte
+maximum compact receive capacity. The ESP8266 now caps that single allocation by
+`ESP.getMaxFreeBlockSize() - 64` (zero when the block is at most 64 bytes), leaving
+slack for allocator alignment and the terminating byte. Small commands still use
+at most wire length plus 64 bytes. ESP32 allocation is unchanged.
+
+The streaming compactor writes directly into that fixed buffer; it does not grow
+it, retry commands or copy a second payload. A command whose compact form fits can
+therefore reach the existing JSON/animation validators even when the largest block
+is smaller than the former fixed 6,145-byte allocation. If allocation fails or the
+compact form does not fit, the receiver drains the bounded input and returns 503
+without dispatching it. Existing receive deadlines and display service calls remain
+in place. This cannot guarantee success under all memory pressure: subsequent JSON
+parsing and animation storage still need memory and retain their checked failures.
+
+`test/transport/run.py` covers a six-frame 32x8 animation with a simulated
+4,336-byte largest block, small and ample blocks, exhausted allocation, compact
+buffer exhaustion, full input draining and unchanged pixel validation. Host tests
+and builds do not establish physical ESP8266 peak-memory safety or smooth playback.
+Repeat icon 2450 uploads with HA, MQTT and WebUI active on a designated device and
+check free heap, largest block, resets and frame timing before claiming those.
+No client payload, limit or protocol changes are required.
+
+
+### Designated-device OTA check — 2026-11-13
+
+The user authorized installation on `192.168.0.40` (`PixelIt-1380454`,
+`ESP8266_d1_mini`, 160 MHz, 32x8). The corrected candidate reports
+`3.0.0-memfix.1`; its image is 538,064 bytes with SHA-256
+`14a1e913b43803e71e0a44bf97c6028884bfd9d0a4686517966e721c79ba394f`.
+The OTA handler returned `Update Success! Rebooting...`; device status then
+confirmed the version, board and image size. The build embedded the current
+published WebUI after checking its referenced script and stylesheet URLs.
+Temporary build version/WebUI header changes were restored in the source tree.
+
+After startup, eight icon 2450 transfers (six 32x8 frames) succeeded: seven
+7,848-byte HA-format commands compacted to 3,258 bytes, followed by one
+6,277-byte WebUI-format command compacted to 3,217 bytes. Every command returned
+`OK` with receive status 200 and six animation frames in the immediate status
+sample. This sends the integration's command envelope directly; it is not a
+Home Assistant action-registration test. An earlier accepted transfer during
+startup observed eight frames from competing device content, so frame count
+alone is not a reliable acknowledgement of a specific sender.
+
+During the eight-transfer run, 200 preview messages arrived. Uptime increased
+from 53 to 78 seconds without another restart. The final animation diagnostic
+reported 16 rendered frames, 200 ms maximum gap at 200 ms animation delay and
+zero failed LED frames. Final status sampled 12,936 bytes free heap and a
+7,216-byte largest block. Receive-completion heap snapshots ranged from 8,096
+to 8,232 bytes and largest-block snapshots from 3,336 to 6,096 bytes; these are
+stage samples, not allocation-time minima. MQTT and other existing viewers
+remained connected. No persistent device settings were intentionally changed.
+The raw short-run report is `/tmp/pixelit-40-ota-verification.json` on the test
+host. This validates the concrete upload on the designated device after OTA;
+it does not establish long-term fragmentation safety or physical LED timing.
+The constrained-largest-block path also has deterministic host coverage.

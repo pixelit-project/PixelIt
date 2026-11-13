@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Accept compactable ESP8266 WebSocket animations when heap fragmentation prevents the full receive reservation.
+
 ### 3.0.0 (2026-11-13)
 
 -   (o0shojo0o) Add selectable clock/date transitions and Vertical Slide for screen changes.

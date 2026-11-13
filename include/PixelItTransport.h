@@ -18,6 +18,16 @@ void RecordTransportReceive(bool mqtt, unsigned status, size_t input, size_t out
 void NotifySocketReceiveError(uint8_t client, unsigned status);
 bool MqttReceiveAccepted();
 
+// ESP8266 compacts while receiving, so the wire-size reservation is only an
+// upper bound. Fit one allocation into the current contiguous block, leaving
+// slack for allocator alignment and termination. Never grow or copy this buffer.
+inline size_t Esp8266SocketReceiveCapacity(size_t length, size_t maxBlock)
+{
+    const size_t desired = length > 6080 ? 6144 : length + 64;
+    const size_t available = maxBlock > 64 ? maxBlock - 64 : 0;
+    return desired < available ? desired : available;
+}
+
 // No allocation: compaction writes directly into the caller's bounded buffer.
 class CompactTransportBuffer
 {
