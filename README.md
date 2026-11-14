@@ -20,7 +20,7 @@ If you want to get an impression of the WebUI, you can do that here in [Demo Web
 
 ## Project highlights
 
--   :fire: Support for **[Node-RED](https://pixelit-project.github.io/nodered.html)**, **[HomeAssistant](https://pixelit-project.github.io/webinterface.html#mqtt)** and **[ioBroker](https://pixelit-project.github.io/iobroker.html)**
+-   :fire: Support for **[Node-RED](https://pixelit-project.github.io/nodered.html)**, **[HomeAssistant](https://pixelit-project.github.io/homeassistant.html#pixelit-custom-integration)** and **[ioBroker](https://pixelit-project.github.io/iobroker.html)**
 -   :fire: Support for **[DIY Matrixes](https://pixelit-project.github.io/hardware.html#parts-list)** (ESP32/ESP8266) and prebuild **[Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)**\*
 -   :fire: Awesome [WebUI](https://pixelit-project.github.io/PixelIt/webui/) for configuration and control. Checkout the **[Demo](https://pixelit-project.github.io/PixelIt/webui/)**
 -   :fire: Great **[documentation](https://pixelit-project.github.io/)**
