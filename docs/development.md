@@ -91,6 +91,47 @@ and both LED types. Measure minimum heap/largest block under repeated concurrent
 requests. Confirm retries, frame jitter and receiver output together: zero failed
 frames alone does not establish correct LED colors or positioning.
 
+## Release changelog automation
+
+Push release tags without a `v` prefix, for example `3.0.2`,
+`3.0.3-beta.1`, `3.0.3-rc.1` or `3.0.3-testing.1`. The release workflow rejects
+prefixed or malformed tags. Tags must point to the current default branch tip.
+Branch pushes still build without changing the changelog or creating a release.
+
+For stable tags, `.github/release_changelog.py` moves the nonempty `### Unreleased`
+entries to `### <version> (<UTC date>)` and leaves a new empty Unreleased section.
+Existing entry text, order and compact list formatting are preserved. The workflow
+commits only `CHANGELOG.md`, then updates the default branch and release tag
+atomically with explicit leases. An annotated tag becomes a lightweight tag on
+the prepared commit; refresh your local tag after the workflow. Concurrent branch
+or tag changes, branch/tag protection or denied pushes stop preparation without
+partially updating the remote references. The Actions token needs permission to
+write these references; protected branches/tags must permit this release process.
+No extra token or secret is introduced.
+
+For beta, RC and other SemVer prerelease suffixes, Unreleased supplies the release
+notes and remains unchanged. Prereleases do not become the latest stable release.
+Empty, missing or duplicate source sections fail before publication. Existing
+GitHub releases are never overwritten, and failed release lookup requests stop
+the job unless GitHub explicitly returns 404. Stable preparation is idempotent
+before publication, allowing a failed build to be rerun while the prepared commit
+is still the default branch tip. Changelog finalization precedes building, so it
+can remain committed if a later build or deployment fails.
+
+Firmware builds and release notes use the exact prepared commit. Firmware version
+replacement remains a build-time step. WebUI deployment must finish before release
+publication so the firmware's asset URLs are available; firmware transfer to
+PixelIt.Docs follows successful publication. The existing external WebUI repository
+selection and firmware/Webflasher delivery mechanisms are retained. Before stable
+release, complete the external user-documentation follow-ups described in this
+guide; changelog automation does not generate PixelIt.Docs content.
+
+Validate with `python3 test/release/run.py`, `bash -n .github/prepare_tag_release.sh`
+and Actionlint on `.github/workflows/build-and-release.yml`. The tests use disposable
+local Git repositories, covering stable preparation, prereleases, retries, stale
+tags and atomic push rejection. These checks do not publish a release or prove
+that the live repository permissions permit its first automatic metadata push.
+
 ## Source layout
 
 The firmware uses ordinary C++ translation units; function declarations are explicit

@@ -2,11 +2,54 @@ name: Build, Release & Deploy
 
 on: [push]
 
-env:
-  prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'testing') }}
+permissions:
+  contents: read
+
+concurrency:
+  group: pixelit-build-${{ startsWith(github.ref, 'refs/tags/') && 'releases' || github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.prepare.outputs.commit || github.sha }}
+      prerelease: ${{ steps.prepare.outputs.prerelease }}
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Refuse to change an existing release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json" 2> "$RUNNER_TEMP/release-error"; then
+            echo '::error::This tag already has a release; published releases are not modified.'
+            exit 1
+          elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/release-error"; then
+            cat "$RUNNER_TEMP/release-error" >&2
+            exit 1
+          fi
+      - name: Prepare and push release changelog
+        id: prepare
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash .github/prepare_tag_release.sh
+
   build-webui:
+    needs: prepare-release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
@@ -32,7 +75,7 @@ jobs:
           path: dist
 
   build-fw:
-    needs: build-webui
+    needs: [prepare-release, build-webui]
     runs-on: ubuntu-latest
     env:
       PLATFORMIO_BUILD_CACHE_DIR: ${{ github.workspace }}/.pio/cache
@@ -41,6 +84,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+          ref: ${{ needs.prepare-release.outputs.commit }}
 
       - name: Cache pip 💾
         uses: actions/cache@v6
@@ -85,8 +129,9 @@ jobs:
           python .github/webui.py
 
       - name: Update version in Firmware.h 🔧
-        run: |
-          python .github/updateversion.py ${{  github.ref_name }}
+        env:
+          BUILD_VERSION: ${{ github.ref_name }}
+        run: python .github/updateversion.py "$BUILD_VERSION"
 
       - name: Install pio and its dependencies 🔧
         run: |
@@ -107,31 +152,56 @@ jobs:
           path: .pio/build/*/firmware_*.bin
 
   release-fw:
-    needs: build-fw
+    needs: [prepare-release, build-fw, deploy-webui-gh-pages]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - name: Checkout prepared release
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare-release.outputs.commit }}
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
       - name: Download artifacts 💾
         uses: actions/download-artifact@v8
         with:
           name: pixelit-firmware
-
-      - name: Display structure of downloaded files 🔍
-        run: ls -R
-
-      - name: Upload binaries as release 🚀
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./*/firmware_*.bin
-          tag: ${{ github.ref }}
-          release_name: ${{ github.ref_name }}
-          overwrite: true
-          file_glob: true
-          prerelease: ${{ env.prerelease }}
+          path: artifacts
+      - name: Extract changelog release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python .github/release_changelog.py notes "$RELEASE_TAG" --output "$RUNNER_TEMP/release-notes.md"
+      - name: Publish firmware with changelog notes 🚀
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.prepare-release.outputs.prerelease }}
+          SOURCE_COMMIT: ${{ needs.prepare-release.outputs.commit }}
+        shell: bash
+        run: |
+          if [[ "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" != "$SOURCE_COMMIT" ]]; then
+            echo '::error::The release tag moved after the build was prepared.'
+            exit 1
+          fi
+          shopt -s nullglob
+          binaries=(artifacts/*/firmware_*.bin)
+          if (( ${#binaries[@]} == 0 )); then
+            echo '::error::No firmware binaries found.'
+            exit 1
+          fi
+          args=(--verify-tag --notes-file "$RUNNER_TEMP/release-notes.md" --title "$RELEASE_TAG")
+          if [[ "$PRERELEASE" == 'true' ]]; then
+            args+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" "${binaries[@]}" "${args[@]}"
 
   upload-fw-to-docs:
-    needs: build-fw
+    needs: [build-fw, release-fw]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
@@ -172,7 +242,9 @@ jobs:
 
   deploy-webui-gh-pages:
     runs-on: ubuntu-latest
-    needs: build-webui
+    needs: [build-webui, build-fw]
+    permissions:
+      contents: write
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout 🛎️
