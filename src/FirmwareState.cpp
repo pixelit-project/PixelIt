@@ -159,6 +159,7 @@ String matrixTempCorrection = "default";
 
 // System Vars
 bool sleepMode = false;
+bool sleepScreenAktiv = true;
 bool bootScreenAktiv = true;
 uint8_t bootScreenStyle = 0;
 bool wifiScreenAktiv = true;

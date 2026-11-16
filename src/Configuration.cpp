@@ -40,6 +40,7 @@ void SaveConfig()
     json["clockFatFont"] = clockFatFont;
     json["clockDrawWeekDays"] = clockDrawWeekDays;
     json["scrollTextDefaultDelay"] = scrollTextDefaultDelay;
+    json["sleepScreenAktiv"] = sleepScreenAktiv;
     json["bootScreenAktiv"] = bootScreenAktiv;
     json["bootScreenStyle"] = bootScreenStyle == 1 ? "classic" : "logo";
     json["wifiScreenAktiv"] = wifiScreenAktiv;
@@ -304,6 +305,11 @@ void SetConfigVariables(JsonObject &json)
         scrollTextDefaultDelay = json["scrollTextDefaultDelay"].as<uint>();
     }
 
+    if (json["sleepScreenAktiv"].is<bool>())
+    {
+        sleepScreenAktiv = json["sleepScreenAktiv"].as<bool>();
+    }
+
     if (json.containsKey("bootScreenAktiv"))
     {
         bootScreenAktiv = json["bootScreenAktiv"].as<bool>();
@@ -544,6 +550,12 @@ String GetConfig()
         if (!root.set("bootScreenStyle", bootScreenStyle == 1 ? "classic" : "logo"))
         {
             Log(F("GetConfig"), F("Insufficient memory for boot screen style"));
+            return "{}";
+        }
+
+        if (!root.set("sleepScreenAktiv", sleepScreenAktiv))
+        {
+            Log(F("GetConfig"), F("Insufficient memory for sleep screen setting"));
             return "{}";
         }
 

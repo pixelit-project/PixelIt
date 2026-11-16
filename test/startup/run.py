@@ -70,7 +70,7 @@ struct Matrix {
     }
 } display;
 Matrix *matrix=&display;
-bool wifiScreenAktiv=true, forceClock=false;
+bool wifiScreenAktiv=true, forceClock=false, sleepScreenAktiv=true;
 uint8_t bootScreenStyle=0;
 void ColorLogoText(int,int,int = MATRIX_WIDTH);
 void CancelScreenTransition() {}
@@ -123,6 +123,16 @@ int main() {
         delayTotal=0; display.sleepCheck=true;
         SleepScreen(true,false); assert(delayTotal==900 && display.brightness==0);
         display.sleepCheck=false;
+        sleepScreenAktiv=false;
+        delayTotal=0;
+        const int printsBeforeSleep=display.prints, showsBeforeSleep=display.shows;
+        matrix->setBrightness(128);
+        SleepScreen(true,false);
+        assert(delayTotal==0 && display.brightness==0);
+        assert(display.prints==printsBeforeSleep && display.shows==showsBeforeSleep+1);
+        for(auto &pixel:leds) assert(pixel.r==0 && pixel.g==0 && pixel.b==0);
+        SleepScreen(false,false); assert(!forceClock);
+        sleepScreenAktiv=true;
         SleepScreen(false,true); assert(forceClock);
         connectingTextPlaced=false;
         ShowConnectingScreen();checkCenter();

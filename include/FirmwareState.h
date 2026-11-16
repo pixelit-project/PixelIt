@@ -203,6 +203,7 @@ extern String hostname;
 extern String deviceID;
 extern String matrixTempCorrection;
 extern bool sleepMode;
+extern bool sleepScreenAktiv;
 extern bool bootScreenAktiv;
 extern uint8_t bootScreenStyle; // 0: logo, 1: classic
 extern bool wifiScreenAktiv;

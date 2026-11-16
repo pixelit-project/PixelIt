@@ -1906,3 +1906,25 @@ The raw short-run report is `/tmp/pixelit-40-ota-verification.json` on the test
 host. This validates the concrete upload on the designated device after OTA;
 it does not establish long-term fragmentation safety or physical LED timing.
 The constrained-largest-block path also has deterministic host coverage.
+
+
+## Optional sleep animation (unreleased)
+
+`sleepScreenAktiv` is a persisted Boolean setting, defaulting to `true` for
+existing and new installations. Set it to `false` through the existing config
+endpoint or WebSocket config command to enter sleep immediately, without zZz,
+delays or fade-out. All sleep entry points share this setting; wake behavior
+and the `sleepMode` command are unchanged. Invalid non-Boolean values are ignored.
+GetConfig includes the active default even before an old config file is saved.
+
+This adds one Boolean and one config JSON member, with no pixel buffers or loop
+work. Disabled animation removes blocking work; enabled timing is unchanged.
+Physical ESP8266 timing, minimum heap and largest-block validation remain required.
+Run `python3 test/startup/run.py` for both sleep modes and wake behavior.
+
+The companion PixelIt.WebUI includes a **Sleep animation active** switch bound to
+`config.sleepScreenAktiv` under Options → Defaults. Build/deploy its matching bundle
+with the firmware. External PixelIt.Docs
+`src/api.md` needs the config field, default and Sleep Mode behavior at stable
+release. Its stable baseline could not be verified during this change.
+Node-RED and PixelIt.API need no changes: existing sleep commands are unchanged.
