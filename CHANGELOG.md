@@ -3,6 +3,7 @@
 ### Unreleased
 
 -   (o0shojo0o) Make the zZz sleep animation optional, enabled by default.
+-   (o0shojo0o) Keep the zZz sleep animation responsive and visible in Liveview.
 
 ### 3.0.1 (2026-11-13)
 

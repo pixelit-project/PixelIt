@@ -49,6 +49,7 @@ void HandleGetMatrixInfo();
 void HandelWifiConfigReset();
 void HandleFactoryReset();
 void SleepScreen(bool startSleep, bool forceClockOnWake);
+void ServiceSleepAnimation();
 void HandleAndSendButtonPress(uint button, bool state);
 void callback(char *topic, byte *payload, unsigned int length);
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length);

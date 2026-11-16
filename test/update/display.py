@@ -21,6 +21,8 @@ program = r'''
 #define MATRIX_HEIGHT 8
 enum {UPLOAD_FILE_START, UPLOAD_FILE_WRITE, UPLOAD_FILE_END, UPLOAD_FILE_ABORTED};
 bool firmwareUpdateDisplayActive = false;
+bool sleepAnimationActive = true;
+void CancelScreenTransition() {}
 int currentMatrixBrightness = 0;
 unsigned long tick = 0;
 unsigned long millis() { return tick; }
@@ -56,6 +58,7 @@ Matrix *matrix = &display;
 int main() {
     FirmwareUpdateUpload(UPLOAD_FILE_START, 0, 1000000, false);
     assert(firmwareUpdateDisplayActive && display.shows == 1 && display.filled() == 0);
+    assert(!sleepAnimationActive); // OTA cancels an in-progress sleep animation.
     assert(display.brightness > 0); // Sleeping display must still show the update.
     tick = 50;
     FirmwareUpdateUpload(UPLOAD_FILE_WRITE, 500000, 1000000, false);

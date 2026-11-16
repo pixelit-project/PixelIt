@@ -15,7 +15,7 @@ connecting = hardware[hardware.index('namespace\n{'):]
 effects = (root / 'src/Effects.cpp').read_text()
 boot = effects[effects.index('void ColorLogoText('):effects.index('void ShowBatteryScreen()')]
 api = (root / "src/Api.cpp").read_text()
-sleep = api[api.index("void SleepScreen("):api.index("void HandleAndSendButtonPress(")]
+sleep = api[api.index("void ServiceSleepAnimation("):api.index("void HandleAndSendButtonPress(")]
 program = r'''
 #include <cassert>
 #include <cstdint>
@@ -71,6 +71,11 @@ struct Matrix {
 } display;
 Matrix *matrix=&display;
 bool wifiScreenAktiv=true, forceClock=false, sleepScreenAktiv=true;
+bool sleepMode=false, sleepAnimationActive=false, firmwareUpdateDisplayActive=false;
+uint32_t sleepAnimationStarted=0, fakeMillis=0;
+uint8_t sleepAnimationStep=255;
+int currentMatrixBrightness=128;
+uint32_t millis() { return fakeMillis; }
 uint8_t bootScreenStyle=0;
 void ColorLogoText(int,int,int = MATRIX_WIDTH);
 void CancelScreenTransition() {}
@@ -121,8 +126,48 @@ int main() {
         for(int y=0;y<8;++y) if(display.pixel(8,y)==display.Color(0,255,42)) green=true;
         assert(green); bootScreenStyle=0;
         delayTotal=0; display.sleepCheck=true;
-        SleepScreen(true,false); assert(delayTotal==900 && display.brightness==0);
+        sleepMode=true; fakeMillis=0;
+        const int beforeSleep=display.prints;
+        SleepScreen(true,false);
+        assert(delayTotal==0 && sleepAnimationActive && display.prints==beforeSleep+1);
+        const int initialShows=display.shows;
+        fakeMillis=199; ServiceSleepAnimation(); assert(display.shows==initialShows);
+        SleepScreen(true,false); assert(sleepAnimationStarted==0); // Duplicate does not restart.
+        fakeMillis=200; ServiceSleepAnimation(); assert(display.prints==beforeSleep+3);
+        fakeMillis=400; ServiceSleepAnimation(); assert(display.prints==beforeSleep+6);
+        fakeMillis=900; ServiceSleepAnimation();
         display.sleepCheck=false;
+        CRGB unfaded[256]; std::copy(leds,leds+256,unfaded);
+        fakeMillis=930; ServiceSleepAnimation();
+        for(int i=0;i<256;++i) {
+            assert(leds[i].r==unfaded[i].r*24/25);
+            assert(leds[i].g==unfaded[i].g*24/25);
+            assert(leds[i].b==unfaded[i].b*24/25);
+        }
+        fakeMillis=1650; ServiceSleepAnimation();
+        for(auto &pixel:leds) assert(pixel.r==0 && pixel.g==0 && pixel.b==0);
+        assert(sleepAnimationActive);
+        fakeMillis=1680; ServiceSleepAnimation();
+        assert(!sleepAnimationActive && display.brightness==0 && delayTotal==0);
+
+        // Late service skips overdue steps and emits at most one LED frame.
+        fakeMillis=2000; SleepScreen(true,false);
+        const int beforeLate=display.shows;
+        fakeMillis=3500; ServiceSleepAnimation(); assert(display.shows==beforeLate+1);
+        sleepMode=false; SleepScreen(false,true);
+        const int afterWake=display.shows;
+        fakeMillis=5000; ServiceSleepAnimation();
+        assert(!sleepAnimationActive && forceClock && display.brightness==128 && display.shows==afterWake);
+
+        // Unsigned elapsed time remains correct across millis() wraparound.
+        sleepMode=true; fakeMillis=0xffffff80u; SleepScreen(true,false);
+        fakeMillis+=200; ServiceSleepAnimation(); assert(sleepAnimationStep==1);
+        firmwareUpdateDisplayActive=true;
+        const int beforeUpdate=display.shows;
+        ServiceSleepAnimation(); assert(!sleepAnimationActive && display.shows==beforeUpdate);
+        SleepScreen(true,false); SleepScreen(false,false);
+        assert(display.shows==beforeUpdate);
+        firmwareUpdateDisplayActive=false;
         sleepScreenAktiv=false;
         delayTotal=0;
         const int printsBeforeSleep=display.prints, showsBeforeSleep=display.shows;
@@ -131,7 +176,7 @@ int main() {
         assert(delayTotal==0 && display.brightness==0);
         assert(display.prints==printsBeforeSleep && display.shows==showsBeforeSleep+1);
         for(auto &pixel:leds) assert(pixel.r==0 && pixel.g==0 && pixel.b==0);
-        SleepScreen(false,false); assert(!forceClock);
+        sleepMode=false; SleepScreen(false,false); assert(!forceClock);
         sleepScreenAktiv=true;
         SleepScreen(false,true); assert(forceClock);
         connectingTextPlaced=false;

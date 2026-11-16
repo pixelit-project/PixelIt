@@ -204,6 +204,9 @@ extern String deviceID;
 extern String matrixTempCorrection;
 extern bool sleepMode;
 extern bool sleepScreenAktiv;
+extern bool sleepAnimationActive;
+extern uint32_t sleepAnimationStarted;
+extern uint8_t sleepAnimationStep;
 extern bool bootScreenAktiv;
 extern uint8_t bootScreenStyle; // 0: logo, 1: classic
 extern bool wifiScreenAktiv;

@@ -1917,10 +1917,29 @@ delays or fade-out. All sleep entry points share this setting; wake behavior
 and the `sleepMode` command are unchanged. Invalid non-Boolean values are ignored.
 GetConfig includes the active default even before an old config file is saved.
 
-This adds one Boolean and one config JSON member, with no pixel buffers or loop
-work. Disabled animation removes blocking work; enabled timing is unchanged.
+The enabled animation is serviced by `ServiceDisplayFrames()` while sleep mode
+blocks normal clock, bitmap and scrolling rendering. Its letters appear at 0,
+200 and 400 ms; fading starts at 900 ms with 30 ms steps and completes at
+1,680 ms. Each service call renders at most the latest due step, skipping stale
+steps after delays. Wake cancels the animation and restores configured brightness;
+OTA cancels it before taking over the display. Repeated sleep requests do not
+restart an active animation. Update checks and telemetry defer until it finishes.
+
+The renderer uses only a timestamp, step and active flag beside the existing
+setting; no extra pixel buffers or allocations are added. Fade steps rebuild the
+glyphs and scale the existing LED buffer, allowing Liveview to observe fading
+and the final cleared image. Liveview uses its existing 50 ms minimum sampling
+interval during sleep animation, with existing backpressure and subscription
+controls. Frame delivery depends on loop/network availability; previews can skip
+steps. Disabled animation turns off the display immediately. Existing screen,
+config and preview formats remain unchanged; no companion client code is needed.
 Physical ESP8266 timing, minimum heap and largest-block validation remain required.
-Run `python3 test/startup/run.py` for both sleep modes and wake behavior.
+Run `python3 test/startup/run.py` for both sleep modes, exact scheduled steps,
+fade colors, wake cancellation, late service, timer rollover and OTA ownership;
+`python3 test/update/display.py` checks OTA cancels the sleep animation.
+Build all six variants and run `python3 test/animation/run.py`. Device validation
+must check preview delivery, wake interruption, frame jitter, minimum free heap
+and largest contiguous block under concurrent HTTP/MQTT/WebSocket activity.
 
 The companion PixelIt.WebUI includes a **Sleep animation active** switch bound to
 `config.sleepScreenAktiv` under Options → Defaults. Build/deploy its matching bundle
@@ -1928,3 +1947,27 @@ with the firmware. External PixelIt.Docs
 `src/api.md` needs the config field, default and Sleep Mode behavior at stable
 release. Its stable baseline could not be verified during this change.
 Node-RED and PixelIt.API need no changes: existing sleep commands are unchanged.
+
+### Designated-device sleep candidate OTA — 2026-11-16
+
+The user authorized OTA installation on `192.168.0.40` (`PixelIt_Micro`,
+`PixelIt-1380454`, `ESP8266_d1_mini`, 160 MHz, 32x8). Candidate
+`3.0.1-sleep.1` is 538,592 bytes, SHA-256
+`8969f82b73a703a288422cd4bfec5171135c3e0659589dfb4faab9e6e9ba59c4`.
+All six firmware builds and startup/sleep, animation/preview-backpressure and
+OTA-display host tests passed before installation. The OTA build used the
+published WebUI index after checking its referenced JS/CSS assets; temporary
+version/header changes were restored. That published bundle does not include
+the new sleep-animation switch; use the matching local WebUI until deployment.
+
+The 32 KiB/s HTTP upload returned HTTP 200 and `Update Success! Rebooting...`.
+At uptime 22 seconds, device status confirmed the candidate version, image size,
+software restart and connected MQTT. It sampled 19,416 bytes free heap and a
+19,184-byte largest block; these startup samples are not workload minima.
+No sleep/wake command or configuration save was sent for this installation;
+normal startup migration can persist the version/settings. Actual sleep preview,
+wake interruption, physical LED timing, concurrent workload jitter and ESP8266
+peak-memory validation remain outstanding. The image, success response and
+post-restart status are recorded in `/tmp/pixelit-448-ota-image.json`,
+`/tmp/pixelit-448-ota-response.html` and `/tmp/pixelit-448-post-ota-status.json`
+on the test host.

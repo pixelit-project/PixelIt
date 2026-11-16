@@ -480,7 +480,7 @@ void loop()
 
         // Defer blocking internet requests while pixels or text are moving.
         // Check new FW Version first time after 30.5 seconds
-        if (!animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() &&
+        if (!animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() && !sleepAnimationActive &&
             ((checkUpdatePrevMillis == 0 && millis() > 30500) || millis() - checkUpdatePrevMillis >= CHECKUPDATE_INTERVAL))
         {
             checkUpdatePrevMillis = millis();
@@ -493,7 +493,7 @@ void loop()
 
     // Send Telemetry data first time after 30.3 seconds
     // if necessary also check scrollTextAktivLoop = false; and animateBMPAktivLoop = false; if they are disturbed?!
-    if (sendTelemetry == true && !animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
+    if (sendTelemetry == true && !animateBMPAktivLoop && !scrollTextAktivLoop && !ScreenTransitionActive() && !sleepAnimationActive && ((sendTelemetryPrevMillis == 0 && millis() > 30300) || millis() - sendTelemetryPrevMillis >= SEND_TELEMETRY_INTERVAL))
     {
         sendTelemetryPrevMillis = millis();
         SendTelemetry();
@@ -576,7 +576,7 @@ void loop()
         }
     }
 
-    if (clockAktiv && !ScreenTransitionActive() && now() != clockLastUpdate)
+    if (!sleepMode && clockAktiv && !ScreenTransitionActive() && now() != clockLastUpdate)
     {
         if (timeStatus() == timeNotSet && ntpTimeOut <= millis())
         {
@@ -664,7 +664,7 @@ void loop()
         const unsigned long started = millis();
         // Liveview samples at half the supplied frame interval.
         constexpr uint16_t transitionPreviewFrameInterval = 200;
-        const uint16_t frameInterval = ScreenTransitionActive() ? transitionPreviewFrameInterval
+        const uint16_t frameInterval = sleepAnimationActive ? 60 : ScreenTransitionActive() ? transitionPreviewFrameInterval
             : (animateBMPAktivLoop ? animateBMPDelay : 0);
         liveview.loop(frameInterval);
         RecordAnimationWork("Liveview", started);
@@ -687,7 +687,9 @@ void loop()
 // Also called during chunked HTTP body reception; no HTTP/MQTT reentrancy.
 void ServiceDisplayFrames()
 {
-    if (firmwareUpdateDisplayActive || sleepMode || ServiceScreenTransition())
+    if (firmwareUpdateDisplayActive) return;
+    ServiceSleepAnimation();
+    if (sleepMode || ServiceScreenTransition())
         return;
     if (animateBMPAktivLoop && millis() - animateBMPPrevMillis >= animateBMPDelay)
     {

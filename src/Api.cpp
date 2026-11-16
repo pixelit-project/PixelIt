@@ -296,40 +296,84 @@ void HandleFactoryReset()
     EraseWifiCredentials();
 }
 
+void ServiceSleepAnimation()
+{
+    if (!sleepAnimationActive) return;
+    if (firmwareUpdateDisplayActive || !sleepMode)
+    {
+        sleepAnimationActive = false;
+        return;
+    }
+
+    const uint32_t elapsed = static_cast<uint32_t>(millis()) - sleepAnimationStarted;
+    if (elapsed >= 1680)
+    {
+        sleepAnimationActive = false;
+        matrix->clear();
+        matrix->setBrightness(0);
+        matrix->show();
+        return;
+    }
+    // Render only the latest due step; never catch up with a burst of LED writes.
+    const uint8_t step = elapsed < 200 ? 0 : elapsed < 400 ? 1 : elapsed < 900 ? 2
+        : 3 + (elapsed - 900) / 30;
+    if (step == sleepAnimationStep) return;
+    sleepAnimationStep = step;
+
+    matrix->clear();
+    const int left = (MATRIX_WIDTH / 2) - 6;
+    DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, left, 1);
+    if (step >= 1)
+        DrawTextHelper("Z", false, false, false, false, false, 255, 255, 255, left + 5, 1);
+    if (step >= 2)
+        DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, left + 10, 1);
+    ColorLogoText(left, 13);
+    // Fade the existing pixel buffer so Liveview sees the fade as well.
+    // Rebuild from the glyphs each step to avoid cumulative rounding or a snapshot.
+    if (step >= 3)
+    {
+        const uint8_t level = 25 - (step - 3);
+        for (int i = 0; i < MATRIX_WIDTH * MATRIX_HEIGHT; ++i)
+        {
+            leds[i].r = static_cast<uint16_t>(leds[i].r) * level / 25;
+            leds[i].g = static_cast<uint16_t>(leds[i].g) * level / 25;
+            leds[i].b = static_cast<uint16_t>(leds[i].b) * level / 25;
+        }
+    }
+    matrix->show();
+}
+
 void SleepScreen(bool startSleep, bool forceClockOnWake)
 {
     CancelScreenTransition();
+    if (startSleep && sleepAnimationActive) return;
+    sleepAnimationActive = false;
     if (startSleep)
     {
         Log(F("SleepScreen"), F("Sleeping..."));
-        matrix->clear();
-        if (sleepScreenAktiv)
+        if (sleepScreenAktiv && !firmwareUpdateDisplayActive)
         {
-            const int left = (MATRIX_WIDTH / 2) - 6;
-            DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) - 6, 1);
-            ColorLogoText(left, 13);
-            matrix->show();
-            delay(200);
-            DrawTextHelper("Z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) - 1, 1);
-            ColorLogoText(left, 13);
-            matrix->show();
-            delay(200);
-            DrawTextHelper("z", false, false, false, false, false, 255, 255, 255, (MATRIX_WIDTH / 2) + 4, 1);
-            ColorLogoText(left, 13);
-            matrix->show();
-            delay(500);
-            FadeOut(30, 0);
+            sleepAnimationStarted = static_cast<uint32_t>(millis());
+            sleepAnimationStep = 255;
+            sleepAnimationActive = true;
+            matrix->setBrightness(currentMatrixBrightness);
+            ServiceSleepAnimation();
         }
-        matrix->setBrightness(0);
-        matrix->show();
+        else if (!firmwareUpdateDisplayActive)
+        {
+            matrix->clear();
+            matrix->setBrightness(0);
+            matrix->show();
+        }
     }
     else
     {
         Log(F("SleepScreen"), F("Waking up..."));
-        matrix->clear();
-        // DrawTextHelper("😀", false, true, false, false, false, 255, 200, 0, 0, 1);
-        // FadeIn(30, 0);
-        // delay(150);
+        if (!firmwareUpdateDisplayActive)
+        {
+            matrix->clear();
+            matrix->setBrightness(currentMatrixBrightness);
+        }
         forceClock = forceClockOnWake;
     }
 }
