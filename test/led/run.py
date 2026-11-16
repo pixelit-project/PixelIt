@@ -6,9 +6,11 @@ Requires FastLED installed by a PlatformIO build. Does not contact a device.
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
+subprocess.run([sys.executable, str(root / 'test/led/pins.py')], check=True)
 driver = next((root / '.pio/libdeps').glob(
     'ESP8266*/FastLED/src/platforms/esp/8266/clockless_esp8266.h')).read_text()
 start = driver.index('__attribute__ ((always_inline)) inline static uint32_t __clock_cycles()')

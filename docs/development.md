@@ -40,18 +40,56 @@ the published WebUI, save the current published `webui/index.html` as
 repository root before building. Verify that the published bundle exposes the
 options required by the firmware.
 
-ESP8266 generic and D1 mini builds use espressif8266 4.2.1 / Arduino core
-3.1.2 at 160 MHz. NodeMCU v2 uses espressif8266 2.6.3 / Arduino core 2.7.4
-at 160 MHz. The reported NodeMCU v2 with WS2812 displayed correctly with
-2.7.0-beta.1 rebuilt on this older platform at 80 MHz, after the same beta
-on the newer platform failed at both clock rates. The user also confirmed
-display output with the 3.0.0-beta.3 port on the older platform at both
-80 and 160 MHz. Frame timing, peak heap and OTA still need device validation.
-All ESP8266 builds disable WiFi modem sleep and use additional FastLED transfer retries.
+All ESP8266 builds, including NodeMCU v2, use espressif8266 4.2.1 /
+Arduino core 3.1.2 at 160 MHz. They disable WiFi modem sleep and retain the
+existing FastLED transfer retry limit. NodeMCU now uses the same core-3 HTTP
+parser/body-reservation and OTA yield hooks as the other ESP8266 builds.
 
-The NodeMCU v2 HTTP hook uses the older core's boolean parser result and
-built-in request body reservation. Its OTA display hook runs at the older
-updater's existing yield point. Recheck these hooks when changing platforms.
+NodeMCU explicitly enables `FASTLED_ESP8266_NODEMCU_PIN_ORDER` to preserve its
+existing **GPIO2 / D4** LED output. FastLED 3.7.0 recognizes the old platform's
+`ARDUINO_ESP8266_NODEMCU` macro but not the newer
+`ARDUINO_ESP8266_NODEMCU_ESP12E` macro. Without the explicit mapping, the numeric
+`D2` template argument (4) switches from the legacy NodeMCU remapping to raw
+GPIO4 / D2. Keep the physical output compatible with existing wiring; generic
+and D1 mini builds retain GPIO4 / D2. Do not infer NodeMCU's physical LED pin
+from the shared `MATRIX_PIN=D2` flag alone.
+
+The NodeMCU linker also retains the time-critical FastLED `showRGBInternal`
+routine and its literals in IRAM, matching the tested pinfix image. GCC 10
+otherwise places this template routine in flash despite `IRAM_ATTR`. This uses
+approximately 644 additional IRAM bytes, without pixel buffers, heap allocations,
+changed bit timings, retry limits or interrupt policy. Other board builds keep
+their existing placement. The generated linker-script patch checks its anchor;
+recheck symbol placement when changing the framework or FastLED.
+
+During the 2026-11-16 investigation, the user confirmed that restoring the legacy
+GPIO2 mapping fixed missing physical LED updates on the reported NodeMCU with
+core 3.1.2. Earlier 80/160 MHz images without that mapping updated Liveview but
+left the old physical image unchanged; IRAM placement alone did not fix it.
+This is user-reported device verification, not a new timing or memory test.
+The later 160 MHz pinfix image still rebooted. Crash diagnostics identified a
+failed 212-byte allocation in the WiFi SDK rate-table path followed by an
+unchecked copy to null; the underlying memory-pressure cause remains unresolved.
+This integration fixes LED compatibility, not the reported low-heap reboots.
+No diagnostic handlers, RTC capture, allocation wrappers or memory-limit changes
+are included in the regular firmware.
+
+Physical frame timing/jitter and minimum heap/largest-block measurements under
+concurrent HTTP/MQTT/WebSocket workloads remain outstanding for this integration.
+Run `python3 test/led/run.py`, `python3 test/animation/run.py`, transport tests and
+OTA-display tests, and build all six variants. Before the matching stable release,
+correct external PixelIt.Docs `src/hardware.md` to distinguish NodeMCU GPIO2 / D4
+from generic/D1 mini GPIO4 / D2; its current combined ESP8266 row is misleading.
+No WebUI, Node-RED or API-service client changes are required: settings, payloads,
+endpoints and topics are unchanged.
+
+Integration checks on 2026-11-16 passed for all six board builds and the LED
+pin-mapping/retry, animation/preview, MQTT, transport and OTA-display host tests.
+The regular NodeMCU ELF confirms a GPIO2 initialization, 160 MHz timing constants
+and an IRAM sender, with no diagnostic handler or allocation wrappers. Its static
+DRAM usage is 51,288 bytes; this is a build result, not a workload heap minimum.
+No firmware was uploaded and no physical timing or memory test was run for this
+integration.
 
 ESP32 builds use espressif32 6.5.0 for Arduino 2.0.14 compatibility and run
 at 160 MHz to retain rendering headroom during larger screen commands. Both
