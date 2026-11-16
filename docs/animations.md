@@ -2,8 +2,8 @@
 
 [Back to the README](../README.md) · [Build and test instructions](development.md)
 
-The extended limits below are part of the unreleased development firmware.
-For released versions, check the [changelog](../CHANGELOG.md).
+The extended limits below are available since firmware **3.0.0**.
+For version-specific changes, check the [changelog](../CHANGELOG.md).
 
 ## Sizes and limits
 
@@ -17,7 +17,6 @@ ESP8266 keeps its 1,792-pixel / 28-frame budget. ESP32 has a separate
 | Frame size (width × height) | ESP8266 | ESP32 |
 | --- | ---: | ---: |
 | 8×8 (default) | 28 | 160 |
-| 16×8 | 14 | 80 |
 | 32×8 (full display) | 7 | 40 |
 
 Empty, malformed and oversized animations are rejected before playback.

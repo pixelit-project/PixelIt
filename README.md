@@ -6,9 +6,10 @@
 
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/pixelit-project/PixelIt/build-and-release.yml) ![GitHub all releases](https://img.shields.io/github/downloads/pixelit-project/PixelIt/total) ![GitHub Repo stars](https://img.shields.io/github/stars/pixelit-project/PixelIt) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/pixelit-project/pixelit) ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/y/pixelit-project/pixelit) ![GitHub top language](https://img.shields.io/github/languages/top/pixelit-project/pixelit)
 
-The PixelIt is an ESP8266/ESP32 and WS2812B-LED based PixelArt display, controlled and fed via a JSON API.
-Settings and small tests are possible via the web interface,
-also a Node-RED node ([node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit)) for the JSON API is available.
+PixelIt turns an ESP8266/ESP32 with a WS2812B LED matrix or an Ulanzi TC001 into a
+pixel art display for images, animations, scrolling text and clocks. Control it
+through the WebUI, HTTP JSON API, MQTT or WebSocket, or connect it to Node-RED,
+Home Assistant and ioBroker.
 
 If you want to get an impression of the WebUI, you can do that here in [Demo WebUI](https://pixelit-project.github.io/PixelIt/webui/) :rocket:
 
@@ -21,35 +22,64 @@ If you want to get an impression of the WebUI, you can do that here in [Demo Web
 ## Project highlights
 
 -   :fire: Support for **[Node-RED](https://pixelit-project.github.io/nodered.html)**, **[HomeAssistant](https://pixelit-project.github.io/homeassistant.html#pixelit-custom-integration)** and **[ioBroker](https://pixelit-project.github.io/iobroker.html)**
--   :fire: Support for **[DIY Matrixes](https://pixelit-project.github.io/hardware.html#parts-list)** (ESP32/ESP8266) and prebuild **[Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)**\*
--   :fire: Awesome [WebUI](https://pixelit-project.github.io/PixelIt/webui/) for configuration and control. Checkout the **[Demo](https://pixelit-project.github.io/PixelIt/webui/)**
+-   :fire: Support for **[DIY matrices](https://pixelit-project.github.io/hardware.html#parts-list)** (ESP32/ESP8266) and prebuilt **[Ulanzi TC001 Pixel Clock](https://www.ulanzi.com/products/ulanzi-pixel-smart-clock-2882?aff=1181)**\*
+-   :fire: Awesome [WebUI](https://pixelit-project.github.io/PixelIt/webui/) for configuration and control. Check out the **[Demo](https://pixelit-project.github.io/PixelIt/webui/)**
 -   :fire: Great **[documentation](https://pixelit-project.github.io/)**
 -   :fire: Unlimited possibilities through the open **[API](https://pixelit-project.github.io/api.html)**
 -   :fire: Helpful and welcoming community on **[Telegram](https://t.me/pixelitdisplay)**, **[Discord](https://discord.gg/ERBSHWxB2S)** and **[GitHub Discussions](https://github.com/pixelit-project/PixelIt/discussions)**
--   :fire: Showroom for your own PixelIt builds on the **[Show you PixelIt](https://github.com/pixelit-project/PixelIt/discussions/48)** thread.
+-   :fire: Showroom for your own PixelIt builds on the **[Show your PixelIt](https://github.com/pixelit-project/PixelIt/discussions/48)** thread.
 
 ## Getting started
 
-1. Follow the [hardware and setup documentation](https://pixelit-project.github.io/).
-2. Install the firmware for your board from [GitHub Releases](https://github.com/pixelit-project/PixelIt/releases).
-3. Open the device's IP address in your browser to configure it and send images.
+1. Choose your hardware and follow the [setup documentation](https://pixelit-project.github.io/hardware.html).
+2. Use the [Webflasher and installation guide](https://pixelit-project.github.io/firmware.html), or download the matching board image from [GitHub Releases](https://github.com/pixelit-project/PixelIt/releases).
+   For ESP32 USB installation, use the `.full-upgrade.bin` image; for WebUI OTA updates, use the application `.bin` without `.full-upgrade`.
+3. Complete WiFi setup, then open the device's IP address in your browser.
+4. Configure the display in the WebUI, browse the icon gallery, or create your own bitmaps and animations in Pixel Creator.
+
+Firmware builds are available for ESP8266 generic, D1 mini and NodeMCU v2,
+and ESP32 generic, D1 mini32 and Ulanzi TC001. Choose the image for your exact board.
+
+## Control and integrations
+
+- **WebUI:** device settings, live preview, icon gallery, bitmap and animation editor, configuration backup and firmware updates.
+- **HTTP, MQTT and WebSocket:** send screens, text, bitmaps and animations through the [JSON API](https://pixelit-project.github.io/api.html).
+- **Home Assistant:** use the [custom integration](https://pixelit-project.github.io/homeassistant.html#pixelit-custom-integration) for direct WebSocket control, playlists and a liveview card, or enable firmware MQTT discovery for display, text, clock, sensor and button entities. See the [MQTT discovery reference](docs/home-assistant.md) for setup and topic details.
+- **Node-RED:** build display flows with [node-red-contrib-pixelit](https://flows.nodered.org/node/node-red-contrib-pixelit).
+- **ioBroker:** connect through the [PixelIt adapter](https://pixelit-project.github.io/iobroker.html).
+
+Screen transitions, an automatic clock fallback and ambient-light brightness
+control are configurable; sensors and physical buttons depend on the installed hardware.
 
 ## Bitmap animations
 
-The current development firmware supports these limits over HTTP, MQTT and WebUI:
+Since firmware **3.0.0**, animation capacity depends on the device:
 
-| Frame size (width × height) | Maximum frames |
-| --- | ---: |
-| 8×8 | 28 |
-| 32×8 (full display) | 7 |
+| Frame size (width × height) | ESP8266 maximum frames | ESP32 maximum frames |
+| --- | ---: | ---: |
+| 8×8 | 28 | 160 |
+| 32×8 (full display) | 7 | 40 |
 
-See [animation usage and examples](docs/animations.md) for the JSON format,
-transport limits and diagnostics. These changes are currently **unreleased**.
+These limits apply to HTTP, MQTT and WebUI uploads. Payload size and available
+memory can further limit uploads. See [animation usage and examples](docs/animations.md)
+for the JSON format, transport limits and playback diagnostics.
 
-## Development and changes
+## Releases and development
+
+Use [GitHub Releases](https://github.com/pixelit-project/PixelIt/releases/latest)
+for stable firmware and the [changelog](CHANGELOG.md) for version-specific changes.
+The optional beta update channel is disabled by default. This branch can contain
+unreleased changes; the optional sleep-animation setting is currently unreleased.
+
+When upgrading from firmware before 3.0.0 with Home Assistant MQTT discovery,
+device topics are now always enabled. Availability automations that previously
+used the master topic must use `<master>/<hostname>/state`.
 
 - [Build and test instructions](docs/development.md)
-- [Changelog](CHANGELOG.md)
+- [Firmware source](https://github.com/pixelit-project/PixelIt) (this repository)
+- [WebUI source](https://github.com/pixelit-project/PixelIt.WebUI)
+- [User documentation source](https://github.com/pixelit-project/PixelIt.Docs)
+- [Bitmap API service](https://github.com/pixelit-project/PixelIt.API)
 
 ## Contributors
 
