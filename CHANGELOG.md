@@ -2,6 +2,7 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Use Arduino Core 3.1.2 on NodeMCU v2 while preserving its GPIO2/D4 LED output.
 -   (o0shojo0o) Make the zZz sleep animation optional, enabled by default.
 -   (o0shojo0o) Keep the zZz sleep animation responsive and visible in Liveview.
 

@@ -32,7 +32,6 @@ if version == "":
 # Rename binary according to environnement/board
 # ex: firmware_esp32dev.bin or firmware_nodemcuv2.bin
 env.Replace(PROGNAME=f"firmware_v{version}_{build_tag}")
-legacy_esp8266_core = build_tag == "ESP8266_nodemcuv2"
 
 # Avoid a second full HTTP POST body on the ESP8266's small heap. Build against
 # a local header copy, leaving the installed pinned framework untouched.
@@ -69,20 +68,13 @@ if env.PioPlatform().name == "espressif8266":
     } else if (   !isForm"""
     if contents.count(screen_reader) != 1:
         raise RuntimeError("Review ESP8266 screen body reader patch for this framework version")
-    if legacy_esp8266_core:
-        # Core 2.7.4 always sends Connection: close and uses a boolean parser result.
-        screen_replacement = screen_replacement.replace(
-            '        _keepAlive = false;\n        sendHeader(F("Connection"), F("close"));\n',
-            '        setContentLength(CONTENT_LENGTH_NOT_SET);\n',
-        ).replace("return CLIENT_REQUEST_IS_HANDLED;", "return false;")
     contents = contents.replace(screen_reader, screen_replacement)
     # Core 3 reads through S2Stream, otherwise growing/reallocating the String
     # repeatedly while TCP data arrives. Reserve the advertised size once.
     reader = "  S2Stream dataStream(data);"
-    if not legacy_esp8266_core:
-        if contents.count(reader) != 1:
-            raise RuntimeError("Review ESP8266 HTTP body reserve patch for this framework version")
-        contents = contents.replace(reader, "  if (!data.reserve(maxLength + 1)) return false;\n" + reader)
+    if contents.count(reader) != 1:
+        raise RuntimeError("Review ESP8266 HTTP body reserve patch for this framework version")
+    contents = contents.replace(reader, "  if (!data.reserve(maxLength + 1)) return false;\n" + reader)
     parser.write_text(contents)
     env.Prepend(CPPPATH=[str(patched)])
     # Keep the same template implementation first in library builds as well.
@@ -178,9 +170,7 @@ updater_target = Path(env.subst("$BUILD_DIR")) / "pixelit_updater"
 shutil.copytree(updater_source, updater_target, dirs_exist_ok=True)
 implementation = updater_target / (updater_name + ("-impl.h" if updater_name.startswith("ESP8266") else ".h"))
 contents = implementation.read_text()
-if legacy_esp8266_core:
-    anchor = "      delay(0);"
-elif updater_name.startswith("ESP8266"):
+if updater_name.startswith("ESP8266"):
     anchor = "      esp_yield();"
 else:
     anchor = "                delay(0);"
@@ -202,3 +192,18 @@ implementation.write_text(contents)
 # Explicit include avoids depending on framework library search order.
 (updater_target / "PixelItHTTPUpdateServer.h").write_text('#include "' + updater_name + '.h"\n')
 env.Prepend(CPPPATH=[str(updater_target.resolve())])
+
+# Retain the sender placement used by the verified NodeMCU Core 3.1.2 image.
+# GCC 10 does not keep FastLED's template function in IRAM from IRAM_ATTR alone.
+if build_tag == "ESP8266_nodemcuv2":
+    def place_nodemcu_led_sender_in_iram(source, target, env):
+        script = Path(env.subst("$BUILD_DIR")) / "ld/local.eagle.app.v6.common.ld"
+        contents = script.read_text()
+        anchor = "    *(.text.app_entry*)"
+        rule = "    *(.literal._ZN19ClocklessController*15showRGBInternal* .text._ZN19ClocklessController*15showRGBInternal*)\n"
+        if rule not in contents:
+            if contents.count(anchor) != 1:
+                raise RuntimeError("Review NodeMCU FastLED IRAM linker placement")
+            script.write_text(contents.replace(anchor, rule + anchor))
+
+    env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", place_nodemcu_led_sender_in_iram)
