@@ -137,6 +137,8 @@ int main(){
 mqtt = (root / 'src/Mqtt.cpp').read_text()
 writer = mqtt[mqtt.index('size_t MqttWiFiClient::write(', mqtt.index('#if defined(ESP8266)')):mqtt.index('\n#endif', mqtt.index('#if defined(ESP8266)'))]
 writer = writer.replace('unsigned long', 'uint32_t')
+cleanup_start = mqtt.index('void MqttWiFiClient::AbortFailedWrite()')
+cleanup = mqtt[cleanup_start:mqtt.index('size_t MqttWiFiClient::write(', cleanup_start)]
 writer_program = r'''
 #include <cassert>
 #include <cstdint>
@@ -147,51 +149,61 @@ uint32_t tick=0; unsigned serviced=0,displayCost=1;
 uint32_t millis(){return tick;}
 void delay(unsigned n){tick+=n;}
 void ServiceDisplayFrames(){++serviced;tick+=displayCost;}
+struct Context {
+ bool aborted=false,discarded=false;
+ unsigned aborts=0,queuedBytes=0,receivedBytes=0;
+ void abort(){assert(!discarded);aborted=true;++aborts;queuedBytes=0;}
+ void discard_received(){assert(aborted);discarded=true;receivedBytes=0;}
+};
 class WiFiClient {
 public:
  uint32_t _timeout=5000; bool online=true,blocked=false,allocationFailure=false;
- int allowance=100000, roomLimit=100000; unsigned calls=0,closes=0;
+ int allowance=100000, roomLimit=100000; unsigned calls=0;
+ Context context; Context *_client=&context;
  std::string wire;
- bool connected(){return online;}
+ bool connected(){return online && _client && !_client->aborted;}
  int availableForWrite(){return blocked?0:std::min(allowance,roomLimit);}
  void setTimeout(uint32_t timeout){_timeout=timeout;}
  size_t write(const uint8_t *p,size_t n){
   assert(n<=512 && n<=static_cast<unsigned>(availableForWrite()) && _timeout==1); ++calls;
   if(allocationFailure){tick+=2;return 0;}
-  allowance-=n;wire.append(reinterpret_cast<const char*>(p),n);return n;
+  context.queuedBytes+=n;allowance-=n;wire.append(reinterpret_cast<const char*>(p),n);return n;
  }
- bool stop(unsigned wait){assert(wait==1);++closes;online=false;return true;}
+ bool stop(unsigned){assert(false && "Graceful close retains pending TCP data");return false;}
 };
-class MqttWiFiClient:public WiFiClient{public:size_t write(const uint8_t*,size_t);};
-''' + writer + r'''
+class MqttWiFiClient:public WiFiClient{public:void AbortFailedWrite();size_t write(const uint8_t*,size_t);};
+''' + cleanup + writer + r'''
 int main(){
  const std::string packet(1800,'x');
  auto data=reinterpret_cast<const uint8_t*>(packet.data());
  MqttWiFiClient healthy; tick=serviced=0;
  assert(healthy.write(data,packet.size())==packet.size() && healthy.wire==packet);
- assert(healthy.calls==4 && healthy.closes==0 && healthy._timeout==5000 && serviced==4);
+ assert(healthy.context.queuedBytes==packet.size() && !healthy.context.discarded);
+ assert(healthy.calls==4 && healthy.context.aborts==0 && healthy._timeout==5000 && serviced==4);
  MqttWiFiClient small; small.roomLimit=128; tick=0;
  assert(small.write(data,packet.size())==packet.size() && small.wire==packet && small.calls==15);
  MqttWiFiClient stalled; stalled.blocked=true; tick=serviced=0;
  assert(stalled.write(data,packet.size())==0 && tick-serviced*displayCost<=40 && serviced>10);
- assert(stalled.closes==1 && stalled.calls==0 && stalled._timeout==5000);
- MqttWiFiClient partial; partial.allowance=13; tick=serviced=0;
+ assert(stalled.context.aborts==1 && stalled.calls==0 && stalled._timeout==5000);
+ MqttWiFiClient partial; partial.allowance=13;partial.context.queuedBytes=4096;partial.context.receivedBytes=1024; tick=serviced=0;
  assert(partial.write(data,packet.size())==13 && partial.wire==packet.substr(0,13));
- assert(partial.closes==1 && tick-serviced*displayCost<=40);
+ assert(partial.context.aborts==1 && tick-serviced*displayCost<=40);
+ assert(partial.context.queuedBytes==0 && partial.context.receivedBytes==0 && partial.context.discarded);
  assert(partial.write(data,packet.size())==0 && partial.wire.size()==13);
  MqttWiFiClient oom; oom.allocationFailure=true; tick=serviced=0; oom._timeout=77;
- assert(oom.write(data,packet.size())==0 && tick-serviced*displayCost<=43 && oom.closes==1 && oom._timeout==77);
+ assert(oom.write(data,packet.size())==0 && tick-serviced*displayCost<=43 && oom.context.aborts==1 && oom._timeout==77);
  // Unsigned elapsed time keeps the write budget across millis() rollover.
  MqttWiFiClient rollover; rollover.blocked=true; tick=UINT32_MAX-10;serviced=0;
  const uint32_t start=tick; assert(rollover.write(data,packet.size())==0);
- assert(uint32_t(tick-start)-serviced*displayCost<=40 && rollover.closes==1);
+ assert(uint32_t(tick-start)-serviced*displayCost<=40 && rollover.context.aborts==1);
+ MqttWiFiClient noContext;noContext._client=nullptr;noContext.AbortFailedWrite();assert(noContext.context.aborts==0);
  MqttWiFiClient empty;
- assert(empty.write(data,0)==0 && empty.write(nullptr,1)==0 && empty.closes==0);
+ assert(empty.write(data,0)==0 && empty.write(nullptr,1)==0 && empty.context.aborts==0);
  // A slow LED frame must not disconnect a healthy broker by consuming the
  // network wait budget. This reproduces a regression in the first candidate.
  MqttWiFiClient slowDisplay;displayCost=60;tick=0;
  assert(slowDisplay.write(data,packet.size())==packet.size());
- assert(slowDisplay.closes==0 && slowDisplay.wire==packet);
+ assert(slowDisplay.context.aborts==0 && slowDisplay.wire==packet);
 }
 '''
 

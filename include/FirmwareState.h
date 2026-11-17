@@ -165,6 +165,9 @@ extern FastLED_NeoMatrix *matrix;
 class MqttWiFiClient : public WiFiClient
 {
 public:
+#if defined(ESP8266)
+    void AbortFailedWrite();
+#endif
     size_t write(uint8_t byte) override { return write(&byte, 1); }
     size_t write(const uint8_t *buffer, size_t size) override;
 };

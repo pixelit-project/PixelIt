@@ -233,11 +233,74 @@ The ESP8266 MQTT writer uses TCP room checks, chunks of at most 512 bytes and a
 1 ms per-call write timeout to limit allocation-pressure stalls. A 40 ms network
 budget applies to each writer invocation, excluding time servicing LED frames;
 due display frames run between chunks
-and during backpressure. Incomplete writes close the connection with a 1 ms flush
-wait so another MQTT packet cannot follow a partial one. Status delivery can be
-lost until a later update/reconnect. The budget is not a hard timing bound:
-display service, core scheduling and the final write/close add overhead. MQTT
+and during backpressure. Incomplete writes abort the failed TCP context and
+release its queued send/receive buffers immediately, so another MQTT packet
+cannot follow a partial one. A graceful `stop(1)` can leave unacknowledged
+segments allocated while lwIP retries closure; repeated MQTT reconnects can then
+exhaust ESP8266 heap. Successful writes retain their existing path. Status delivery
+can still be lost until a later update/reconnect; aborting a failed packet does
+not make it deliverable. The budget is not a hard timing bound: display service,
+core scheduling and the final write/cleanup add overhead. MQTT
 receive/TCP-connect timeouts and legacy blocking screen effects remain separate.
+The cleanup uses the pinned core 3.1.2 `ClientContext::abort()` and
+`discard_received()` through `MqttWiFiClient`, rather than public
+`WiFiClient::abort()`: that public method calls `flush(0)`, which selects the
+normal flush timeout in this core. Recheck the private context API when changing
+the framework. The correction adds no buffers, allocations, polling, message
+limits or periodic work. ESP32 retains its existing socket cleanup.
+
+
+On 2026-11-17 (Europe/Berlin), remote investigation of the user-designated
+NodeMCU through its authenticated update/API endpoint captured a failed 212-byte
+WiFi SDK rate-table allocation followed by an unchecked copy to null. An
+instrumented baseline accumulated 15 queued TCP segments and 8,740 tracked bytes
+in `pbuf_alloc` before restarting at 229.6 seconds. Another baseline run retained
+about 8 KiB of packet buffers with 14 queued segments, 4,672 bytes free heap and
+a 1,120-byte largest block at 432.8 seconds. The values are snapshots, not
+allocation-time heap minima, and diagnostic HTTP traffic contributes load.
+
+The user-authorized debugging session installed candidate `3.0.1-mqttabort.1`
+(core 3.1.2, 160 MHz, GPIO2/D4) with the same allocation/RTC diagnostics plus the
+failed-write cleanup. After normal bitmap storage allocation, samples at 80.9,
+164.7 and 307.7 seconds reported 13,616 / 13,504 / 13,504 bytes free heap and a
+9,168-byte largest block, with 1 / 3 / 7 failed writes cleaned up and no queued
+TCP segments in the pre-response snapshots. MQTT remained subject to connection
+failures; this supports the buffer-lifetime correction, not a claim that broker/
+WiFi failures are solved. No screen commands or config edits were sent. The first
+candidate OTA attempt returned 502 and the old diagnostic restarted; a retry with
+fresh heap succeeded and the candidate version was verified.
+
+A follow-up read-only snapshot of that candidate on 2026-11-17 confirmed
+60,811.6 seconds (about 16.9 hours) uptime, 13,064 bytes free heap, an 8,936-byte
+largest block and 1,690 cleaned-up writes, with no queued TCP segments in the
+pre-response snapshot. The last reset was the software restart used for OTA.
+This confirms a long device run rather than continuous monitoring or a measured
+peak-memory minimum; connection failures still occurred during that run.
+
+Subsequent isolated trace builds showed periodic MQTT write failures despite
+that stable heap. Snapshot captures found pending 1,072-byte TCP send buffers,
+an open peer receive window, and application aborts at the 40 ms writer budget.
+250 ms and 1,000 ms comparison budgets and TCP_NODELAY alone did not eliminate
+failures; those experiments were reverted. Passive MQTT-only TCP-header tracing
+then captured valid-checksum IP-output attempts accepted with return code zero
+without timely TCP ACKs, alongside packet batches ACKed in a few milliseconds.
+Valid PINGREQ/PINGRESP exchanges were also observed, so the loss was not confined
+to keepalive packets. The node used 192.168.31.61/24 via 192.168.31.1, while the
+Mosquitto broker was at 192.168.30.48. This bounds the observation to ESP IP output
+and pre-TCP input; it does not prove radio delivery or distinguish WLAN/driver,
+routing and broker-side faults. Broker/router logs and physical access were not
+available. No change to timeout, Nagle policy or packet hooks is included here.
+
+Only the cleanup is included in regular firmware. The fixed allocation table,
+RTC capture, counters and live/TCP diagnostic endpoints remain isolated test
+builds. Detailed timing/jitter, minimum free heap/largest block under representative
+concurrent payloads, long-duration stability and other-device validation remain
+outstanding. Run MQTT, LED, animation/preview and transport host tests and build all
+six variants. No companion client changes are required; before stable release,
+external PixelIt.Docs should explain MQTT reconnects under backpressure and the
+fact that failed status deliveries may be lost until a later publish/reconnect.
+
+
 The MQTT CONNECT packet must be sent successfully before waiting for CONNACK;
 disconnected sockets abort that wait immediately. Both platforms service frames
 while waiting. ESP8266 bounds the CONNACK wait to 1,500 ms, or the configured

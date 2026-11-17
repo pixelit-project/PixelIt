@@ -36,6 +36,19 @@ size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
 #endif
 
 #if defined(ESP8266)
+#include <lwip/tcp.h>
+#include <lwip/inet.h>
+#include <include/ClientContext.h>
+
+void MqttWiFiClient::AbortFailedWrite()
+{
+    if (!_client) return;
+    // Core 3.1.2's public abort() first calls flush(0), which uses the default
+    // flush timeout. Use the pinned context directly to avoid another wait.
+    _client->abort();
+    _client->discard_received();
+}
+
 size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
 {
     if (!buffer || size == 0 || !connected()) return 0;
@@ -68,8 +81,9 @@ size_t MqttWiFiClient::write(const uint8_t *buffer, size_t size)
     } while (millis() - started < writeBudgetMillis);
     setTimeout(previousTimeout);
     // A partial packet must never be followed by another packet on this stream.
-    // Unlike stop(), this overload does not wait for the normal flush timeout.
-    if (written != size) WiFiClient::stop(1);
+    // A graceful close can retain unacked pbufs across repeated reconnects.
+    // Release this failed stream immediately; its packet is already incomplete.
+    if (written != size) AbortFailedWrite();
     return written;
 }
 #endif
