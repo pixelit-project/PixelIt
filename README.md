@@ -174,3 +174,13 @@ isolated device build retaining already-published app hashes, use
 firmware header through its `.github/webui.py`. This compatibility index changes
 only the inline controller and preserves existing published script/style URLs;
 it does not publish or substitute unreleased application assets.
+
+## Sleep animation (development firmware)
+
+Options → Defaults → **Sleep animation active** controls the zZz animation
+when entering sleep mode. It defaults to enabled. Disable it and save the
+configuration to turn off the display immediately when sleep is requested.
+Wake behavior is unchanged. Requires the matching firmware with the persisted
+Boolean `sleepScreenAktiv` setting; deploy the WebUI bundle with that firmware.
+The switch uses the existing configuration save and adds no polling or requests.
+Document the setting in external PixelIt.Docs with the stable firmware release.

@@ -39,6 +39,7 @@
                             hide-details
                             dense
                         ></v-select>
+                        <v-switch v-model="config.sleepScreenAktiv" label="Sleep animation active" hide-details dense></v-switch>
                         <v-switch v-model="config.wifiScreenAktiv" label="WiFi-Screen active" hide-details dense></v-switch>
                         <v-switch v-model="config.bootBatteryScreen" label="Show battery status on boot" hide-details dense v-if="showBatteryBtn"></v-switch>
                         <v-switch v-model="config.bootSound" label="Play sound on boot" hide-details dense></v-switch>
