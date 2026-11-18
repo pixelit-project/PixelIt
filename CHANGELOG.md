@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 3.0.2 (2026-11-18)
+
 -   (o0shojo0o) Release ESP8266 MQTT TCP buffers immediately after incomplete writes to avoid memory exhaustion.
 -   (o0shojo0o) Use Arduino Core 3.1.2 on NodeMCU v2 while preserving its GPIO2/D4 LED output.
 -   (o0shojo0o) Make the zZz sleep animation optional, enabled by default.
