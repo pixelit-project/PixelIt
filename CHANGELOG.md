@@ -7,6 +7,7 @@
 -   (o0shojo0o) Make the zZz sleep animation optional, enabled by default.
 -   (o0shojo0o) Keep the zZz sleep animation responsive and visible in Liveview.
 -   (o0shojo0o) Add name and ID sorting to the Pixel Gallery.
+-   (o0shojo0o) Remember Pixel Gallery filters and sorting in the browser.
 
 ### 3.0.1 (2026-11-13)
 
