@@ -1,17 +1,20 @@
 <template>
     <v-container class="gallery app-page">
         <v-sheet v-if="!isLoading" class="gallery-filters" :style="{ top: ($vuetify.application.top + 8) + 'px' }" rounded elevation="2">
-            <v-row dense>
-                <v-col cols="12" md="6">
-                    <v-text-field v-model="message" prepend-inner-icon="mdi-magnify" single-line outlined filled hide-details auto-grow label="Search for name or ID" type="text"></v-text-field>
-                </v-col>
-                <v-col cols="6" md="3">
-                    <v-select v-model="animationFilter" :items="animationFilters" label="Animation" prepend-inner-icon="mdi-animation-play" outlined filled hide-details></v-select>
-                </v-col>
-                <v-col cols="6" md="3">
-                    <v-select v-model="sizeFilter" :items="sizeFilters" label="Size" prepend-inner-icon="mdi-image-size-select-large" outlined filled hide-details></v-select>
-                </v-col>
-            </v-row>
+            <div class="gallery-filter-controls">
+                <div class="gallery-search">
+                    <v-text-field v-model="message" prepend-inner-icon="mdi-magnify" single-line outlined filled dense hide-details label="Search for name or ID" type="text"></v-text-field>
+                </div>
+                <div class="gallery-animation-filter">
+                    <v-select v-model="animationFilter" :items="animationFilters" label="Animation" outlined filled dense hide-details></v-select>
+                </div>
+                <div class="gallery-size-filter">
+                    <v-select v-model="sizeFilter" :items="sizeFilters" label="Size" outlined filled dense hide-details></v-select>
+                </div>
+                <div class="gallery-sort">
+                    <v-select v-model="sortOrder" :items="sortOrders" label="Sort by" outlined filled dense hide-details></v-select>
+                </div>
+            </div>
             <div class="gallery-compatibility-filter">
                 <v-checkbox v-model="showIncompatible" :disabled="!deviceLimits" hide-details dense
                     label="Also show images incompatible with this device" class="ma-0 pa-0" />
@@ -95,7 +98,9 @@ import BmpDialog from '../components/BmpDialog';
 import ButtonBMPReport from '../components/ButtonBMPReport';
 import GalleryViewportItem from '../components/GalleryViewportItem';
 
+const galleryNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 const BATCH_SIZE = 24;
+const GALLERY_FILTERS_KEY = 'pixelit-gallery-filters-v1';
 let pendingBMPsRequest = null;
 export default {
     mixins: [actionFeedback],
@@ -119,17 +124,34 @@ export default {
         if (this.loadMoreObserver) this.loadMoreObserver.disconnect();
     },
     data: function () {
+        const sortOrders = [
+            { text: 'Default', value: 'default' },
+            { text: 'Name (A–Z)', value: 'name-asc' },
+            { text: 'Name (Z–A)', value: 'name-desc' },
+            { text: 'ID (ascending)', value: 'id-asc' },
+            { text: 'ID (descending)', value: 'id-desc' },
+        ];
+        const animationFilters = [
+            { text: 'All bitmaps', value: 'all' },
+            { text: 'Animated', value: 'animated' },
+            { text: 'Not animated', value: 'static' },
+        ];
+        let saved = {};
+        try {
+            saved = JSON.parse(localStorage.getItem(GALLERY_FILTERS_KEY)) || {};
+        } catch {
+            // Use defaults when browser storage is unavailable.
+        }
         return {
             message: '',
-            showIncompatible: false,
             filterRevision: 0,
-            animationFilter: 'all',
-            sizeFilter: 'all',
-            animationFilters: [
-                { text: 'All bitmaps', value: 'all' },
-                { text: 'Animated', value: 'animated' },
-                { text: 'Not animated', value: 'static' },
-            ],
+            showIncompatible: saved.showIncompatible === true,
+            animationFilter: animationFilters.some(option => option.value === saved.animationFilter) ? saved.animationFilter : 'all',
+            sizeFilter: typeof saved.sizeFilter === 'string' && /^[1-9][0-9]*x[1-9][0-9]*$/.test(saved.sizeFilter)
+                ? saved.sizeFilter : 'all',
+            sortOrder: sortOrders.some(option => option.value === saved.sortOrder) ? saved.sortOrder : 'default',
+            sortOrders,
+            animationFilters,
             openBitmapId: null,
             openReportBitmapId: null,
             visibleCount: BATCH_SIZE,
@@ -148,13 +170,14 @@ export default {
         message() {
             this.resetResults();
         },
-        animationFilter() {
+        galleryPreferences(preferences) {
             this.resetResults();
+            try {
+                localStorage.setItem(GALLERY_FILTERS_KEY, JSON.stringify(preferences));
+            } catch {
+                // Changes still apply to this visit when storage is unavailable.
+            }
         },
-        sizeFilter() {
-            this.resetResults();
-        },
-        showIncompatible() { this.resetResults(); },
         compatibilityKey() { this.resetResults(); },
         visibleBMPs() {
             // Recheck after each batch, even when the trigger stays in a tall viewport.
@@ -186,17 +209,24 @@ export default {
             this.visibleCount = Math.min(this.visibleCount + BATCH_SIZE, this.getBMPs.length);
         },
         async loadBMPs() {
-            if (this.$store.state.bmpsFromAPI.length) return;
+            if (this.$store.state.bmpsFromAPI.length) {
+                this.validateSizeFilter();
+                return;
+            }
             this.isLoading = true;
             this.loadError = false;
             try {
                 this.$store.state.bmpsFromAPI = await getBMPsFromAPI(this.$apiServerBaseURL);
+                this.validateSizeFilter();
             } catch (error) {
                 console.error('Could not load gallery', error);
                 this.loadError = true;
             } finally {
                 this.isLoading = false;
             }
+        },
+        validateSizeFilter() {
+            if (!this.sizeFilters.some(option => option.value === this.sizeFilter)) this.sizeFilter = 'all';
         },
         async copyText(value) {
             try {
@@ -221,6 +251,10 @@ export default {
         },
     },
     computed: {
+        galleryPreferences() {
+            const { animationFilter, sizeFilter, sortOrder, showIncompatible } = this;
+            return { animationFilter, sizeFilter, sortOrder, showIncompatible };
+        },
         sizeFilters() {
             const sizes = new Map();
             this.$store.state.bmpsFromAPI.forEach((bmp) => {
@@ -240,7 +274,18 @@ export default {
             return this.deviceLimits ? this.matchingBMPs.filter(bmp => !galleryCompatibility(bmp, this.deviceLimits).ok).length : 0;
         },
         getBMPs() {
-            return this.deviceLimits && !this.showIncompatible ? this.matchingBMPs.filter(bmp => galleryCompatibility(bmp, this.deviceLimits).ok) : this.matchingBMPs;
+            const results = this.deviceLimits && !this.showIncompatible
+                ? this.matchingBMPs.filter(bmp => galleryCompatibility(bmp, this.deviceLimits).ok)
+                : this.matchingBMPs;
+            if (this.sortOrder === 'default') return results;
+
+            const byName = this.sortOrder.startsWith('name-');
+            const direction = this.sortOrder.endsWith('-desc') ? -1 : 1;
+            return results.slice().sort((a, b) => {
+                const idOrder = a.id - b.id;
+                if (!byName) return direction * idOrder;
+                return direction * galleryNameCollator.compare(a.name, b.name) || idOrder;
+            });
         },
         matchingBMPs() {
             const bmps = this.$store.state.bmpsFromAPI;
@@ -297,6 +342,33 @@ function getBMPsFromAPI(baseURL) {
     z-index: 4;
     padding: 12px;
     margin-bottom: 20px;
+}
+
+.gallery-filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.gallery-search {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+.gallery-filter-controls > div {
+    max-width: 100%;
+}
+.gallery-animation-filter {
+    width: 10.5rem;
+}
+.gallery-size-filter {
+    width: 8rem;
+}
+.gallery-sort {
+    width: 11.5rem;
+}
+@media (max-width: 650px) {
+    .gallery-search {
+        flex-basis: 100%;
+    }
 }
 
 .gallery-compatibility-filter {

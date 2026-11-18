@@ -79,7 +79,12 @@ to apply it; the default is off. Requires firmware with `includePrereleases` sup
 and PixelIt.API with the `includePrereleases=true` release query. Older APIs keep
 returning stable releases. No additional release polling is introduced.
 
-## Gallery device compatibility
+## Gallery browsing and device compatibility
+
+Use **Sort by** to order gallery results by name or numeric ID in either
+direction. The default keeps the order supplied by the gallery service. Sorting
+applies to all matching entries, including those below the current batch.
+Include this control in the stable PixelIt.Docs Gallery guide when released.
 
 The Gallery defaults to images and animations that fit the connected device's
 advertised dimensions, frame and pixel budgets. **Also show images incompatible with this device** reveals the remaining entries with a centered status label and disabled Send button.

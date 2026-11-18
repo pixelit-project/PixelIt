@@ -194,6 +194,31 @@ function load(file, context) {
         assert.equal(gallery.getBMPs.length, 41, 'All sizes preserves the animation filter');
         gallery.animationFilter = 'all'; await Vue.nextTick(); gallery._render();
         assert.equal(gallery.getBMPs.length, 81);
+        gallery.visibleCount = 72;
+        scrollWindow.scrollY = 6000;
+        gallery.sortOrder = 'id-desc'; await Vue.nextTick(); gallery._render();
+        assert.equal(gallery.visibleCount, 24);
+        assert.equal(scrollWindow.scrollY, 88);
+        assert.equal(gallery.visibleBMPs[0].id, 80, 'Sort before selecting the visible batch');
+        gallery.sortOrder = 'id-asc'; await Vue.nextTick();
+        assert.equal(gallery.visibleBMPs[0].id, 0);
+
+        records.splice(0, records.length,
+            { id: 10, name: 'Rocket 10', animated: true, sizeX: 8, sizeY: 8 },
+            { id: 3, name: 'Rocket 2', animated: true, sizeX: 8, sizeY: 8 },
+            { id: 5, name: 'Rocket 1', animated: false, sizeX: 8, sizeY: 8 },
+            { id: 9, name: 'Rocket', animated: true, sizeX: 32, sizeY: 8 },
+            { id: 7, name: 'Other', animated: true, sizeX: 8, sizeY: 8 });
+        gallery.message = 'rocket';
+        gallery.animationFilter = 'animated';
+        gallery.sizeFilter = '8x8';
+        gallery.sortOrder = 'name-asc'; await Vue.nextTick(); gallery._render();
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [3, 10]);
+        gallery.sortOrder = 'name-desc'; await Vue.nextTick();
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3]);
+        assert.deepEqual(records.map(bmp => bmp.id), [10, 3, 5, 9, 7], 'Sorting preserves the cache order');
+        gallery.sortOrder = 'default'; await Vue.nextTick();
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3]);
         assert.equal(renderErrors.length, 0, renderErrors.map(error => error.message).join(', '));
     } finally {
         Vue.config.errorHandler = previousErrorHandler;
