@@ -6,7 +6,7 @@
 -   (o0shojo0o) Use Arduino Core 3.1.2 on NodeMCU v2 while preserving its GPIO2/D4 LED output.
 -   (o0shojo0o) Make the zZz sleep animation optional, enabled by default.
 -   (o0shojo0o) Keep the zZz sleep animation responsive and visible in Liveview.
--   (o0shojo0o) Add name and ID sorting to the Pixel Gallery and keep its filters compact and readable.
+-   (o0shojo0o) Add name and ID sorting to the Pixel Gallery.
 
 ### 3.0.1 (2026-11-13)
 
