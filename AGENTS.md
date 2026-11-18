@@ -52,6 +52,8 @@ If a companion repository cannot be inspected, report that limitation.
   relationship to `PixelIt.WebUI` before changing the integration.
 - Keep local development documentation and `CHANGELOG.md` aligned with behavior
   changes. Do not present historical device measurements as results of a new run.
+- Record user-visible changes to the bundled WebUI under `Unreleased` in this
+  repository's `CHANGELOG.md`, including changes made solely in `PixelIt.WebUI`.
 - Keep individual `CHANGELOG.md` entries, especially under `Unreleased`, concise:
   use a short sentence focused on the essential change. Omit implementation and
   test details, but preserve important dependencies and limitations. When asked
