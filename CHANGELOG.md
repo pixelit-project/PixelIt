@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   (o0shojo0o) Add community star ratings and sorting by rating to the Pixel Gallery with the matching PixelIt.API.
+
 ### 3.0.2 (2026-11-18)
 
 -   (o0shojo0o) Release ESP8266 MQTT TCP buffers immediately after incomplete writes to avoid memory exhaustion.
