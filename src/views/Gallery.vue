@@ -50,6 +50,25 @@
                             </summary>
                             <p class="gallery-compatibility-reason">{{ compatibility(bmp).reason }}</p>
                         </details>
+                        <div>
+                            <p v-if="ratingsLoaded" class="gallery-summary">{{ ratingSummary(bmp.id) }}</p>
+                            <div class="gallery-rating" role="group" :aria-label="'My rating for ' + bmp.name"
+                                :aria-describedby="ratingHint ? 'rating-hint-' + bmp.id : null">
+                                <v-btn v-for="stars in 5" :key="stars" icon small
+                                    :disabled="!ratingsLoaded || !ratingUuid || savingRating"
+                                    :aria-pressed="myRating(bmp.id) === stars"
+                                    :aria-label="stars + (stars === 1 ? ' star' : ' stars')"
+                                    @click="rateBitmap(bmp.id, stars)">
+                                    <v-icon small aria-hidden="true" class="gallery-rating-star">
+                                        {{ myRating(bmp.id) >= stars ? 'mdi-star' : 'mdi-star-outline' }}
+                                    </v-icon>
+                                </v-btn>
+                            </div>
+                            <div v-if="ratingHint" :id="'rating-hint-' + bmp.id" class="gallery-rating-hint">
+                                {{ ratingHint }}
+                                <v-btn v-if="ratingLoadError" text x-small @click="loadRatings">Retry</v-btn>
+                            </div>
+                        </div>
                         <div class="gallery-footer">
                             <v-btn text small class="gallery-copy" @click="copyText(bmp.id)" :title="'Copy ID ' + bmp.id" :aria-label="'Copy ID ' + bmp.id">
                                 <span>#{{ bmp.id }}</span><v-icon small right>mdi-content-copy</v-icon>
@@ -108,6 +127,7 @@ export default {
     name: 'Gallery',
     created: function () {
         this.loadBMPs();
+        this.loadRatings();
     },
     mounted() {
         if (typeof IntersectionObserver !== 'undefined') {
@@ -130,6 +150,8 @@ export default {
             { text: 'Name (Z–A)', value: 'name-desc' },
             { text: 'ID (ascending)', value: 'id-asc' },
             { text: 'ID (descending)', value: 'id-desc' },
+            { text: 'Rating (descending)', value: 'rating-desc' },
+            { text: 'Rating (ascending)', value: 'rating-asc' },
         ];
         const animationFilters = [
             { text: 'All bitmaps', value: 'all' },
@@ -150,6 +172,11 @@ export default {
             sizeFilter: typeof saved.sizeFilter === 'string' && /^[1-9][0-9]*x[1-9][0-9]*$/.test(saved.sizeFilter)
                 ? saved.sizeFilter : 'all',
             sortOrder: sortOrders.some(option => option.value === saved.sortOrder) ? saved.sortOrder : 'default',
+            ratings: {},
+            ratingRequest: 0,
+            ratingsLoaded: false,
+            ratingLoadError: null,
+            savingRating: false,
             sortOrders,
             animationFilters,
             openBitmapId: null,
@@ -167,6 +194,9 @@ export default {
         GalleryViewportItem,
     },
     watch: {
+        ratingUuid() {
+            this.loadRatings();
+        },
         message() {
             this.resetResults();
         },
@@ -185,6 +215,45 @@ export default {
         },
     },
     methods: {
+        async loadRatings() {
+            const request = ++this.ratingRequest;
+            this.ratingsLoaded = false;
+            this.ratingLoadError = null;
+            try {
+                const ratings = await requestRatings(this.$apiServerBaseURL, this.ratingUuid);
+                if (request !== this.ratingRequest) return;
+                this.ratings = Object.fromEntries(ratings.map(rating => [rating.iconId, rating]));
+                this.ratingsLoaded = true;
+            } catch (error) {
+                if (request === this.ratingRequest) {
+                    this.ratingLoadError = error.status === 404
+                        ? 'This PixelIt.API version does not provide icon ratings.'
+                        : 'Could not load ratings from PixelIt.API.';
+                }
+            }
+        },
+        myRating(id) {
+            return this.ratingsLoaded && this.ratingUuid ? (this.ratings[id]?.myRating ?? 0) : 0;
+        },
+        ratingSummary(id) {
+            const rating = this.ratings[id];
+            if (!rating) return 'No ratings yet';
+            return `${rating.average.toFixed(1)} / 5 · ${rating.count} ${rating.count === 1 ? 'vote' : 'votes'}`;
+        },
+        async rateBitmap(id, stars) {
+            if (!this.ratingUuid || !this.ratingsLoaded || this.savingRating || this.myRating(id) === stars) return;
+            const uuid = this.ratingUuid;
+            this.savingRating = true;
+            try {
+                const rating = await requestRatings(this.$apiServerBaseURL, uuid, { iconId: id, stars });
+                if (uuid !== this.ratingUuid) return;
+                this.$set(this.ratings, rating.iconId, rating);
+            } catch (error) {
+                notify(error.message, 'error');
+            } finally {
+                this.savingRating = false;
+            }
+        },
         resetResults() {
             this.visibleCount = BATCH_SIZE;
             // Drop retained viewport state when a bitmap moves within filtered results.
@@ -251,9 +320,17 @@ export default {
         },
     },
     computed: {
+        ratingUuid() {
+            return this.$demoMode || !this.sockedIsConnected ? null : this.$store.state.deviceUuid;
+        },
         galleryPreferences() {
             const { animationFilter, sizeFilter, sortOrder, showIncompatible } = this;
             return { animationFilter, sizeFilter, sortOrder, showIncompatible };
+        },
+        ratingHint() {
+            if (this.ratingLoadError) return this.ratingLoadError;
+            if (!this.ratingsLoaded || this.ratingUuid) return '';
+            return this.$demoMode ? 'Vote on your PixelIt.' : 'Connect your PixelIt to vote.';
         },
         sizeFilters() {
             const sizes = new Map();
@@ -283,6 +360,9 @@ export default {
             const direction = this.sortOrder.endsWith('-desc') ? -1 : 1;
             return results.slice().sort((a, b) => {
                 const idOrder = a.id - b.id;
+                if (this.sortOrder.startsWith('rating-')) {
+                    return direction * ((this.ratings[a.id]?.average ?? 0) - (this.ratings[b.id]?.average ?? 0)) || idOrder;
+                }
                 if (!byName) return direction * idOrder;
                 return direction * galleryNameCollator.compare(a.name, b.name) || idOrder;
             });
@@ -314,6 +394,23 @@ export default {
         },
     },
 };
+
+async function requestRatings(baseURL, uuid, vote) {
+    const headers = uuid ? { 'X-PixelIt-Rating-UUID': uuid } : {};
+    const options = { headers };
+    if (vote) {
+        options.method = 'POST';
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(vote);
+    }
+    const response = await fetch(`${baseURL.replace(/\/$/, '')}/icon-ratings`, options);
+    if (response.status === 429) throw new Error('Too many rating requests. Try again later.');
+    if (response.status === 404 && vote) throw new Error('This icon is no longer available to rate.');
+    if (!response.ok) {
+        throw Object.assign(new Error('Could not save your rating. Try again.'), { status: response.status });
+    }
+    return response.json();
+}
 
 function getBMPsFromAPI(baseURL) {
     if (!pendingBMPsRequest) {
@@ -422,6 +519,28 @@ function getBMPsFromAPI(baseURL) {
     font-size: 12px;
     opacity: .65;
     margin: 0;
+}
+.gallery-rating {
+    display: flex;
+    justify-content: center;
+    margin: 0 -12px -4px;
+}
+.gallery-rating .v-btn {
+    width: 24px;
+    height: 28px;
+}
+.gallery-rating .v-btn ::v-deep .gallery-rating-star.v-icon {
+    /* Vuetify also uses !important to gray out icons in disabled buttons. */
+    color: #b77900 !important;
+}
+.gallery-rating .v-btn.theme--dark ::v-deep .gallery-rating-star.v-icon {
+    color: #ffc44d !important;
+}
+.gallery-rating-hint {
+    margin-top: 4px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.3;
 }
 .gallery-footer {
     margin: auto -16px 0;

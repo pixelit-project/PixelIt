@@ -83,8 +83,39 @@ function load(file, context) {
         scrollY: 0,
         scrollTo(options) { this.scrollY = options.top; this.lastScroll = options; },
     };
+    const stored = new Map();
+    const localStorage = {
+        getItem: key => stored.get(key) || null,
+        setItem: (key, value) => stored.set(key, value),
+    };
+    const uuid = 'a'.repeat(40);
+    const storedVotes = [
+        { iconId: 3, average: 3, count: 2, myRating: null },
+        { iconId: 5, average: 5, count: 1, myRating: null },
+    ];
+    const ratingRequests = [];
+    let ratingsFailure = null;
+    const ratingFetch = async (url, options) => {
+        assert.equal(url, 'https://example.test/api/icon-ratings');
+        const voter = options.headers['X-PixelIt-Rating-UUID'];
+        assert(voter === undefined || voter === uuid || voter === 'b'.repeat(40));
+        ratingRequests.push(options);
+        if (ratingsFailure === 'network') throw new TypeError('Failed to fetch');
+        if (ratingsFailure) return { ok: false, status: ratingsFailure };
+        if (options.method === 'POST') {
+            assert.equal(options.headers['Content-Type'], 'application/json');
+            const { iconId, stars } = JSON.parse(options.body);
+            assert.equal(iconId, 10);
+            const row = { iconId, average: stars === 1 ? 4.5 : 4.9, count: 10, myRating: stars };
+            const index = storedVotes.findIndex(vote => vote.iconId === iconId);
+            if (index === -1) storedVotes.push(row);
+            else storedVotes.splice(index, 1, row);
+            return { ok: true, json: async () => row };
+        }
+        return { ok: true, json: async () => storedVotes.map(row => ({ ...row, myRating: voter === uuid ? row.myRating : null })) };
+    };
     const galleryComponent = load('src/views/Gallery.vue', {
-        window: scrollWindow,
+        window: scrollWindow, localStorage, fetch: ratingFetch,
         ...require('./gallery-helpers.cjs'), actionFeedback: {}, notify() {}, BmpCanvas: {}, BmpDialog: {}, ButtonBMPReport: {}, GalleryViewportItem: {},
     });
     const gallerySource = fs.readFileSync(path.join(__dirname, '../src/views/Gallery.vue'), 'utf8');
@@ -95,8 +126,9 @@ function load(file, context) {
     const gallery = new Vue({
         ...galleryComponent, ...compiled,
         beforeCreate() {
+            this.$apiServerBaseURL = 'https://example.test/api/';
             this.$vuetify = { application: { top: 64 } };
-            this.$store = Vue.observable({ state: { bmpsFromAPI: records, socket: { isConnected: true } } });
+            this.$store = Vue.observable({ state: { bmpsFromAPI: records, deviceUuid: uuid, socket: { isConnected: true } } });
         },
     });
     gallery.$el = { getBoundingClientRect: () => ({ top: 160 - scrollWindow.scrollY }) };
@@ -219,6 +251,62 @@ function load(file, context) {
         assert.deepEqual(records.map(bmp => bmp.id), [10, 3, 5, 9, 7], 'Sorting preserves the cache order');
         gallery.sortOrder = 'default'; await Vue.nextTick();
         assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3]);
+        gallery.sortOrder = 'rating-desc'; await Vue.nextTick(); gallery._render();
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [3, 10], 'Sort matching icons by community rating');
+        assert.equal(gallery.ratingUuid, uuid);
+        await Promise.all([gallery.rateBitmap(10, 1), gallery.rateBitmap(10, 5)]);
+        await gallery.rateBitmap(10, 1);
+        assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 1);
+        assert.equal(gallery.myRating(10), 1);
+        assert.equal(gallery.ratingSummary(10), '4.5 / 5 · 10 votes');
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3], 'Sort by the average returned by the API, not the personal vote');
+        await gallery.rateBitmap(10, 5);
+        assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 2);
+        assert.equal(gallery.myRating(10), 5, 'The device can revise its vote');
+        assert.equal(gallery.ratingSummary(10), '4.9 / 5 · 10 votes', 'The average changes but the count stays the same');
+        gallery.sortOrder = 'rating-asc'; await Vue.nextTick(); gallery._render();
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [3, 10], 'Sort matching icons by lowest rating');
+        assert.equal(galleryComponent.data().sortOrder, 'rating-asc', 'Restore rating sort order');
+        assert.equal(stored.size, 1, 'Store only gallery preferences');
+        gallery.$store.state.socket.isConnected = false;
+        await Vue.nextTick();
+        await gallery.rateBitmap(10, 3);
+        assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 2, 'Offline browsing cannot vote');
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(gallery.myRating(10), 0, 'Offline browsing shows only the aggregate');
+        assert.equal(gallery.ratingSummary(10), '4.9 / 5 · 10 votes');
+
+        gallery.$store.state.socket.isConnected = true;
+        gallery.$store.state.deviceUuid = 'b'.repeat(40);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(gallery.myRating(10), 0, 'Another device has no personal vote');
+        gallery.$store.state.deviceUuid = uuid;
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(gallery.myRating(10), 5, 'The original device retains its updated vote');
+        ratingsFailure = 404;
+        await gallery.loadRatings();
+        assert.match(gallery.ratingLoadError, /version does not provide icon ratings/);
+        const findStars = (node) => [
+            ...(node.data?.attrs?.['aria-label'] === '1 star' ? [node] : []),
+            ...(node.children || node.componentOptions?.children || []).flatMap(findStars),
+        ];
+        const unavailableGallery = gallery._render();
+        const stars = findStars(unavailableGallery);
+        const findRatingGroups = (node) => [
+            ...(node.data?.attrs?.role === 'group' ? [node] : []),
+            ...(node.children || node.componentOptions?.children || []).flatMap(findRatingGroups),
+        ];
+        assert.deepEqual(findRatingGroups(unavailableGallery).map(node => node.data.attrs['aria-describedby']),
+            ['rating-hint-3', 'rating-hint-10'], 'Each star group references its own error message');
+        assert.equal(stars.length, 2, 'Stars remain visible when the ratings endpoint is unavailable');
+        assert(stars.every(button => button.data.attrs.disabled), 'Stars are disabled while ratings are unavailable');
+        ratingsFailure = 'network';
+        await gallery.loadRatings();
+        assert.match(gallery.ratingLoadError, /Could not load ratings from PixelIt.API/);
+        ratingsFailure = null;
+        await gallery.loadRatings();
+        assert(!gallery.ratingLoadError);
+        assert(findStars(gallery._render()).some(button => !button.data.attrs.disabled), 'Retry restores voting');
         assert.equal(renderErrors.length, 0, renderErrors.map(error => error.message).join(', '));
     } finally {
         Vue.config.errorHandler = previousErrorHandler;

@@ -460,6 +460,7 @@ export default new Vuex.Store({
         bmpsFromAPI: [],
         pixelCreatorPixel: {},
         telemetryData: '',
+        deviceUuid: null,
         userMapData: { coords: [] },
         statistics: {},
     },
@@ -473,6 +474,7 @@ export default new Vuex.Store({
             }, 1000);
         },
         SOCKET_ONCLOSE(state) {
+            state.deviceUuid = null;
             state.socket.isConnected = false;
             state.animationLimits = null;
             state.galleryCapabilities = null;
@@ -579,6 +581,7 @@ function addToConfigData(obj, state) {
 }
 
 function addToTelemetryData(obj, state) {
+    state.deviceUuid = typeof obj.uuid === 'string' && /^[0-9a-f]{40}$/i.test(obj.uuid) ? obj.uuid.toLowerCase() : null;
     state.telemetryData = JSON.stringify(obj, null, 4);
 }
 

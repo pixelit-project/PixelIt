@@ -81,6 +81,15 @@ returning stable releases. No additional release polling is introduced.
 
 ## Gallery browsing and device compatibility
 
+Choose 1–5 stars on an icon to vote. Select a different star to update your
+connected PixelIt device’s vote. The API uses the 40-character device UUID from the WebSocket telemetry
+preview and returns the community average and vote count. Telemetry uploads can
+stay disabled. Offline and demo visitors can browse community ratings.
+Under **Sort by**, choose **Rating (ascending)** or **Rating (descending)**.
+Unrated icons sort as zero.
+Deploy PixelIt.API with its icon ratings migration before publishing this WebUI.
+Include the feature in the PixelIt.Docs Gallery guide with the stable release.
+
 Use **Sort by** to order gallery results by name or numeric ID in either
 direction. The default keeps the order supplied by the gallery service. Sorting
 applies to all matching entries, including those below the current batch.
