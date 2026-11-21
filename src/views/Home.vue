@@ -7,10 +7,14 @@
                         <h2>System</h2>
                     </v-card-title>
 
-                    <div class="text-center updateMessage" v-if="newVersionAvailable && !isDemoMode">
-                        <a class="updateMessage" :href="gitUpdateURL" target="_blank">Update to version {{ gitVersion }} available!</a>
-                        <v-icon size="16px" class="updateMessage">mdi-open-in-new</v-icon>
-                    </div>
+                    <router-link v-if="newVersionAvailable && !isDemoMode" class="update-notice" :to="{ name: 'Update' }">
+                        <v-icon class="update-notice__icon" size="20" aria-hidden="true">mdi-update</v-icon>
+                        <span class="update-notice__text">
+                            <strong>Update available</strong>
+                            <span>Version {{ gitVersion }}</span>
+                        </span>
+                        <v-icon class="update-notice__arrow" size="18" aria-hidden="true">mdi-chevron-right</v-icon>
+                    </router-link>
                     <v-skeleton-loader v-if="!systemItems.length" type="list-item-two-line@4" />
                     <ListInfo v-else :items="primarySystemItems" />
                     <v-expansion-panels v-if="technicalSystemItems.length" flat class="mt-4">
@@ -113,9 +117,6 @@ export default {
         gitVersion() {
             return this.$store.state.gitVersion;
         },
-        gitUpdateURL() {
-            return this.$store.state.gitDownloadUrl;
-        },
         userMapData() {
             return this.$store.state.userMapData.coords;
         },
@@ -138,8 +139,57 @@ export default {
 };
 </script>
 <style scoped>
-.updateMessage {
-    color: rgb(255, 102, 0);
-    font-weight: bold;
+.update-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 10px;
+    border: 1px solid rgba(195, 109, 43, 0.4);
+    border-radius: 8px;
+    background-color: rgba(195, 109, 43, 0.09);
+    color: inherit;
+    text-decoration: none;
+}
+
+.update-notice:hover,
+.update-notice:focus-visible {
+    background-color: rgba(195, 109, 43, 0.18);
+}
+
+.update-notice:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.update-notice .update-notice__icon {
+    flex: none;
+    padding: 6px;
+    border-radius: 6px;
+    background-color: rgba(195, 109, 43, 0.15);
+    color: #984305;
+}
+
+.theme--dark .update-notice .update-notice__icon {
+    color: #ffb476;
+}
+
+.update-notice__text {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.update-notice__text span {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+}
+
+.update-notice .update-notice__arrow {
+    flex: none;
+    color: inherit;
 }
 </style>

@@ -81,8 +81,8 @@ returning stable releases. No additional release polling is introduced.
 
 ## Gallery browsing and device compatibility
 
-Choose 1–5 stars on an icon to vote. Select a different star to update your
-connected PixelIt device’s vote. The API uses the 40-character device UUID from the WebSocket telemetry
+The stars on each icon show the community average. Select the star row to
+edit the connected PixelIt device’s vote directly on the card. The API uses the 40-character device UUID from the WebSocket telemetry
 preview and returns the community average and vote count. Telemetry uploads can
 stay disabled. Offline and demo visitors can browse community ratings.
 Under **Sort by**, choose **Rating (ascending)** or **Rating (descending)**.

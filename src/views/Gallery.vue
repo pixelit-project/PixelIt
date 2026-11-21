@@ -36,13 +36,57 @@
                 <v-btn text @click="loadBMPs">Retry</v-btn>
             </v-col>
             <v-col v-for="bmp in visibleBMPs" :key="filterRevision + ':' + bmp.id" cols="6" lg="2">
-                <GalleryViewportItem :pinned="openBitmapId === bmp.id || openReportBitmapId === bmp.id">
+                <GalleryViewportItem :pinned="openBitmapId === bmp.id || openReportBitmapId === bmp.id || openRatingBitmapId === bmp.id">
                     <v-card class="ui-panel gallery-card" elevation="2">
                         <div class="gallery-title" :title="bmp.name">{{ bmp.name }}</div>
                         <div class="gallery-preview">
                             <BmpCanvas v-if="metadata(bmp).valid" :bmp="bmp" />
                         </div>
-                        <p v-if="metadata(bmp).valid" class="gallery-summary">{{ formatSummary(bmp) }}</p>
+                        <div>
+                            <div class="gallery-rating-controls" role="group" :aria-label="'Rating for ' + bmp.name"
+                                :aria-describedby="ratingHint ? 'rating-hint-' + bmp.id : null">
+                                <v-btn v-if="openRatingBitmapId !== bmp.id" text small class="gallery-rate-button"
+                                    :disabled="!ratingsLoaded || !ratingUuid || savingRating"
+                                    :title="myRating(bmp.id) ? 'Edit your vote: ' + myRating(bmp.id) + ' stars' : 'Rate icon'"
+                                    @click="openRatingBitmapId = bmp.id">
+                                    <span class="d-sr-only">{{ myRating(bmp.id) ? 'Edit your vote.' : 'Rate icon.' }}</span>
+                                    <span v-if="ratingsLoaded && ratings[bmp.id]" class="d-sr-only">
+                                        {{ ratings[bmp.id].average.toFixed(1) }} out of 5 stars.
+                                    </span>
+                                    <span class="gallery-rating-stars" aria-hidden="true">
+                                        <span v-for="star in 5" :key="star" class="gallery-rating-star">
+                                            <v-icon class="gallery-community-icon">mdi-star-outline</v-icon>
+                                            <v-icon class="gallery-community-icon"
+                                                :style="{ clipPath: 'inset(0 ' + (100 - communityStarFill(bmp.id, star)) + '% 0 0)' }">mdi-star</v-icon>
+                                        </span>
+                                    </span>
+                                    <span v-if="ratingsLoaded" class="d-sr-only">
+                                        {{ ratings[bmp.id] ? ratingVoteLabel(bmp.id) : '0 votes' }}
+                                    </span>
+                                </v-btn>
+                                <div v-else class="gallery-rating-editor" role="group" :aria-label="'Choose your rating for ' + bmp.name">
+                                    <v-btn v-for="stars in 5" :key="stars" icon small color="primary"
+                                        :disabled="!ratingsLoaded || !ratingUuid || savingRating"
+                                        :aria-pressed="myRating(bmp.id) === stars"
+                                        :aria-label="stars + (stars === 1 ? ' star' : ' stars')"
+                                        @click="rateBitmap(bmp.id, stars)">
+                                        <v-icon small aria-hidden="true">{{ myRating(bmp.id) >= stars ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
+                                    </v-btn>
+                                    <v-btn icon small aria-label="Cancel rating" title="Cancel rating" @click="openRatingBitmapId = null">
+                                        <v-icon small aria-hidden="true">mdi-close</v-icon>
+                                    </v-btn>
+                                </div>
+                            </div>
+                            <div v-if="ratingHint" :id="'rating-hint-' + bmp.id" class="gallery-rating-hint">
+                                {{ ratingHint }}
+                                <v-btn v-if="ratingLoadError" text x-small @click="loadRatings">Retry</v-btn>
+                            </div>
+                        </div>
+                        <p v-if="metadata(bmp).valid || ratingsLoaded" class="gallery-summary">
+                            <span v-if="metadata(bmp).valid">{{ formatSummary(bmp) }}</span>
+                            <span v-if="metadata(bmp).valid && ratingsLoaded" aria-hidden="true"> · </span>
+                            <span v-if="ratingsLoaded">{{ ratings[bmp.id] ? ratingVoteLabel(bmp.id) : '0 votes' }}</span>
+                        </p>
                         <details v-if="!metadata(bmp).valid || (deviceLimits && !compatibility(bmp).ok)" class="gallery-compatibility" :class="{ 'gallery-compatibility-invalid': !metadata(bmp).valid }">
                             <summary :title="compatibility(bmp).reason">
                                 <v-icon small aria-hidden="true">{{ metadata(bmp).valid ? 'mdi-alert-outline' : 'mdi-alert-circle-outline' }}</v-icon>
@@ -50,25 +94,6 @@
                             </summary>
                             <p class="gallery-compatibility-reason">{{ compatibility(bmp).reason }}</p>
                         </details>
-                        <div>
-                            <p v-if="ratingsLoaded" class="gallery-summary">{{ ratingSummary(bmp.id) }}</p>
-                            <div class="gallery-rating" role="group" :aria-label="'My rating for ' + bmp.name"
-                                :aria-describedby="ratingHint ? 'rating-hint-' + bmp.id : null">
-                                <v-btn v-for="stars in 5" :key="stars" icon small
-                                    :disabled="!ratingsLoaded || !ratingUuid || savingRating"
-                                    :aria-pressed="myRating(bmp.id) === stars"
-                                    :aria-label="stars + (stars === 1 ? ' star' : ' stars')"
-                                    @click="rateBitmap(bmp.id, stars)">
-                                    <v-icon small aria-hidden="true" class="gallery-rating-star">
-                                        {{ myRating(bmp.id) >= stars ? 'mdi-star' : 'mdi-star-outline' }}
-                                    </v-icon>
-                                </v-btn>
-                            </div>
-                            <div v-if="ratingHint" :id="'rating-hint-' + bmp.id" class="gallery-rating-hint">
-                                {{ ratingHint }}
-                                <v-btn v-if="ratingLoadError" text x-small @click="loadRatings">Retry</v-btn>
-                            </div>
-                        </div>
                         <div class="gallery-footer">
                             <v-btn text small class="gallery-copy" @click="copyText(bmp.id)" :title="'Copy ID ' + bmp.id" :aria-label="'Copy ID ' + bmp.id">
                                 <span>#{{ bmp.id }}</span><v-icon small right>mdi-content-copy</v-icon>
@@ -150,8 +175,8 @@ export default {
             { text: 'Name (Z–A)', value: 'name-desc' },
             { text: 'ID (ascending)', value: 'id-asc' },
             { text: 'ID (descending)', value: 'id-desc' },
-            { text: 'Rating (descending)', value: 'rating-desc' },
             { text: 'Rating (ascending)', value: 'rating-asc' },
+            { text: 'Rating (descending)', value: 'rating-desc' },
         ];
         const animationFilters = [
             { text: 'All bitmaps', value: 'all' },
@@ -180,6 +205,7 @@ export default {
             sortOrders,
             animationFilters,
             openBitmapId: null,
+            openRatingBitmapId: null,
             openReportBitmapId: null,
             visibleCount: BATCH_SIZE,
             automaticLoading: false,
@@ -235,19 +261,27 @@ export default {
         myRating(id) {
             return this.ratingsLoaded && this.ratingUuid ? (this.ratings[id]?.myRating ?? 0) : 0;
         },
-        ratingSummary(id) {
-            const rating = this.ratings[id];
-            if (!rating) return 'No ratings yet';
-            return `${rating.average.toFixed(1)} / 5 · ${rating.count} ${rating.count === 1 ? 'vote' : 'votes'}`;
+        communityStarFill(id, star) {
+            const average = this.ratingsLoaded ? (this.ratings[id]?.average ?? 0) : 0;
+            return Math.min(1, Math.max(0, average - star + 1)) * 100;
+        },
+        ratingVoteLabel(id) {
+            const { count } = this.ratings[id];
+            return `${count} ${count === 1 ? 'vote' : 'votes'}`;
         },
         async rateBitmap(id, stars) {
-            if (!this.ratingUuid || !this.ratingsLoaded || this.savingRating || this.myRating(id) === stars) return;
+            if (!this.ratingUuid || !this.ratingsLoaded || this.savingRating) return;
+            if (this.myRating(id) === stars) {
+                this.openRatingBitmapId = null;
+                return;
+            }
             const uuid = this.ratingUuid;
             this.savingRating = true;
             try {
                 const rating = await requestRatings(this.$apiServerBaseURL, uuid, { iconId: id, stars });
                 if (uuid !== this.ratingUuid) return;
                 this.$set(this.ratings, rating.iconId, rating);
+                if (this.openRatingBitmapId === id) this.openRatingBitmapId = null;
             } catch (error) {
                 notify(error.message, 'error');
             } finally {
@@ -255,6 +289,7 @@ export default {
             }
         },
         resetResults() {
+            this.openRatingBitmapId = null;
             this.visibleCount = BATCH_SIZE;
             // Drop retained viewport state when a bitmap moves within filtered results.
             this.filterRevision++;
@@ -361,7 +396,11 @@ export default {
             return results.slice().sort((a, b) => {
                 const idOrder = a.id - b.id;
                 if (this.sortOrder.startsWith('rating-')) {
-                    return direction * ((this.ratings[a.id]?.average ?? 0) - (this.ratings[b.id]?.average ?? 0)) || idOrder;
+                    const first = this.ratings[a.id];
+                    const second = this.ratings[b.id];
+                    const averageOrder = (first?.average ?? 0) - (second?.average ?? 0);
+                    const voteCountOrder = (first?.count ?? 0) - (second?.count ?? 0);
+                    return direction * (averageOrder || voteCountOrder) || idOrder;
                 }
                 if (!byName) return direction * idOrder;
                 return direction * galleryNameCollator.compare(a.name, b.name) || idOrder;
@@ -520,21 +559,41 @@ function getBMPsFromAPI(baseURL) {
     opacity: .65;
     margin: 0;
 }
-.gallery-rating {
+.gallery-rating-stars {
     display: flex;
     justify-content: center;
-    margin: 0 -12px -4px;
+    gap: 4px;
+    align-items: center;
+    color: #9d6500;
 }
-.gallery-rating .v-btn {
-    width: 24px;
+.gallery-card.theme--dark .gallery-rating-stars {
+    color: #ffc44d;
+}
+.gallery-rating-star {
+    display: grid;
+}
+.gallery-rating-stars ::v-deep .gallery-community-icon.v-icon {
+    grid-area: 1 / 1;
+    color: inherit !important;
+    font-size: 16px;
+}
+.gallery-rating-editor {
+    display: flex;
+    justify-content: center;
+}
+.gallery-rating-editor .v-btn {
+    width: 18px;
     height: 28px;
 }
-.gallery-rating .v-btn ::v-deep .gallery-rating-star.v-icon {
-    /* Vuetify also uses !important to gray out icons in disabled buttons. */
-    color: #b77900 !important;
+.gallery-rating-controls {
+    text-align: center;
 }
-.gallery-rating .v-btn.theme--dark ::v-deep .gallery-rating-star.v-icon {
-    color: #ffc44d !important;
+.gallery-rate-button.v-btn {
+    min-width: 0;
+    height: 28px;
+    padding: 0 2px;
+    text-transform: none;
+    letter-spacing: normal;
 }
 .gallery-rating-hint {
     margin-top: 4px;

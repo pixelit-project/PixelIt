@@ -120,7 +120,7 @@ function load(file, context) {
     });
     const gallerySource = fs.readFileSync(path.join(__dirname, '../src/views/Gallery.vue'), 'utf8');
     const compiled = require('vue-template-compiler').compileToFunctions(
-        gallerySource.split('<template>')[1].split('</template>')[0]
+        gallerySource.slice('<template>'.length, gallerySource.lastIndexOf('</template>'))
     );
     const records = Array.from({ length: 101 }, (_, id) => ({ id, name: `Bitmap ${id}` }));
     const gallery = new Vue({
@@ -258,14 +258,28 @@ function load(file, context) {
         await gallery.rateBitmap(10, 1);
         assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 1);
         assert.equal(gallery.myRating(10), 1);
-        assert.equal(gallery.ratingSummary(10), '4.5 / 5 · 10 votes');
+        assert.equal(gallery.ratings[10].average, 4.5);
+        assert.equal(gallery.ratingVoteLabel(10), '10 votes');
+        assert.equal(gallery.ratingVoteLabel(5), '1 vote');
         assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3], 'Sort by the average returned by the API, not the personal vote');
         await gallery.rateBitmap(10, 5);
         assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 2);
         assert.equal(gallery.myRating(10), 5, 'The device can revise its vote');
-        assert.equal(gallery.ratingSummary(10), '4.9 / 5 · 10 votes', 'The average changes but the count stays the same');
+        assert.equal(gallery.ratings[10].average, 4.9, 'The average changes');
+        assert.equal(gallery.ratingVoteLabel(10), '10 votes', 'The vote count stays the same');
         gallery.sortOrder = 'rating-asc'; await Vue.nextTick(); gallery._render();
         assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [3, 10], 'Sort matching icons by lowest rating');
+        const originalRatings = gallery.ratings;
+        gallery.ratings = {
+            3: { average: 5, count: 2 },
+            10: { average: 5, count: 10 },
+        };
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [3, 10], 'Fewer votes sort lower at the same average');
+        gallery.sortOrder = 'rating-desc';
+        assert.deepEqual(Array.from(gallery.getBMPs, bmp => bmp.id), [10, 3], 'More votes sort higher at the same average');
+        gallery.sortOrder = 'rating-asc';
+        gallery.ratings = originalRatings;
+        await Vue.nextTick();
         assert.equal(galleryComponent.data().sortOrder, 'rating-asc', 'Restore rating sort order');
         assert.equal(stored.size, 1, 'Store only gallery preferences');
         gallery.$store.state.socket.isConnected = false;
@@ -274,7 +288,8 @@ function load(file, context) {
         assert.equal(ratingRequests.filter(options => options.method === 'POST').length, 2, 'Offline browsing cannot vote');
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(gallery.myRating(10), 0, 'Offline browsing shows only the aggregate');
-        assert.equal(gallery.ratingSummary(10), '4.9 / 5 · 10 votes');
+        assert.equal(gallery.ratings[10].average, 4.9);
+        assert.equal(gallery.ratingVoteLabel(10), '10 votes');
 
         gallery.$store.state.socket.isConnected = true;
         gallery.$store.state.deviceUuid = 'b'.repeat(40);
@@ -286,27 +301,36 @@ function load(file, context) {
         ratingsFailure = 404;
         await gallery.loadRatings();
         assert.match(gallery.ratingLoadError, /version does not provide icon ratings/);
-        const findStars = (node) => [
-            ...(node.data?.attrs?.['aria-label'] === '1 star' ? [node] : []),
-            ...(node.children || node.componentOptions?.children || []).flatMap(findStars),
-        ];
         const unavailableGallery = gallery._render();
-        const stars = findStars(unavailableGallery);
-        const findRatingGroups = (node) => [
-            ...(node.data?.attrs?.role === 'group' ? [node] : []),
-            ...(node.children || node.componentOptions?.children || []).flatMap(findRatingGroups),
+        const findNodes = (node, predicate) => [
+            ...(predicate(node) ? [node] : []),
+            ...(node.children || node.componentOptions?.children || []).flatMap(child => findNodes(child, predicate)),
         ];
-        assert.deepEqual(findRatingGroups(unavailableGallery).map(node => node.data.attrs['aria-describedby']),
-            ['rating-hint-3', 'rating-hint-10'], 'Each star group references its own error message');
-        assert.equal(stars.length, 2, 'Stars remain visible when the ratings endpoint is unavailable');
-        assert(stars.every(button => button.data.attrs.disabled), 'Stars are disabled while ratings are unavailable');
+        const ratingGroups = tree => findNodes(tree, node => node.data?.attrs?.role === 'group');
+        const voteButtons = tree => findNodes(tree, node => node.data?.staticClass === 'gallery-rate-button');
+        assert.deepEqual(ratingGroups(unavailableGallery).map(node => node.data.attrs['aria-describedby']),
+            ['rating-hint-3', 'rating-hint-10'], 'Each vote control references its own error message');
+        assert.equal(findNodes(unavailableGallery, node => node.data?.staticClass === 'gallery-rating-star').length, 10,
+            'Community stars remain visible when ratings are unavailable');
+        assert(voteButtons(unavailableGallery).every(button => button.data.attrs.disabled));
         ratingsFailure = 'network';
         await gallery.loadRatings();
         assert.match(gallery.ratingLoadError, /Could not load ratings from PixelIt.API/);
         ratingsFailure = null;
         await gallery.loadRatings();
         assert(!gallery.ratingLoadError);
-        assert(findStars(gallery._render()).some(button => !button.data.attrs.disabled), 'Retry restores voting');
+        assert(voteButtons(gallery._render()).every(button => !button.data.attrs.disabled), 'Retry restores voting');
+        const [editButton] = voteButtons(gallery._render()).slice(1);
+        editButton.data.on.click();
+        assert.equal(gallery.openRatingBitmapId, 10);
+        const editableStars = findNodes(gallery._render(), node => node.data?.attrs?.['aria-label'] === '5 stars');
+        assert.equal(editableStars.length, 1);
+        assert.equal(editableStars[0].data.attrs['aria-pressed'], true);
+        await gallery.rateBitmap(10, 5);
+        assert.equal(gallery.openRatingBitmapId, null, 'Selecting the existing vote closes inline editing');
+        assert.equal(gallery.communityStarFill(10, 4), 100);
+        assert(Math.abs(gallery.communityStarFill(10, 5) - 90) < 0.001, 'The last star reflects the fractional community score');
+        assert.equal(gallery.communityStarFill(7, 1), 0, 'An unrated icon shows empty community stars');
         assert.equal(renderErrors.length, 0, renderErrors.map(error => error.message).join(', '));
     } finally {
         Vue.config.errorHandler = previousErrorHandler;
