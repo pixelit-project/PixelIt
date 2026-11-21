@@ -3,6 +3,7 @@
 ### Unreleased
 
 -   (o0shojo0o) Add community star ratings and sorting by rating to the Pixel Gallery with the matching PixelIt.API.
+-   (o0shojo0o) Add a compact dashboard update notice that opens Update & Backup.
 
 ### 3.0.2 (2026-11-18)
 
