@@ -114,7 +114,7 @@ BH1750 *bh1750;
 Max44009 *max44009;
 LuxSensor luxSensor = LuxSensor_LDR;
 
-FastLED_NeoMatrix *matrix;
+TextGradientMatrix *matrix;
 MqttWiFiClient wifiClientMQTT;
 bool mqttReceiveActive = false;
 uint8_t mqttPendingResponses = 0;

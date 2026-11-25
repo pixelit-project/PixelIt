@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+-   Add directional gradients, rainbow text and per-character colors to the screen API.
+
 ### 3.1.0 (2026-11-23)
 
 -   (o0shojo0o) Add community star ratings and sorting by rating to the Pixel Gallery with the matching PixelIt.API.

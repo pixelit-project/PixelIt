@@ -161,7 +161,8 @@ extern LightDependentResistor *photocell;
 extern BH1750 *bh1750;
 extern Max44009 *max44009;
 extern LuxSensor luxSensor;
-extern FastLED_NeoMatrix *matrix;
+#include "TextGradientMatrix.h"
+extern TextGradientMatrix *matrix;
 class MqttWiFiClient : public WiFiClient
 {
 public:

@@ -2113,3 +2113,52 @@ peak-memory validation remain outstanding. The image, success response and
 post-restart status are recorded in `/tmp/pixelit-448-ota-image.json`,
 `/tmp/pixelit-448-ota-response.html` and `/tmp/pixelit-448-post-ota-status.json`
 on the test host.
+
+## Text colors in screen commands (unreleased)
+
+The shared screen handler accepts these optional properties inside `text`.
+They are available with HTTP `POST /api/screen`, MQTT `setScreen` and
+WebSocket `setScreen`.
+
+```json
+{
+  "text": {
+    "textString": "PixelIt",
+    "position": {"x": 0, "y": 1},
+    "scrollText": "auto",
+    "hexColor": "#00AAFF",
+    "gradientEnd": "#FF0088",
+    "gradientDirection": "topToBottom",
+    "characterColors": ["#FFFFFF", null, "#FFD000"]
+  }
+}
+```
+
+- `gradientEnd` is a `#RRGGBB` color. The gradient advances per character
+  from the existing `hexColor` or `color` to this color. Single-character
+  text uses the base color.
+- `rainbow: true` distributes hues across the text and takes precedence over
+  `gradientEnd`.
+- `gradientDirection` applies the gradient or rainbow per pixel across the text
+  bounds in one of eight directions: `leftToRight`, `rightToLeft`,
+  `topToBottom`, `bottomToTop`, `topLeftToBottomRight`, `bottomRightToTopLeft`,
+  `topRightToBottomLeft`, or `bottomLeftToTopRight`. Omitted or unknown values
+  keep per-character coloring.
+- `characterColors` is an array of optional `#RRGGBB` overrides for the
+  first 64 characters after the existing UTF-8 display conversion. Spaces
+  count. Use `null` for positions that should use the gradient, rainbow or
+  base color. Invalid colors and excess entries are ignored.
+
+Colors stay attached to the characters when scrolling. The renderer stores
+scrolling overrides as RGB565 with a presence mask in fixed storage. It uses
+the same glyph rendering and LED submission path. Directional glyph draws use
+a stack palette of at most 39 RGB565 entries on the 32×8 display and add no
+pixel buffer or per-frame heap allocation. Run `python3 test/animation/text_colors.py`
+for direction, clipping, scroll offset and override coverage. Check scroll frame intervals and ESP8266 free heap
+and largest block on a device with concurrent traffic before release.
+
+The WebUI Test Area can send the example as JSON. Node-RED's raw screen
+payload can carry the optional properties, and existing text nodes continue
+sending their existing fields. PixelIt.API serves bitmaps and requires no
+change. Add the fields and example to PixelIt.Docs when the matching firmware
+is released as stable.

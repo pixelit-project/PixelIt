@@ -6,22 +6,189 @@ void DrawText(String text, int bigFont, int colorRed, int colorGreen, int colorB
     DrawTextHelper(text, bigFont, false, false, false, false, colorRed, colorGreen, colorBlue, posX, posY);
 }
 
-void DrawTextCenter(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+namespace
 {
-    DrawTextHelper(text, bigFont, true, false, false, false, colorRed, colorGreen, colorBlue, posX, posY);
+constexpr unsigned maxCharacterColors = 64;
+
+struct TextColors
+{
+    CRGB base;
+    CRGB gradientEnd;
+    bool gradient = false;
+    bool rainbow = false;
+    uint16_t overrides[maxCharacterColors];
+    uint64_t overrideMask = 0;
+    int8_t xAxis = 0, yAxis = 0;
+    int16_t boundsX = 0, boundsY = 0;
+    uint16_t boundsWidth = 0, boundsHeight = 0;
+
+    bool active() const { return gradient || rainbow || overrideMask; }
+};
+
+TextColors scrollColors;
+
+bool ParseTextHex(const char *hex, CRGB &color)
+{
+    if (!hex || *hex++ != '#')
+        return false;
+
+    uint32_t rgb = 0;
+    for (unsigned i = 0; i < 6; ++i)
+    {
+        const char digit = hex[i];
+        unsigned value;
+        if (digit >= '0' && digit <= '9')
+            value = digit - '0';
+        else if (digit >= 'a' && digit <= 'f')
+            value = digit - 'a' + 10;
+        else if (digit >= 'A' && digit <= 'F')
+            value = digit - 'A' + 10;
+        else
+            return false;
+        rgb = (rgb << 4) | value;
+    }
+    if (hex[6] != '\0')
+        return false;
+
+    color = CRGB(rgb);
+    return true;
 }
 
-void DrawTextScrolled(String text, int bigFont, bool centerText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void ReadTextColors(TextColors &colors, const JsonObject &options, unsigned length)
 {
-    DrawTextHelper(text, bigFont, centerText, true, false, fadeInRequired, colorRed, colorGreen, colorBlue, posX, posY);
+    const JsonVariant rainbow = options["rainbow"];
+    colors.rainbow = rainbow.is<bool>() && rainbow.as<bool>();
+    colors.gradient = ParseTextHex(options["gradientEnd"].as<const char *>(), colors.gradientEnd);
+    const char *direction = options["gradientDirection"].as<const char *>();
+    if (direction)
+    {
+        static const struct
+        {
+            const char *name;
+            int8_t x, y;
+        } directions[] = {
+            {"leftToRight", 1, 0}, {"rightToLeft", -1, 0},
+            {"topToBottom", 0, 1}, {"bottomToTop", 0, -1},
+            {"topLeftToBottomRight", 1, 1}, {"bottomRightToTopLeft", -1, -1},
+            {"topRightToBottomLeft", -1, 1}, {"bottomLeftToTopRight", 1, -1}
+        };
+        for (const auto &entry : directions)
+        {
+            if (strcmp(direction, entry.name) == 0)
+            {
+                colors.xAxis = entry.x;
+                colors.yAxis = entry.y;
+                break;
+            }
+        }
+    }
+    const JsonArray &overrides = options["characterColors"].as<JsonArray>();
+    unsigned index = 0;
+    for (JsonVariant value : overrides)
+    {
+        if (index >= maxCharacterColors || index >= length)
+            break;
+        CRGB color;
+        if (ParseTextHex(value.as<const char *>(), color))
+        {
+            colors.overrides[index] = matrix->Color(color.r, color.g, color.b);
+            colors.overrideMask |= uint64_t{1} << index;
+        }
+        ++index;
+    }
 }
 
-void DrawAutoTextScrolled(String text, int bigFont, bool centerText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void PrintDirectionalText(const String &text, const TextColors &colors)
 {
-    DrawTextHelper(text, bigFont, centerText, false, true, fadeInRequired, colorRed, colorGreen, colorBlue, posX, posY);
+    // Project the current text bounds and the visible matrix onto the same axis.
+    const int x = matrix->getCursorX() + colors.boundsX;
+    const int y = matrix->getCursorY() + colors.boundsY;
+    const int textWidth = colors.boundsWidth - 1;
+    const int textHeight = colors.boundsHeight - 1;
+    const int screenWidth = matrix->width() - 1;
+    const int screenHeight = matrix->height() - 1;
+    const int screenStart = (colors.xAxis < 0 ? -screenWidth : 0) +
+                            (colors.yAxis < 0 ? -screenHeight : 0);
+    const int textStart = (x + (colors.xAxis < 0 ? textWidth : 0)) * colors.xAxis +
+                          (y + (colors.yAxis < 0 ? textHeight : 0)) * colors.yAxis;
+    const int span = (colors.xAxis ? textWidth : 0) + (colors.yAxis ? textHeight : 0);
+    const int screenSpan = (colors.xAxis ? screenWidth : 0) +
+                           (colors.yAxis ? screenHeight : 0);
+    uint16_t palette[MATRIX_WIDTH + MATRIX_HEIGHT - 1];
+    for (int i = 0; i <= screenSpan; ++i)
+    {
+        const int distance = screenStart + i - textStart;
+        const int clamped = distance < 0 ? 0 : (distance > span ? span : distance);
+        CRGB color = colors.base;
+        if (colors.rainbow)
+            hsv2rgb_rainbow(CHSV(256L * clamped / (span + 1), 255, 255), color);
+        else if (span)
+            color = blend(colors.base, colors.gradientEnd, 255L * clamped / span);
+        palette[i] = matrix->Color(color.r, color.g, color.b);
+    }
+
+    for (unsigned i = 0; i < text.length(); ++i)
+    {
+        const bool overridden = i < maxCharacterColors && (colors.overrideMask & (uint64_t{1} << i));
+        matrix->setGlyphPalette(overridden ? nullptr : palette, colors.xAxis, colors.yAxis, -screenStart);
+        if (overridden)
+            matrix->setTextColor(colors.overrides[i]);
+
+        matrix->write(static_cast<uint8_t>(text[i]));
+    }
+    matrix->setGlyphPalette(nullptr);
+    matrix->setTextColor(matrix->Color(colors.base.r, colors.base.g, colors.base.b));
 }
 
-void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY)
+void PrintText(const String &text, const TextColors &colors)
+{
+    if (!colors.active())
+    {
+        matrix->print(text);
+        return;
+    }
+
+    if ((colors.gradient || colors.rainbow) && (colors.xAxis || colors.yAxis) &&
+        colors.boundsWidth && colors.boundsHeight)
+    {
+        PrintDirectionalText(text, colors);
+        return;
+    }
+
+    const unsigned length = text.length();
+    const uint32_t step = colors.rainbow
+                              ? (256UL << 16) / (length ? length : 1)
+                              : (length > 1 ? (255UL << 16) / (length - 1) : 0);
+    uint32_t position = 0;
+    for (unsigned i = 0; i < length; ++i, position += step)
+    {
+        uint16_t rgb565;
+        if (i < maxCharacterColors && (colors.overrideMask & (uint64_t{1} << i)))
+        {
+            rgb565 = colors.overrides[i];
+        }
+        else
+        {
+            CRGB color = colors.base;
+            if (colors.rainbow)
+                hsv2rgb_rainbow(CHSV(position >> 16, 255, 255), color);
+            else if (colors.gradient)
+            {
+                const uint8_t amount = length > 1 && i == length - 1 ? 255 : position >> 16;
+                color = blend(colors.base, colors.gradientEnd, amount);
+            }
+
+            rgb565 = matrix->Color(color.r, color.g, color.b);
+        }
+
+        matrix->setTextColor(rgb565);
+        matrix->write(static_cast<uint8_t>(text[i]));
+    }
+    matrix->setTextColor(matrix->Color(colors.base.r, colors.base.g, colors.base.b));
+}
+} // namespace
+
+void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY, const JsonObject *options)
 {
     uint16_t xTextWidth, xAvailableTextSpace;
     int16_t boundsx1, boundsy1;
@@ -86,6 +253,17 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
 
     matrix->setCursor(posX, posY);
 
+    TextColors colors{};
+    colors.base = CRGB(colorRed, colorGreen, colorBlue);
+    if (options)
+    {
+        ReadTextColors(colors, *options, text.length());
+        colors.boundsX = boundsx1;
+        colors.boundsY = boundsy1;
+        colors.boundsWidth = boundsw;
+        colors.boundsHeight = boundsh;
+    }
+
     matrix->setTextColor(matrix->Color(colorRed, colorGreen, colorBlue));
 
     if (scrollText || (autoScrollText && xTextWidth > xAvailableTextSpace)) // scroll text if text is larger than available pixels
@@ -94,6 +272,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
         matrix->setBrightness(currentMatrixBrightness);
 
         scrollTextString = text;
+        scrollColors = colors;
         scrollposY = posY;
         scrollposX = posX;
         scrollxTextWidth = xTextWidth;
@@ -107,7 +286,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     // In case the text on the display fits!
     else if (autoScrollText)
     {
-        matrix->print(text);
+        PrintText(text, colors);
         // Here you have to check if the fade out was done,
         // then the brightness is too low (0),
         // but only if animateBMPAktivLoop is not active,
@@ -123,7 +302,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     }
     else
     {
-        matrix->print(text);
+        PrintText(text, colors);
     }
 }
 
@@ -135,7 +314,7 @@ void ScrollText(bool isFadeInRequired)
     {
         matrix->clear();
         matrix->setCursor(--scrollCurPos, scrollposY);
-        matrix->print(scrollTextString);
+        PrintText(scrollTextString, scrollColors);
 
         // draw black pixel under icon / blank space if (xOffset > 0)
         for (int i = 0; i < xOffset; i++)
@@ -411,7 +590,7 @@ void DrawClock(bool fromJSON)
     matrix->clear();
     const String text(showDate ? date : time);
     if (clockFontIsLarge)
-        DrawTextCenter(text, clockFontChoice, clockColorR, clockColorG, clockColorB, 0, 1);
+        DrawTextHelper(text, clockFontChoice, true, false, false, false, clockColorR, clockColorG, clockColorB, 0, 1);
     else
         DrawText(text, false, clockColorR, clockColorG, clockColorB, showDate ? 7 : xPosTime, 1);
 

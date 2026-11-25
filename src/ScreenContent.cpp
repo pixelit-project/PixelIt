@@ -493,37 +493,14 @@ void CreateFrames(JsonObject &json, int forceDuration)
                 b = json["text"]["color"]["b"].as<uint8_t>();
             }
 
-            // Is ScrollText auto or true selected?
-            if (scrollTextAktiv)
-            {
+            const bool autoScroll = json["text"]["scrollText"] == "auto";
+            if (scrollTextAktiv && json["text"]["scrollTextDelay"])
+                scrollTextDelay = json["text"]["scrollTextDelay"];
 
-                bool centerText = json["text"]["centerText"];
-
-
-                // Wurde ein Benutzerdefeniertes Delay übergeben?
-                if (json["text"]["scrollTextDelay"])
-                {
-                    scrollTextDelay = json["text"]["scrollTextDelay"];
-                }
-
-                if (!(json["text"]["scrollText"]).is<bool>() && json["text"]["scrollText"] == "auto")
-                {
-                    DrawAutoTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, false, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
-                }
-                else
-                {
-                    DrawTextScrolled(json["text"]["textString"], json["text"]["bigFont"], centerText, false, r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
-                }
-            }
-            // is centerText selected?
-            else if (json["text"]["centerText"])
-            {
-                DrawTextCenter(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
-            }
-            else
-            {
-                DrawText(json["text"]["textString"], json["text"]["bigFont"], r, g, b, json["text"]["position"]["x"], json["text"]["position"]["y"]);
-            }
+            const JsonObject &text = json["text"].as<JsonObject>();
+            DrawTextHelper(haDisplayText, text["bigFont"], text["centerText"],
+                           scrollTextAktiv && !autoScroll, autoScroll, false, r, g, b,
+                           text["position"]["x"], text["position"]["y"], &text);
         }
 
         if (transitionPrepared)
