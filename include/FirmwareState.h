@@ -142,6 +142,7 @@ extern bool isESP8266;
 #else
 extern bool isESP8266;
 #endif
+extern bool isESP32C3;
 #if defined(ESP32)
 extern TwoWire twowire;
 #elif defined(ULANZI)
