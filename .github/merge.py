@@ -43,7 +43,15 @@ for item in os.listdir(root_dir):
 
                 # merge firmware
                 print(f"> Merging firmware to {firmware_combined_path}...")
-                command = f"python -m esptool --chip esp32 merge_bin -o {firmware_combined_path} --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 {item_path}/bootloader.bin 0x8000 {item_path}/partitions.bin 0xe000 {item_path}/boot_app0.bin 0x10000 {firmware_path}"
+                if "esp32c3" in item.lower():
+                    chip = "esp32c3"
+                    flash_mode = "qio"
+                    flash_freq = "80m"
+                else:
+                    chip = "esp32"
+                    flash_mode = "dio"
+                    flash_freq = "40m"
+                command = f"python -m esptool --chip {chip} merge_bin -o {firmware_combined_path} --flash_mode {flash_mode} --flash_freq {flash_freq} --flash_size 4MB 0x1000 {item_path}/bootloader.bin 0x8000 {item_path}/partitions.bin 0xe000 {item_path}/boot_app0.bin 0x10000 {firmware_path}"
                 return_code  = subprocess.call(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if return_code != 0:
                     print(f"> Merging failed with return code {return_code}.")
