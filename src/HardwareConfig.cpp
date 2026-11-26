@@ -63,28 +63,6 @@ uint8_t TranslatePin(String pin)
     Log(F("Pin assignment - unknown pin"), pin);
     return LED_BUILTIN;
 #elif defined(CONFIG_IDF_TARGET_ESP32C3)
-    if (pin == "Pin_D0")
-        return D0;
-    if (pin == "Pin_D1")
-        return D1;
-    if (pin == "Pin_D2")
-        return D2;
-    if (pin == "Pin_D3")
-        return D3;
-    if (pin == "Pin_D4")
-        return D4;
-    if (pin == "Pin_D5")
-        return D5;
-    if (pin == "Pin_D6")
-        return D6;
-    if (pin == "Pin_D7")
-        return D7;
-    if (pin == "Pin_D8")
-        return D8;
-    if (pin == "Pin_D9")
-        return D9;
-    if (pin == "Pin_D10")
-        return D10;
     if (pin == "GPIO_NUM_0")
         return (int)GPIO_NUM_0;
     if (pin == "GPIO_NUM_1")
