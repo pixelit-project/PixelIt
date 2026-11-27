@@ -10,6 +10,7 @@ void SaveConfig()
 
     json["version"] = VERSION;
     json["isESP8266"] = isESP8266;
+    json["isESP32C3"] = isESP32C3;
     json["temperatureUnit"] = static_cast<int>(temperatureUnit);
     json["matrixBrightnessAutomatic"] = matrixBrightnessAutomatic;
     json["mbaDimMin"] = mbaDimMin;

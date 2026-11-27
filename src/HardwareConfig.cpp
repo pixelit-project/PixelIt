@@ -62,6 +62,58 @@ uint8_t TranslatePin(String pin)
         return 27;
     Log(F("Pin assignment - unknown pin"), pin);
     return LED_BUILTIN;
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+    if (pin == "GPIO_NUM_0")
+        return (int)GPIO_NUM_0;
+    if (pin == "GPIO_NUM_1")
+        return (int)GPIO_NUM_1;
+    if (pin == "GPIO_NUM_2")
+        return (int)GPIO_NUM_2;
+    if (pin == "GPIO_NUM_3")
+        return (int)GPIO_NUM_3;
+    if (pin == "GPIO_NUM_4")
+        return (int)GPIO_NUM_4;
+    if (pin == "GPIO_NUM_5")
+        return (int)GPIO_NUM_5;
+    if (pin == "GPIO_NUM_6")
+        return (int)GPIO_NUM_6;
+    if (pin == "GPIO_NUM_7")
+        return (int)GPIO_NUM_7;
+    if (pin == "GPIO_NUM_8")
+        return (int)GPIO_NUM_8;
+    if (pin == "GPIO_NUM_9")
+        return (int)GPIO_NUM_9;
+    if (pin == "GPIO_NUM_10")
+        return (int)GPIO_NUM_10;
+    if (pin == "GPIO_NUM_11")
+        return (int)GPIO_NUM_11;
+    if (pin == "GPIO_NUM_12")
+        return (int)GPIO_NUM_12;
+    if (pin == "GPIO_NUM_13")
+        return (int)GPIO_NUM_13;
+    if (pin == "GPIO_NUM_14")
+        return (int)GPIO_NUM_14;
+    if (pin == "GPIO_NUM_15")
+        return (int)GPIO_NUM_15;
+    if (pin == "GPIO_NUM_16")
+        return (int)GPIO_NUM_16;
+    if (pin == "GPIO_NUM_17")
+        return (int)GPIO_NUM_17;
+    if (pin == "GPIO_NUM_18")
+        return (int)GPIO_NUM_18;
+    if (pin == "GPIO_NUM_19")
+        return (int)GPIO_NUM_19;
+    if (pin == "GPIO_NUM_20")
+        return (int)GPIO_NUM_20;
+    if (pin == "GPIO_NUM_21")
+        return (int)GPIO_NUM_21;
+    if (pin == "SPI_CLK_GPIO_NUM")
+        return (int)SPI_CLK_GPIO_NUM;
+    if (pin == "SPI_CS0_GPIO_NUM")
+        return (int)SPI_CS0_GPIO_NUM;
+    Log(F("Pin assignment - unknown pin"), pin);
+    // ESP32-C3 has 22 GPIOs (GPIO0..GPIO21).
+    return (int)GPIO_NUM_21; // IDK
 #elif defined(ESP32)
 
     if (pin == "GPIO_NUM_14")

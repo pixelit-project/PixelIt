@@ -89,6 +89,12 @@ bool isESP8266 = true;
 bool isESP8266 = false;
 #endif
 
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+bool isESP32C3 = true;
+#else
+bool isESP32C3 = false;
+#endif
+
 #if defined(ESP32)
 TwoWire twowire(BME280_ADDRESS_ALTERNATE);
 #elif defined(ULANZI)
