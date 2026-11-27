@@ -67,6 +67,8 @@ String GetTelemetry();
 void DrawText(String text, int bigFont, int colorRed, int colorGreen, int colorBlue, int posX, int posY);
 void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY, const JsonObject *options = nullptr);
 void ScrollText(bool isFadeInRequired);
+void StopTextColorAnimation();
+bool ServiceTextColorAnimation(uint32_t now);
 void AnimateBMP(bool isShowRequired);
 void DrawSingleBitmap(JsonObject &json);
 void DrawClock(bool fromJSON);

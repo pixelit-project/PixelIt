@@ -558,6 +558,7 @@ void loop()
         CancelScreenTransition();
         forceClock = false;
         scrollTextAktivLoop = false;
+        StopTextColorAnimation();
         animateBMPAktivLoop = false;
 
         const bool transitionPrepared = PrepareClockTransition(clockAutoFallbackAnimation);
@@ -705,6 +706,10 @@ void ServiceDisplayFrames()
     {
         scrollTextPrevMillis = millis();
         ScrollText(false);
+    }
+    else
+    {
+        ServiceTextColorAnimation(millis());
     }
 }
 

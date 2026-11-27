@@ -2,7 +2,8 @@
 
 ### Unreleased
 
--   Add directional gradients, rainbow text and per-character colors to the screen API.
+-   (o0shojo0o) Add directional gradients, rainbow text and per-character colors to the screen API^.
+-   (o0shojo0o) Add optional motion to text gradients and rainbows.
 
 ### 3.1.0 (2026-11-23)
 

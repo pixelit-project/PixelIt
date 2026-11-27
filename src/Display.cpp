@@ -21,6 +21,7 @@ struct TextColors
     int8_t xAxis = 0, yAxis = 0;
     int16_t boundsX = 0, boundsY = 0;
     uint16_t boundsWidth = 0, boundsHeight = 0;
+    uint16_t cycleMs = 0;
 
     bool active() const { return gradient || rainbow || overrideMask; }
 };
@@ -82,6 +83,17 @@ void ReadTextColors(TextColors &colors, const JsonObject &options, unsigned leng
             }
         }
     }
+    const JsonVariant cycle = options["gradientCycleMs"];
+    if ((colors.gradient || colors.rainbow) && !cycle.is<bool>() && cycle.is<unsigned long>())
+    {
+        const unsigned long duration = cycle.as<unsigned long>();
+        if (duration >= 250 && duration <= 60000)
+        {
+            colors.cycleMs = duration;
+            if (!colors.xAxis && !colors.yAxis)
+                colors.xAxis = 1;
+        }
+    }
     const JsonArray &overrides = options["characterColors"].as<JsonArray>();
     unsigned index = 0;
     for (JsonVariant value : overrides)
@@ -98,7 +110,13 @@ void ReadTextColors(TextColors &colors, const JsonObject &options, unsigned leng
     }
 }
 
-void PrintDirectionalText(const String &text, const TextColors &colors)
+uint8_t MovingColorAmount(uint8_t position, uint8_t phase)
+{
+    const uint8_t shifted = position - phase;
+    return shifted < 128 ? shifted * 2 : (255 - shifted) * 2;
+}
+
+void PrintDirectionalText(const String &text, const TextColors &colors, uint8_t phase)
 {
     // Project the current text bounds and the visible matrix onto the same axis.
     const int x = matrix->getCursorX() + colors.boundsX;
@@ -121,9 +139,13 @@ void PrintDirectionalText(const String &text, const TextColors &colors)
         const int clamped = distance < 0 ? 0 : (distance > span ? span : distance);
         CRGB color = colors.base;
         if (colors.rainbow)
-            hsv2rgb_rainbow(CHSV(256L * clamped / (span + 1), 255, 255), color);
-        else if (span)
-            color = blend(colors.base, colors.gradientEnd, 255L * clamped / span);
+            hsv2rgb_rainbow(CHSV(static_cast<uint8_t>(256L * clamped / (span + 1) - phase), 255, 255), color);
+        else if (span || colors.cycleMs)
+        {
+            const uint8_t position = span ? 255L * clamped / (span + (colors.cycleMs != 0)) : 0;
+            const uint8_t amount = colors.cycleMs ? MovingColorAmount(position, phase) : position;
+            color = blend(colors.base, colors.gradientEnd, amount);
+        }
         palette[i] = matrix->Color(color.r, color.g, color.b);
     }
 
@@ -140,7 +162,7 @@ void PrintDirectionalText(const String &text, const TextColors &colors)
     matrix->setTextColor(matrix->Color(colors.base.r, colors.base.g, colors.base.b));
 }
 
-void PrintText(const String &text, const TextColors &colors)
+void PrintText(const String &text, const TextColors &colors, uint8_t phase = 0)
 {
     if (!colors.active())
     {
@@ -151,7 +173,7 @@ void PrintText(const String &text, const TextColors &colors)
     if ((colors.gradient || colors.rainbow) && (colors.xAxis || colors.yAxis) &&
         colors.boundsWidth && colors.boundsHeight)
     {
-        PrintDirectionalText(text, colors);
+        PrintDirectionalText(text, colors, phase);
         return;
     }
 
@@ -188,6 +210,40 @@ void PrintText(const String &text, const TextColors &colors)
 }
 } // namespace
 
+namespace
+{
+constexpr uint32_t colorFrameIntervalMs = 60;
+uint32_t colorPhaseStart, colorFrameLast;
+int16_t animatedTextX, animatedTextY;
+const GFXfont *animatedTextFont;
+bool animatedTextVisible;
+uint8_t colorPhase;
+
+void DrawScrollingTextFrame(int x, bool fadeIn);
+
+void UpdateTextColorPhase(uint32_t now)
+{
+    if (!scrollColors.cycleMs)
+        return;
+    const uint32_t elapsed = now - colorPhaseStart;
+    const uint32_t position = elapsed % scrollColors.cycleMs;
+    colorPhaseStart = now - position;
+    colorPhase = (position * 256) / scrollColors.cycleMs;
+    colorFrameLast = now;
+}
+
+bool RedrawAnimatedText(uint32_t now)
+{
+    if (!scrollColors.cycleMs || !animatedTextVisible)
+        return false;
+    UpdateTextColorPhase(now);
+    matrix->setFont(animatedTextFont);
+    matrix->setCursor(animatedTextX, animatedTextY);
+    PrintText(scrollTextString, scrollColors, colorPhase);
+    return true;
+}
+} // namespace
+
 void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, bool autoScrollText, bool fadeInRequired, int colorRed, int colorGreen, int colorBlue, int posX, int posY, const JsonObject *options)
 {
     uint16_t xTextWidth, xAvailableTextSpace;
@@ -202,6 +258,7 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     // Available text space depends on matrix size
     xAvailableTextSpace = MATRIX_WIDTH - posX;
 
+    const GFXfont *font = nullptr;
     if (bigFont == 1)
     {
         // Set large font
@@ -215,7 +272,8 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     else if (bigFont == 2) // fat font, only to be used for time display
     {
         // Set fat font
-        matrix->setFont(&FatPixels);
+        font = &FatPixels;
+        matrix->setFont(font);
 
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
         xTextWidth = boundsw;
@@ -226,7 +284,8 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     else if (bigFont == 3) // very large font, only to be used for time display
     {
         // Set very large font
-        matrix->setFont(&LargePixels);
+        font = &LargePixels;
+        matrix->setFont(font);
 
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
         xTextWidth = boundsw;
@@ -237,7 +296,8 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     else
     {
         // Set small font
-        matrix->setFont(&PixelItFont);
+        font = &PixelItFont;
+        matrix->setFont(font);
         matrix->getTextBounds(text, 0, 0, &boundsx1, &boundsy1, &boundsw, &boundsh);
         xTextWidth = boundsw - 4;
 
@@ -266,7 +326,27 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
 
     matrix->setTextColor(matrix->Color(colorRed, colorGreen, colorBlue));
 
-    if (scrollText || (autoScrollText && xTextWidth > xAvailableTextSpace)) // scroll text if text is larger than available pixels
+    const bool willScroll = scrollText || (autoScrollText && xTextWidth > xAvailableTextSpace);
+    if (colors.cycleMs && colors.boundsWidth && colors.boundsHeight)
+    {
+        animatedTextX = posX;
+        animatedTextY = posY;
+        animatedTextFont = font;
+        animatedTextVisible = !willScroll;
+        colorPhaseStart = colorFrameLast = millis();
+        colorPhase = 0;
+        if (!willScroll)
+        {
+            scrollTextString = text;
+            scrollColors = colors;
+        }
+    }
+    else
+    {
+        colors.cycleMs = 0;
+    }
+
+    if (willScroll)
     {
 
         matrix->setBrightness(currentMatrixBrightness);
@@ -306,40 +386,73 @@ void DrawTextHelper(String text, int bigFont, bool centerText, bool scrollText, 
     }
 }
 
-void ScrollText(bool isFadeInRequired)
+void StopTextColorAnimation()
 {
-    int xOffset = MATRIX_WIDTH - scrollxAvailableTextSpace;
+    scrollColors.cycleMs = 0;
+    animatedTextVisible = false;
+}
 
-    if (scrollCurPos > ((scrollxTextWidth - xOffset) * -1))
+bool ServiceTextColorAnimation(uint32_t now)
+{
+    // Bitmap playback owns its frame budget and paints the overlay on its own frames.
+    if (animateBMPAktivLoop || !scrollColors.cycleMs || now - colorFrameLast < colorFrameIntervalMs)
+        return false;
+
+    if (scrollTextAktivLoop && animatedTextVisible)
     {
-        matrix->clear();
-        matrix->setCursor(--scrollCurPos, scrollposY);
-        PrintText(scrollTextString, scrollColors);
+        // Repaint the current scrolling frame, without advancing the text.
+        DrawScrollingTextFrame(animatedTextX, false);
+        return true;
+    }
 
-        // draw black pixel under icon / blank space if (xOffset > 0)
-        for (int i = 0; i < xOffset; i++)
-        {
-            matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
-        }
+    if (RedrawAnimatedText(now))
+    {
+        ShowScreenContentFrame();
+        return true;
+    }
+    return false;
+}
 
-        if (withBMP && bmpArray)
-        {
-            matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray.get(), bmpWidth, bmpHeight);
-        }
+namespace
+{
+void DrawScrollingTextFrame(int x, bool fadeIn)
+{
+    const int xOffset = MATRIX_WIDTH - scrollxAvailableTextSpace;
 
-        if (isFadeInRequired)
-        {
-            FadeIn();
-        }
-        else
-        {
-            ShowScreenContentFrame();
-        }
+    matrix->clear();
+    if (scrollColors.cycleMs)
+    {
+        animatedTextVisible = true;
+        animatedTextX = x;
+        RedrawAnimatedText(millis());
     }
     else
     {
-        scrollCurPos = MATRIX_WIDTH;
+        matrix->setCursor(x, scrollposY);
+        PrintText(scrollTextString, scrollColors);
     }
+
+    for (int i = 0; i < xOffset; i++)
+        matrix->drawLine(i, 0, i, MATRIX_HEIGHT, matrix->Color(0, 0, 0));
+
+    if (withBMP && bmpArray)
+        matrix->drawRGBBitmap(bmpPosX, bmpPosY, bmpArray.get(), bmpWidth, bmpHeight);
+
+    if (fadeIn)
+        FadeIn();
+    else
+        ShowScreenContentFrame();
+}
+
+} // namespace
+
+void ScrollText(bool isFadeInRequired)
+{
+    const int xOffset = MATRIX_WIDTH - scrollxAvailableTextSpace;
+    if (scrollCurPos > ((scrollxTextWidth - xOffset) * -1))
+        DrawScrollingTextFrame(--scrollCurPos, isFadeInRequired);
+    else
+        scrollCurPos = MATRIX_WIDTH;
 }
 
 void AnimateBMP(bool isShowRequired)
@@ -425,6 +538,8 @@ void AnimateBMP(bool isShowRequired)
 
     if (isShowRequired)
     {
+        if (!scrollTextAktivLoop)
+            RedrawAnimatedText(frameMillis);
 #if defined(ESP8266)
         const uint32_t sentBefore = _frame_cnt;
 #endif

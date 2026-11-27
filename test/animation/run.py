@@ -35,6 +35,8 @@ unsigned long animationLastRenderedMillis=0, animationMaxFrameGap=0;
 uint32_t animationRenderedFrames=0, animationFailedLedFrames=0;
 unsigned long millis() { static unsigned long tick=0; return ++tick; }
 int animateBMPCounter, animateBMPLimitLoops, animateBMPLoopCount;
+bool scrollTextAktivLoop;
+bool RedrawAnimatedText(uint32_t) { return false; }
 bool animateBMPAktivLoop, animateBMPRubberbandingAktiv, animateBMPReverse;
 int bmpPosX=0, bmpPosY=0, bmpWidth=8, bmpHeight=8;
 std::vector<int> shown;

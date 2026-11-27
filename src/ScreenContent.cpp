@@ -193,6 +193,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
             lastScreenMessageMillis = millis();
             clockAktiv = false;
             scrollTextAktivLoop = false;
+            StopTextColorAnimation();
             animateBMPAktivLoop = false;
         }
 
@@ -248,6 +249,7 @@ void CreateFrames(JsonObject &json, int forceDuration)
         {
             logMessage += F("InternalClock Control, Params: (");
             scrollTextAktivLoop = false;
+            StopTextColorAnimation();
             animateBMPAktivLoop = false;
             clockAktiv = true;
 

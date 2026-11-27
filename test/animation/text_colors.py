@@ -165,6 +165,21 @@ int main() {
     PrintText("??", colors);
     assert((display.colors == std::vector<uint16_t>{0x001f, 0x001f}));
 
+    auto &motion = directional.parseObject(R"({"gradientEnd":"#0000ff","gradientCycleMs":1800})");
+    colors = TextColors{};
+    ReadTextColors(colors, motion, 2);
+    assert(colors.cycleMs == 1800 && colors.xAxis == 1 && colors.yAxis == 0);
+    for (const char *invalid : {"true", "0", "249", "60001", "500.5", "\"1800\""}) {
+        DynamicJsonBuffer json;
+        const String input = String("{\"rainbow\":true,\"gradientCycleMs\":") + invalid + "}";
+        colors = TextColors{};
+        ReadTextColors(colors, json.parseObject(input.c_str()), 2);
+        assert(colors.cycleMs == 0 && colors.xAxis == 0);
+    }
+    assert(MovingColorAmount(0, 0) == 0);
+    assert(MovingColorAmount(64, 0) == MovingColorAmount(128, 64));
+    assert(MovingColorAmount(1, 255) == MovingColorAmount(2, 0));
+
     PrintText("solid", TextColors{});
     assert(display.prints == 1);
 }

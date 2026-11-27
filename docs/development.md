@@ -2144,6 +2144,12 @@ WebSocket `setScreen`.
   `topToBottom`, `bottomToTop`, `topLeftToBottomRight`, `bottomRightToTopLeft`,
   `topRightToBottomLeft`, or `bottomLeftToTopRight`. Omitted or unknown values
   keep per-character coloring.
+- `gradientCycleMs` optionally moves a gradient or rainbow in the configured
+  direction. Set a whole number from 250 to 60000 for one cycle in milliseconds.
+  Missing, zero or invalid values leave the colors static. With motion enabled
+  and no valid direction, the effect moves left to right. The two-color effect
+  repeats as a band that blends back to the base color. Motion works with
+  stationary text and has its own phase when combined with scrolling.
 - `characterColors` is an array of optional `#RRGGBB` overrides for the
   first 64 characters after the existing UTF-8 display conversion. Spaces
   count. Use `null` for positions that should use the gradient, rainbow or
@@ -2153,7 +2159,11 @@ Colors stay attached to the characters when scrolling. The renderer stores
 scrolling overrides as RGB565 with a presence mask in fixed storage. It uses
 the same glyph rendering and LED submission path. Directional glyph draws use
 a stack palette of at most 39 RGB565 entries on the 32×8 display and add no
-pixel buffer or per-frame heap allocation. Run `python3 test/animation/text_colors.py`
+pixel buffer or per-frame heap allocation. Motion reuses the scrolling text
+storage and requests at most one extra color refresh every 60 ms. Bitmap
+animation suppresses those extra refreshes. Static text is recolored on the
+bitmap frame and scrolling text takes the current phase on its scroll frame.
+A new screen or clock fallback stops the effect. Run `python3 test/animation/text_colors.py`
 for direction, clipping, scroll offset and override coverage. Check scroll frame intervals and ESP8266 free heap
 and largest block on a device with concurrent traffic before release.
 
